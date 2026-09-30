@@ -14,7 +14,9 @@ semantische Orte und Ereignisse. Der Renderer löst Anker in Weltpositionen auf,
 ## Festlegungen (Stand Abstimmung)
 
 * **Typen:** Terminal 1 liefert langfristig die führenden Typen (Agent, Task, Department). Bis dahin liegen sie in `src/types.ts` und sind isoliert austauschbar.
-* **Bänke:** Jede Abteilungsetage hat eine eigene Agentenbank (`agent-bench-hj`, `agent-bench-km`, `agent-bench-dev`), dort ruhen sich die Agenten aus. Das Erdgeschoss hat eine kleine Bank für Ankunft und Überlauf (`agent-bench`). Küche und Lounge liegen im Erdgeschoss, Pausen erzeugen also Aufzugsfahrten.
+* **Bänke:** Jede Abteilungsetage hat eine eigene Agentenbank (`agent-bench-hj`, `agent-bench-km`, `agent-bench-dev`), dort ruhen sich die Agenten aus. Das Erdgeschoss hat eine kleine Bank für Ankunft und Überlauf (`agent-bench`). Küche und Lounge gibt es je Etage, Wellness und Dachlounge auf Etage 4. Nur Wellness und Ausweichen ins Erdgeschoss erzeugen Aufzugsfahrten.
+* **Sprache:** Alle Bezeichnungen, Rollen, Aufgabentitel, Workflows und Logtexte sind deutsch. Ids (Zonen, Anker, Ereignistypen) bleiben technische Bezeichner.
+* **Firmenspezifisch (DEMO):** HerkulesJobs mit Vertrieb, Produktberatung, Recruiting. KasselMemes mit Infobeiträgen, Nachrichtenbeiträgen und Gewinnspielen. Keine erfundenen Produkte oder Kundendaten.
 * **Gastschreibtische:** Shared Agenten arbeiten bevorzugt an einem Schreibtisch der Abteilung, für die sie die Aufgabe erledigen (Aufzug inklusive). Nur bei eigenen Aufgaben nutzen sie die Schreibtische auf Etage 3.
 * **Freigabe:** Standard ist der Warteplatz (`approvalBehavior: 'GO_TO_WAITING_AREA'`, Zonen `waiting-hj`, `waiting-km`, `waiting-dev`). Alternativ `STAY_AT_DESK`.
 * **Demo Freigabe:** In Demos ist `mockAutoApproveAfterMs` erlaubt (Szenarien B, D, F). Szenarien C und E lassen Freigaben bewusst offen. Echte Aufgaben werden nie automatisch freigegeben.
@@ -64,7 +66,9 @@ Bewegung:
 * Standard `movementMode: 'SIMULATED'`: Die Simulation schätzt Wegzeiten selbst (Ankunft ohne Rückmeldung).
 * `movementMode: 'RENDERER_CONFIRMED'`: Terminal 3 ruft nach jeder fertig gelaufenen Etappe `engine.confirmRouteStage(agentId)`. Bleibt die Bestätigung aus, greift ein Timeout (`confirmTimeoutFactor`), damit nichts hängen bleibt.
 * Anker Ids sind semantisch, z. B. `desk-hj-04`, `bench-05`, `kitchen-coffee-01`, `kitchen-seat-02`, `lounge-sofa-03`, `meeting-room-hj-seat-02`, `elevator-lobby-f1`, `waiting-km-01`. Der Renderer bildet diese Ids auf Weltpositionen ab. Die `hint` Koordinaten der Anker sind nur abstrakte Meter zur Wegzeitschätzung.
-* Etagen: `floor-0` Erdgeschoss (Küche, Lounge, Meetingräume A und B, kleine Bank), `floor-1` HerkulesJobs, `floor-2` KasselMemes, `floor-3` AI und Development. Jede Abteilungsetage hat Schreibtische, Bank, Meetingraum und Warteplatz.
+* Etagen (Hochhaus, Details in [GEBAEUDE.md](GEBAEUDE.md)): `floor-0` Empfang und Erdgeschoss (Lobby, Küche und Café, Lounge mit Fernseher, Besprechungsräume A und B, Konferenzraum, kleine Bank), `floor-1` HerkulesJobs, `floor-2` KasselMemes, `floor-3` AI und Entwicklung, `floor-4` Wellness und Dachlounge. Jede Abteilungsetage hat Schreibtische, Bank, Meetingraum, Teeküche, Lounge mit Fernseher und Warteplatz.
+* Sofas haben `focusAnchorId` auf den Fernseher (Anker Art `TV`, Kapazität 0). Aktivität `WATCH_TV`. Wellness Liegen erlauben `REST`.
+* Pausenarten: `KITCHEN`, `LOUNGE` (zuerst eigene Etage, dann Erdgeschoss), `WELLNESS` (Etage 4, Wellnessraum oder Dachlounge), `WANDER`.
 
 Intent Tabelle (Auswahl): `GO_TO_DESK`, `USE_WORKSTATION`, `GO_TO_AGENT_BENCH`, `SIT_ON_AGENT_BENCH`, `GO_TO_KITCHEN`, `USE_KITCHEN`, `GO_TO_LOUNGE`, `SIT_IN_LOUNGE`, `GO_TO_MEETING`, `ATTEND_MEETING`, `GO_TO_ELEVATOR`, `CHANGE_FLOOR`, `WAIT_FOR_APPROVAL`, `RETURN_TO_DESK`, `WANDER`, `IDLE`.
 `activity` verfeinert die Optik am Anker (`SIT`, `CHAT_VISUAL`, `READ`, `REST`, `WAIT`, `STAND`, `USE_KITCHEN`, `WORK`, `ATTEND_MEETING`, `WAIT_FOR_APPROVAL`).

@@ -25,30 +25,30 @@ const seed = (id: string, role: string, departmentId: DepartmentId, capabilities
 
 export const BASE_ROSTER: readonly AgentSeed[] = [
   // HerkulesJobs
-  seed('hj-lead-research', 'Lead Research Agent', 'HERKULESJOBS', ['research', 'lead_research', 'lead_enrichment']),
-  seed('hj-sales', 'Sales Agent', 'HERKULESJOBS', ['sales', 'outreach', 'follow_up']),
-  seed('hj-employer-research', 'Employer Research Agent', 'HERKULESJOBS', ['research', 'company_analysis', 'lead_enrichment']),
-  seed('hj-outreach', 'Outreach Agent', 'HERKULESJOBS', ['outreach', 'copywriting', 'follow_up']),
+  seed('hj-lead-research', 'Lead Recherche Agent', 'HERKULESJOBS', ['research', 'lead_research', 'lead_enrichment']),
+  seed('hj-sales', 'Vertriebs Agent', 'HERKULESJOBS', ['sales', 'outreach', 'follow_up', 'product_knowledge']),
+  seed('hj-employer-research', 'Arbeitgeber Recherche Agent', 'HERKULESJOBS', ['research', 'company_analysis', 'lead_enrichment']),
+  seed('hj-outreach', 'Ansprache Agent', 'HERKULESJOBS', ['outreach', 'copywriting', 'follow_up']),
   seed('hj-recruiting-content', 'Recruiting Content Agent', 'HERKULESJOBS', ['copywriting', 'recruiting_content', 'creative']),
-  seed('hj-customer-success', 'Customer Success Agent', 'HERKULESJOBS', ['customer_success', 'follow_up']),
-  seed('hj-job-research', 'Job Research Agent', 'HERKULESJOBS', ['research', 'job_research']),
-  seed('hj-account-management', 'Account Management Agent', 'HERKULESJOBS', ['account_management', 'sales', 'follow_up']),
+  seed('hj-customer-success', 'Kundenerfolg Agent', 'HERKULESJOBS', ['customer_success', 'follow_up']),
+  seed('hj-job-research', 'Stellen Recherche Agent', 'HERKULESJOBS', ['research', 'job_research']),
+  seed('hj-account-management', 'Kundenbetreuung Agent', 'HERKULESJOBS', ['account_management', 'sales', 'follow_up', 'product_knowledge']),
   // KasselMemes
   seed('km-trend-scout', 'Trend Scout', 'KASSELMEMES', ['trend_detection', 'research']),
-  seed('km-local-research', 'Local Research Agent', 'KASSELMEMES', ['research', 'local_research']),
-  seed('km-editorial', 'Editorial Agent', 'KASSELMEMES', ['editorial', 'copywriting']),
-  seed('km-caption', 'Caption Agent', 'KASSELMEMES', ['copywriting', 'caption']),
-  seed('km-creative', 'Creative Agent', 'KASSELMEMES', ['creative']),
-  seed('km-community', 'Community Agent', 'KASSELMEMES', ['community']),
-  seed('km-partnership', 'Partnership Agent', 'KASSELMEMES', ['partnerships']),
-  seed('km-video-reel', 'Video / Reel Agent', 'KASSELMEMES', ['creative', 'video']),
+  seed('km-local-research', 'Lokale Recherche Agent', 'KASSELMEMES', ['research', 'local_research']),
+  seed('km-editorial', 'Redaktions Agent', 'KASSELMEMES', ['editorial', 'copywriting']),
+  seed('km-caption', 'Bildtext Agent', 'KASSELMEMES', ['copywriting', 'caption']),
+  seed('km-creative', 'Kreativ Agent', 'KASSELMEMES', ['creative']),
+  seed('km-community', 'Community Agent', 'KASSELMEMES', ['community', 'giveaway']),
+  seed('km-partnership', 'Partnerschafts Agent', 'KASSELMEMES', ['partnerships', 'giveaway']),
+  seed('km-video-reel', 'Video und Reel Agent', 'KASSELMEMES', ['creative', 'video']),
   // Shared
-  seed('sh-developer', 'Developer Agent', 'SHARED', ['coding']),
+  seed('sh-developer', 'Entwickler Agent', 'SHARED', ['coding']),
   seed('sh-code-review', 'Code Review Agent', 'SHARED', ['review']),
   seed('sh-qa', 'QA Agent', 'SHARED', ['testing']),
-  seed('sh-automation', 'Automation Agent', 'SHARED', ['automation']),
-  seed('sh-research', 'Research Agent', 'SHARED', ['research']),
-  seed('sh-operations', 'Operations Agent', 'SHARED', ['operations']),
+  seed('sh-automation', 'Automatisierungs Agent', 'SHARED', ['automation']),
+  seed('sh-research', 'Recherche Agent', 'SHARED', ['research']),
+  seed('sh-operations', 'Betriebs Agent', 'SHARED', ['operations']),
 ];
 
 /** Wiederholt das Basis Roster (ids und Namen mit laufender Nummer), z. B. für Lasttests. */

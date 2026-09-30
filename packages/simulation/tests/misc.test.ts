@@ -34,11 +34,12 @@ describe('Aktivitätslog', () => {
     e.createTask({ title: 'Lead', departmentId: 'HERKULESJOBS', requiredCapabilities: ['lead_research'], workDurationMs: 5 * S });
     e.runFor(2 * MIN);
     const text = e.getLog(100).map((l) => l.text).join('\n');
-    expect(text).toMatch(/Task HJ-\d+ created/);
-    expect(text).toMatch(/assigned to Lead Research Agent/);
-    expect(text).toMatch(/moving to desk-hj-/);
-    expect(text).toMatch(/started/);
-    expect(text).toMatch(/completed/);
+    expect(text).toMatch(/Aufgabe HJ-\d+ erstellt/);
+    expect(text).toMatch(/zugewiesen an Lead Recherche Agent/);
+    expect(text).toMatch(/geht zu desk-hj-/);
+    expect(text).toMatch(/gestartet/);
+    expect(text).toMatch(/abgeschlossen/);
+    expect(text).toMatch(/ist verfügbar/);
   });
 });
 
@@ -74,7 +75,7 @@ describe('Inspektor, Metriken, Debug', () => {
     e.createTask({ title: 'Lead', departmentId: 'HERKULESJOBS', requiredCapabilities: ['lead_research'], workDurationMs: 30 * S });
     e.runFor(3 * S);
     const i = e.inspectAgent('hj-lead-research')!;
-    expect(i).toMatchObject({ role: 'Lead Research Agent', departmentId: 'HERKULESJOBS', status: expect.any(String), intent: expect.any(String) });
+    expect(i).toMatchObject({ role: 'Lead Recherche Agent', departmentId: 'HERKULESJOBS', status: expect.any(String), intent: expect.any(String) });
     expect(i.location.floorId).toBeDefined();
     expect(i.currentTask?.id).toMatch(/^HJ-/);
     expect(i.desk).toMatch(/^desk-hj-/);
@@ -128,7 +129,7 @@ describe('Inspektor, Metriken, Debug', () => {
     const panel = mountDebugPanel({ createElement: () => mk() }, root, e);
     const buttons = root.kids.filter((k: any) => k.handlers.click) as any[];
     expect(buttons.length).toBeGreaterThanOrEqual(13);
-    const spawn = buttons.find((b) => b.textContent === 'Spawn Task');
+    const spawn = buttons.find((b) => b.textContent === 'Aufgabe erzeugen');
     spawn.handlers.click();
     expect(e.getTasks().length).toBe(1);
     expect(panel.selectedAgentId()).toBeTruthy();

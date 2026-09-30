@@ -63,7 +63,8 @@ export type ActivityKind =
   | 'READ'
   | 'REST'
   | 'ATTEND_MEETING'
-  | 'WAIT_FOR_APPROVAL';
+  | 'WAIT_FOR_APPROVAL'
+  | 'WATCH_TV';
 
 // ---------------------------------------------------------------------------
 // Organisation
@@ -98,7 +99,9 @@ export type KnownCapability =
   | 'review'
   | 'testing'
   | 'automation'
-  | 'operations';
+  | 'operations'
+  | 'giveaway'
+  | 'product_knowledge';
 /** Erweiterbar: echte Provider dürfen eigene Capabilities mitbringen. */
 export type Capability = KnownCapability | (string & {});
 
@@ -125,7 +128,9 @@ export type AnchorType =
   | 'MEETING_SEAT'
   | 'ELEVATOR'
   | 'WAITING_POINT'
-  | 'WHITEBOARD';
+  | 'WHITEBOARD'
+  /** Fernseher: nicht belegbar (Kapazität 0), nur Blickziel für Sofas. */
+  | 'TV';
 
 export interface Point {
   x: number;
@@ -143,8 +148,10 @@ export interface ActivityAnchor {
   /** Agenten, die den Anker reserviert haben und noch unterwegs sind (oder deren Schreibtisch zeitweise verlassen ist). */
   reservedBy: AgentId[];
   allowedActivities: ActivityKind[];
-  /** Nur für Schreibtische: zugehörige Abteilung. */
+  /** Nur für Schreibtische, Bänke, Warteplätze: zugehörige Abteilung. */
   departmentId?: DepartmentId;
+  /** Blickziel, z. B. der Fernseher, auf den ein Sofa ausgerichtet ist. */
+  focusAnchorId?: AnchorId;
   /**
    * Abstrakte Grundrisskoordinate in Metern (nur zur Laufzeitschätzung von Wegen).
    * Terminal 3 löst Anker selbst in echte Weltpositionen auf und ignoriert diese Werte.
@@ -160,7 +167,8 @@ export type ZoneKind =
   | 'MEETING_ROOM'
   | 'ELEVATOR_LOBBY'
   | 'WAITING_AREA'
-  | 'LOBBY';
+  | 'LOBBY'
+  | 'WELLNESS';
 
 export interface ZoneDef {
   id: ZoneId;
@@ -219,7 +227,7 @@ export interface Route {
   arrival: ArrivalAction;
 }
 
-export type BreakKind = 'KITCHEN' | 'LOUNGE' | 'WANDER';
+export type BreakKind = 'KITCHEN' | 'LOUNGE' | 'WANDER' | 'WELLNESS';
 
 export interface BreakStep {
   anchorId: AnchorId;
@@ -469,6 +477,7 @@ export interface SimConfig {
     kitchenWeight: number;
     loungeWeight: number;
     wanderWeight: number;
+    wellnessWeight: number;
     breakCooldownMs: number;
     /** Höchstanteil verfügbarer Agenten, die gleichzeitig Pause machen dürfen. */
     maxBreakShare: number;

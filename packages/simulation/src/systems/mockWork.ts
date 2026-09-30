@@ -1,6 +1,6 @@
 import type { Ctx } from '../context';
 import { localMinuteOfDay } from '../clock';
-import { TASK_TEMPLATES } from '../workflows';
+import { TASK_TEMPLATES, WORKFLOWS_BY_DEPARTMENT } from '../workflows';
 import type { GeneratorState, ScheduledAction, ScheduledCommand, WorkProfile } from '../state';
 import type { DepartmentId } from '../types';
 
@@ -10,7 +10,6 @@ const PROFILE_WEIGHTS: Record<WorkProfile, ReadonlyArray<readonly [DepartmentId,
   KM_TREND: [['HERKULESJOBS', 1], ['KASSELMEMES', 8], ['SHARED', 1]],
   DEV: [['HERKULESJOBS', 1], ['KASSELMEMES', 1], ['SHARED', 8]],
 };
-const WORKFLOW_BY_DEPARTMENT: Record<DepartmentId, string> = { HERKULESJOBS: 'hj_sales', KASSELMEMES: 'km_trend_spike', SHARED: 'dev_feature' };
 const MEAN_WORK_MS = 35_000;
 
 /** Erzeugt glaubhafte Mock Aktivität: Zeitplan (Szenarien) und stochastische Aufgabenankunft (seeded). */
@@ -86,7 +85,7 @@ export class MockWorkSystem {
     const c = this.c;
     const dept = c.rng.weighted(PROFILE_WEIGHTS[g.profile]);
     if (c.rng.chance(g.workflowShare)) {
-      c.systems.workflows.start(WORKFLOW_BY_DEPARTMENT[dept]);
+      c.systems.workflows.start(c.rng.pick(WORKFLOWS_BY_DEPARTMENT[dept]));
       return;
     }
     const tpl = this.pickTemplate(dept);

@@ -1,6 +1,17 @@
 import type { Ctx } from '../context';
 import { DAY_MS, localDayStartMs } from '../clock';
-import { elevatorLobbyId, GROUND_BENCH_ZONE, GROUND_FLOOR, homeBenchZone } from '../layout';
+import {
+  elevatorLobbyId,
+  floorKitchenZone,
+  floorLoungeZone,
+  GROUND_BENCH_ZONE,
+  GROUND_FLOOR,
+  GROUND_KITCHEN_ZONE,
+  GROUND_LOUNGE_ZONE,
+  homeBenchZone,
+  ROOF_LOUNGE_ZONE,
+  WELLNESS_ZONE,
+} from '../layout';
 import { SEAT_TYPES } from '../movement';
 import type {
   ActivityKind,
@@ -8,6 +19,7 @@ import type {
   AgentIntent,
   AgentStatus,
   AnchorId,
+  AnchorType,
   ArrivalAction,
   BreakKind,
   BreakPlan,
@@ -18,6 +30,7 @@ import type {
   WakeKind,
 } from '../types';
 
+const BREAK_LABEL: Record<BreakKind, string> = { KITCHEN: 'Küche', LOUNGE: 'Lounge', WANDER: 'Spaziergang', WELLNESS: 'Wellness' };
 const ELEVATOR_WALK: ReadonlySet<string> = new Set(['WALK_TO_ELEVATOR', 'WAIT_FOR_ELEVATOR', 'ENTER_ELEVATOR']);
 const ELEVATOR_STAGES: ReadonlySet<string> = new Set(['WALK_TO_ELEVATOR', 'WAIT_FOR_ELEVATOR', 'ENTER_ELEVATOR', 'CHANGE_FLOOR', 'EXIT_ELEVATOR']);
 
@@ -47,7 +60,7 @@ export class AgentSystem {
       if (status === 'AVAILABLE') {
         c.emit('AGENT_AVAILABLE', { agentId: a.id, location: { ...a.location } });
         c.flags.dispatchDirty = true;
-        c.note(a, 'AGENT_AVAILABLE', `${a.name} became available`);
+        c.note(a, 'AGENT_AVAILABLE', `${a.name} ist verfügbar`);
       }
     }
     if (prevIntent !== intent || prevActivity !== activity) {
@@ -119,7 +132,7 @@ export class AgentSystem {
     a.breakPlan = null;
     a.lastBreakEndMs = this.c.now();
     this.c.emit('BREAK_ENDED', { agentId: a.id, kind: plan.kind, reason });
-    this.c.note(a, 'BREAK_ENDED', `${a.name} ended break (${plan.kind.toLowerCase()}, ${reason.toLowerCase()})`);
+    this.c.note(a, 'BREAK_ENDED', `${a.name} beendet die Pause (${BREAK_LABEL[plan.kind]}${reason === 'INTERRUPTED' ? ', unterbrochen' : ''})`);
   }
 
   // -------------------------------------------------------------------------
@@ -207,7 +220,7 @@ export class AgentSystem {
     const d = route.destination.anchorId;
     if (d && (d === a.deskAnchorId || d === a.holdAnchorId)) this.occupy(a, d);
     c.emit('AGENT_ARRIVED', { agentId: a.id, location: { ...a.location }, arrival: route.arrival });
-    c.note(a, 'AGENT_ARRIVED', `${a.name} arrived${d ? ` at ${d}` : ` in ${a.location.zoneId}`}`);
+    c.note(a, 'AGENT_ARRIVED', `${a.name} ist angekommen: ${d ?? a.location.zoneId}`);
 
     switch (route.arrival) {
       case 'WORK':
@@ -396,6 +409,7 @@ export class AgentSystem {
       ['KITCHEN', canBreak ? cfg.kitchenWeight : 0],
       ['LOUNGE', canBreak ? cfg.loungeWeight : 0],
       ['WANDER', canBreak ? cfg.wanderWeight : 0],
+      ['WELLNESS', canBreak ? cfg.wellnessWeight : 0],
     ]);
     if (choice === 'STAY' || !this.startBreak(a, choice)) this.scheduleIdleDecision(a);
   }
@@ -404,28 +418,55 @@ export class AgentSystem {
   // Pausen (Küche, Lounge, Wandern). Rein visuell / organisatorisch.
   // -------------------------------------------------------------------------
 
+  /** Erster freier Anker des Typs in den Zonen, in dieser Reihenfolge. */
+  private firstFree(a: Agent, type: AnchorType, zoneIds: readonly string[]) {
+    for (const zoneId of zoneIds) {
+      const found = this.c.anchors.findFree(type, a.id, { zoneId });
+      if (found) return found;
+    }
+    return null;
+  }
+
   private buildBreakPlan(a: Agent, kind: BreakKind): BreakPlan | null {
     const c = this.c;
     const steps: BreakStep[] = [];
     if (kind === 'KITCHEN') {
-      const coffee = c.anchors.findFree('COFFEE_MACHINE', a.id);
+      // Erst die Teeküche der eigenen Etage, dann Küche und Café im Erdgeschoss.
+      const coffee = this.firstFree(a, 'COFFEE_MACHINE', [floorKitchenZone(a.departmentId), GROUND_KITCHEN_ZONE]);
       if (!coffee) return null;
       steps.push({ anchorId: coffee.id, walkIntent: 'GO_TO_KITCHEN', intent: 'USE_KITCHEN', activity: 'USE_KITCHEN', durationMs: c.rng.int(10_000, 25_000) });
       if (c.rng.chance(0.5)) {
-        const seat = c.anchors.findFree('CHAIR', a.id, { zoneId: 'kitchen' });
+        const seat = c.anchors.findFree('CHAIR', a.id, { zoneId: coffee.zoneId });
         if (seat) steps.push({ anchorId: seat.id, walkIntent: 'GO_TO_KITCHEN', intent: 'USE_KITCHEN', activity: 'SIT', durationMs: c.rng.int(20_000, 60_000) });
       }
-    } else if (kind === 'LOUNGE') {
-      const sofa = c.anchors.findFree('SOFA', a.id);
+    } else if (kind === 'LOUNGE' || kind === 'WELLNESS') {
+      const zones =
+        kind === 'LOUNGE'
+          ? [floorLoungeZone(a.departmentId), GROUND_LOUNGE_ZONE]
+          : c.rng.chance(0.6)
+            ? [WELLNESS_ZONE, ROOF_LOUNGE_ZONE]
+            : [ROOF_LOUNGE_ZONE, WELLNESS_ZONE];
+      const sofa = this.firstFree(a, 'SOFA', zones);
       if (!sofa) return null;
-      const activity = c.rng.weighted<ActivityKind>([
-        ['SIT', 3],
-        ['CHAT_VISUAL', 3],
-        ['WAIT', 1],
-        ['READ', 2],
-        ['REST', 1],
-      ]);
-      steps.push({ anchorId: sofa.id, walkIntent: 'GO_TO_LOUNGE', intent: 'SIT_IN_LOUNGE', activity, durationMs: c.rng.int(30_000, 120_000) });
+      const inWellness = sofa.zoneId === WELLNESS_ZONE;
+      const hasTv = !!sofa.focusAnchorId;
+      const activity = inWellness
+        ? 'REST'
+        : c.rng.weighted<ActivityKind>([
+            ['SIT', 2],
+            ['CHAT_VISUAL', 3],
+            ['WAIT', 1],
+            ['READ', 2],
+            ['REST', 1],
+            ['WATCH_TV', hasTv ? 3 : 0],
+          ]);
+      steps.push({
+        anchorId: sofa.id,
+        walkIntent: 'GO_TO_LOUNGE',
+        intent: 'SIT_IN_LOUNGE',
+        activity,
+        durationMs: inWellness ? c.rng.int(60_000, 180_000) : c.rng.int(30_000, 120_000),
+      });
     } else {
       const pt = c.anchors.findFree('WAITING_POINT', a.id, { zoneId: 'lobby' });
       if (!pt) return null;
@@ -442,7 +483,7 @@ export class AgentSystem {
     a.breakPlan = plan;
     const first = plan.steps[0]!;
     c.emit('BREAK_STARTED', { agentId: a.id, kind, anchorId: first.anchorId, activity: first.activity, visualOnly: true });
-    c.note(a, 'BREAK_STARTED', `${a.name} started ${kind.toLowerCase()} break`);
+    c.note(a, 'BREAK_STARTED', `${a.name} macht Pause: ${BREAK_LABEL[kind]}`);
     this.nextBreakStep(a);
     return true;
   }
@@ -496,7 +537,7 @@ export class AgentSystem {
     const lobby = elevatorLobbyId(GROUND_FLOOR);
     this.setState(a, 'MOVING', 'GO_TO_ELEVATOR', null);
     this.startRoute(a, { floorId: GROUND_FLOOR, zoneId: lobby, anchorId: lobby }, 'GO_TO_ELEVATOR', 'GO_OFFLINE', 'MOVING');
-    c.note(a, 'AGENT_LEAVING', `${a.name} is leaving for the day`);
+    c.note(a, 'AGENT_LEAVING', `${a.name} geht in den Feierabend`);
   }
 
   goOffline(a: Agent): void {
@@ -508,7 +549,7 @@ export class AgentSystem {
     a.location = { floorId: GROUND_FLOOR, zoneId: elevatorLobbyId(GROUND_FLOOR), anchorId: null };
     this.setState(a, 'OFFLINE', 'IDLE', null);
     if (c.state.operations === 'WORKDAY') this.scheduleArrival(a, true);
-    c.note(a, 'AGENT_OFFLINE', `${a.name} went offline`);
+    c.note(a, 'AGENT_OFFLINE', `${a.name} ist offline`);
   }
 
   /** Plant die Ankunft am (nächsten) Arbeitstag mit zufälligem Versatz. */
@@ -527,7 +568,7 @@ export class AgentSystem {
     const lobby = elevatorLobbyId(GROUND_FLOOR);
     a.location = { floorId: GROUND_FLOOR, zoneId: lobby, anchorId: lobby };
     this.setState(a, 'AVAILABLE', 'IDLE', null);
-    this.c.note(a, 'AGENT_ARRIVED_AT_WORK', `${a.name} arrived at work`);
+    this.c.note(a, 'AGENT_ARRIVED_AT_WORK', `${a.name} ist zur Arbeit erschienen`);
     this.sendToBench(a);
   }
 
@@ -545,7 +586,7 @@ export class AgentSystem {
       else c.systems.tasks.requeue(task, reason);
     }
     this.setState(a, 'ERROR', 'IDLE', null);
-    c.note(a, 'AGENT_ERROR', `${a.name} entered error state: ${reason}`);
+    c.note(a, 'AGENT_ERROR', `${a.name} hat einen Fehler: ${reason}`);
   }
 
   recover(a: Agent): void {

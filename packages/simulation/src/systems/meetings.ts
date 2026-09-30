@@ -60,7 +60,7 @@ export class MeetingSystem {
     c.state.meetings[m.id] = m;
     for (const id of ids) c.state.agents[id]!.meetingId = m.id;
     c.emit('MEETING_CREATED', { meetingId: m.id, title: m.title, participantAgentIds: [...ids], origin: m.origin });
-    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} created: ${m.title}`, { meetingId: m.id });
+    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} angelegt: ${m.title}`, { meetingId: m.id });
     return ok(m);
   }
 
@@ -97,7 +97,7 @@ export class MeetingSystem {
     m.assembleStartedAtMs = c.now();
     participants.forEach((p, i) => (m.seatByAgent[p.id] = free[i]!.id));
     c.emit('MEETING_ASSEMBLING', { meetingId: m.id, roomId: room, participantAgentIds: [...m.participantAgentIds], seatByAgent: { ...m.seatByAgent } });
-    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} assembling in ${room}`, { meetingId: m.id });
+    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} versammelt sich in ${room}`, { meetingId: m.id });
     for (const p of participants) c.systems.agents.startMeetingTravel(p, m.seatByAgent[p.id]!);
   }
 
@@ -118,7 +118,7 @@ export class MeetingSystem {
     m.startedAtMs = c.now();
     m.endsAtMs = c.now() + m.durationMs;
     c.emit('MEETING_STARTED', { meetingId: m.id, roomId: m.roomId! });
-    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} started`, { meetingId: m.id });
+    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} beginnt`, { meetingId: m.id });
   }
 
   /** Agent fällt aus dem Meeting (z. B. Fehler). */
@@ -141,7 +141,7 @@ export class MeetingSystem {
     m.status = 'COMPLETED';
     m.endedAtMs = c.now();
     c.emit('MEETING_COMPLETED', { meetingId: m.id });
-    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} completed`, { meetingId: m.id });
+    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} beendet`, { meetingId: m.id });
     for (const id of m.participantAgentIds) c.systems.agents.afterMeeting(c.state.agents[id]!);
     this.finish(m);
   }
@@ -154,7 +154,7 @@ export class MeetingSystem {
     m.cancelReason = reason;
     m.endedAtMs = c.now();
     c.emit('MEETING_CANCELLED', { meetingId: m.id, reason });
-    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} cancelled: ${reason}`, { meetingId: m.id });
+    c.log.add(c.now(), 'MEETING', `Meeting ${m.id} abgesagt: ${reason}`, { meetingId: m.id });
     for (const id of m.participantAgentIds) {
       const a = c.state.agents[id]!;
       if (moved) c.systems.agents.afterMeeting(a);

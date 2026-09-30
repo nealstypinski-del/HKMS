@@ -119,6 +119,7 @@ export const DEFAULT_CONFIG: SimConfig = {
     kitchenWeight: 3,
     loungeWeight: 2,
     wanderWeight: 1,
+    wellnessWeight: 1,
     breakCooldownMs: 300_000,
     maxBreakShare: 0.25,
   },

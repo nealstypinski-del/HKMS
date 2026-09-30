@@ -25,7 +25,7 @@ export class WorkflowSystem {
     };
     c.state.workflowRuns[run.id] = run;
     c.emit('WORKFLOW_STARTED', { runId: run.id, workflowId });
-    c.log.add(c.now(), 'WORKFLOW', `Workflow ${run.id} started: ${def.title}`);
+    c.log.add(c.now(), 'WORKFLOW', `Workflow ${run.id} gestartet: ${def.title}`);
     this.startStep(run);
     return ok(run);
   }
@@ -63,7 +63,7 @@ export class WorkflowSystem {
         run.currentMeetingId = res.value.id;
         run.currentTaskId = null;
       } else {
-        c.log.add(c.now(), 'WORKFLOW', `Workflow ${run.id}: meeting step skipped`);
+        c.log.add(c.now(), 'WORKFLOW', `Workflow ${run.id}: Meeting Schritt übersprungen`);
         run.stepIndex += 1;
         this.startStep(run);
       }
@@ -95,7 +95,7 @@ export class WorkflowSystem {
     const c = this.c;
     run.status = outcome;
     c.emit('WORKFLOW_COMPLETED', { runId: run.id, workflowId: run.workflowId, outcome });
-    c.log.add(c.now(), 'WORKFLOW', `Workflow ${run.id} ${outcome.toLowerCase()}`);
+    c.log.add(c.now(), 'WORKFLOW', `Workflow ${run.id} ${outcome === 'COMPLETED' ? 'abgeschlossen' : 'fehlgeschlagen'}`);
     delete c.state.workflowRuns[run.id];
   }
 }

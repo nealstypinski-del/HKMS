@@ -47,7 +47,7 @@ describe('Demo Szenarien', () => {
     expect(done.length).toBe(5);
     const titles = e.getState().taskHistory.map((h) => h.title);
     expect(titles).toEqual([
-      'Lead research (DEMO)', 'Employer research (DEMO)', 'Sales qualification (DEMO)', 'Outreach draft (DEMO)', 'Customer success handover (DEMO)',
+      'Lead Recherche (DEMO)', 'Arbeitgeber Recherche (DEMO)', 'Vertriebsqualifizierung (DEMO)', 'Ansprache Entwurf (DEMO)', 'Übergabe an Kundenerfolg (DEMO)',
     ]);
     expect(e.getState().taskHistory.map((h) => h.primaryAgentId)).toEqual([
       'hj-lead-research', 'hj-employer-research', 'hj-account-management', 'hj-outreach', 'hj-customer-success',
@@ -73,13 +73,14 @@ describe('Demo Szenarien', () => {
 
 describe('Betriebsmodi', () => {
   it('CONTINUOUS_OPERATIONS: 24 Stunden ohne Feierabend, keine Agenten gehen offline', () => {
-    const e = new SimulationEngine({ config: { tickIntervalMs: 1000 } });
+    const e = new SimulationEngine({ config: { tickIntervalMs: 1000, mockAutoApproveAfterMs: 60 * S } });
     e.startCompany({ operations: 'CONTINUOUS_OPERATIONS', present: true, generator: { enabled: true, targetUtilization: 0.5 } });
     let completed = 0;
     e.on('TASK_COMPLETED', () => (completed += 1));
     e.runFor(24 * 60 * MIN);
     expect(e.getMetrics().offlineAgents).toBe(0);
-    expect(completed).toBeGreaterThan(300);
+    // Ohne Auto Freigabe bliebe der Durchsatz stehen (Agenten warten dauerhaft auf Menschen).
+    expect(completed).toBeGreaterThan(3000);
     // Speicher bleibt beschränkt.
     expect(e.getState().log.entries.length).toBeLessThanOrEqual(700);
     expect(e.getState().taskHistory.length).toBeLessThanOrEqual(200);

@@ -65,7 +65,7 @@ describe('Meetings', () => {
     const e = makeEngine();
     expect(e.createMeeting({ title: 'x', participantAgentIds: ['hj-sales'] }).ok).toBe(false);
     expect(e.createMeeting({ title: 'x', participantAgentIds: ['hj-sales', 'nope'] }).ok).toBe(false);
-    expect(e.createMeeting({ title: 'x', participantAgentIds: e.getAgents().slice(0, 9).map((a) => a.id) }).ok).toBe(false);
+    expect(e.createMeeting({ title: 'x', participantAgentIds: e.getAgents().slice(0, 13).map((a) => a.id) }).ok).toBe(false);
     e.createMeeting({ title: 'a', participantAgentIds: ['hj-sales', 'hj-outreach'] });
     const dup = e.createMeeting({ title: 'b', participantAgentIds: ['hj-sales', 'km-creative'] });
     expect(dup.ok).toBe(false);

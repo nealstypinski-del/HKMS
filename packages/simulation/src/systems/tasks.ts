@@ -71,7 +71,7 @@ export class TaskSystem {
       origin: task.origin,
       requiredCapabilities: [...task.requiredCapabilities],
     });
-    c.log.add(c.now(), 'TASK', `Task ${task.id} created: ${task.title}`, { taskId: task.id });
+    c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} erstellt: ${task.title}`, { taskId: task.id });
     return ok(task);
   }
 
@@ -115,7 +115,7 @@ export class TaskSystem {
       if (!agent) continue;
       const desk = c.desks.findDesk(agent, task);
       if (!desk) {
-        c.log.add(now, 'TASK', `No desk available for ${task.id}`, { taskId: task.id });
+        c.log.add(now, 'TASK', `Kein Schreibtisch frei für ${task.id}`, { taskId: task.id });
         continue;
       }
       this.assign(task, agent, desk);
@@ -131,8 +131,8 @@ export class TaskSystem {
     task.assignedAtMs = c.now();
     c.emit('TASK_ASSIGNED', { taskId: task.id, agentId: agent.id, deskAnchorId: deskId });
     c.emit('AGENT_ASSIGNED', { agentId: agent.id, taskId: task.id, deskAnchorId: deskId });
-    c.log.add(c.now(), 'TASK', `Task ${task.id} assigned to ${agent.name}`, { taskId: task.id, agentId: agent.id });
-    c.note(agent, 'AGENT_ASSIGNED', `${agent.name} moving to ${deskId}`);
+    c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} zugewiesen an ${agent.name}`, { taskId: task.id, agentId: agent.id });
+    c.note(agent, 'AGENT_ASSIGNED', `${agent.name} geht zu ${deskId}`);
     c.systems.agents.beginAssignment(agent, task, deskId);
   }
 
@@ -151,7 +151,7 @@ export class TaskSystem {
       task.status = 'IN_PROGRESS';
       task.startedAtMs = c.now();
       c.emit('TASK_STARTED', { taskId: task.id, agentId: a.id });
-      c.log.add(c.now(), 'TASK', `Task ${task.id} started`, { taskId: task.id, agentId: a.id });
+      c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} gestartet`, { taskId: task.id, agentId: a.id });
     }
     c.systems.agents.setState(a, 'WORKING', 'USE_WORKSTATION', 'WORK');
     if (task.origin === 'MOCK') {
@@ -192,9 +192,9 @@ export class TaskSystem {
     task.approval = 'PENDING';
     task.approvalRequestedAtMs = c.now();
     c.emit('APPROVAL_REQUIRED', { taskId: task.id, agentId: agent?.id ?? null, departmentId: task.departmentId, title: task.title });
-    c.log.add(c.now(), 'APPROVAL', `Approval required for ${task.id}: ${task.title}`, { taskId: task.id, ...(agent ? { agentId: agent.id } : {}) });
+    c.log.add(c.now(), 'APPROVAL', `Freigabe nötig für ${task.id}: ${task.title}`, { taskId: task.id, ...(agent ? { agentId: agent.id } : {}) });
     if (agent) {
-      c.note(agent, 'APPROVAL_REQUIRED', `${agent.name} waits for human approval on ${task.id}`);
+      c.note(agent, 'APPROVAL_REQUIRED', `${agent.name} wartet auf menschliche Freigabe für ${task.id}`);
       c.systems.agents.waitForApproval(agent);
     }
     return ok(task);
@@ -208,7 +208,7 @@ export class TaskSystem {
     const agent = task.primaryAgentId ? c.state.agents[task.primaryAgentId] : undefined;
     task.approval = 'GRANTED';
     c.emit('APPROVAL_GRANTED', { taskId, agentId: agent?.id ?? null, by });
-    c.log.add(c.now(), 'APPROVAL', `Approval granted for ${taskId}${by === 'MOCK_AUTO' ? ' (mock auto)' : ''}`, { taskId });
+    c.log.add(c.now(), 'APPROVAL', `Freigabe erteilt für ${taskId}${by === 'MOCK_AUTO' ? ' (Demo automatisch)' : ''}`, { taskId });
     c.hooks.onApprovalDecision?.({ taskId, externalRef: task.externalRef, granted: true });
     if (task.origin === 'EXTERNAL' || task.postApprovalWorkMs > 0) {
       task.status = 'IN_PROGRESS';
@@ -250,7 +250,7 @@ export class TaskSystem {
     task.finishedAtMs = c.now();
     const agent = task.primaryAgentId ? c.state.agents[task.primaryAgentId] : undefined;
     c.emit('TASK_COMPLETED', { taskId: task.id, agentId: agent?.id ?? null, durationMs: c.now() - (task.startedAtMs ?? task.createdAtMs) });
-    c.log.add(c.now(), 'TASK', `Task ${task.id} completed`, { taskId: task.id, ...(agent ? { agentId: agent.id } : {}) });
+    c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} abgeschlossen`, { taskId: task.id, ...(agent ? { agentId: agent.id } : {}) });
     if (agent) {
       agent.tasksCompleted += 1;
       c.systems.agents.onTaskFinished(agent);
@@ -268,7 +268,7 @@ export class TaskSystem {
     if (wasQueued) this.dequeue(task);
     const agent = task.primaryAgentId ? c.state.agents[task.primaryAgentId] : undefined;
     c.emit('TASK_FAILED', { taskId: task.id, agentId: agent?.id ?? null, reason });
-    c.log.add(c.now(), 'TASK', `Task ${task.id} failed: ${reason}`, { taskId: task.id });
+    c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} fehlgeschlagen: ${reason}`, { taskId: task.id });
     if (agent && agent.taskId === task.id) c.systems.agents.onTaskFinished(agent);
     this.finish(task);
   }
@@ -282,7 +282,7 @@ export class TaskSystem {
     if (wasQueued) this.dequeue(task);
     const agent = task.primaryAgentId ? c.state.agents[task.primaryAgentId] : undefined;
     c.emit('TASK_CANCELLED', { taskId: task.id, agentId: agent?.id ?? null });
-    c.log.add(c.now(), 'TASK', `Task ${task.id} cancelled`, { taskId: task.id });
+    c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} abgebrochen`, { taskId: task.id });
     if (agent && agent.taskId === task.id) c.systems.agents.onTaskFinished(agent);
     this.finish(task);
   }
@@ -298,7 +298,7 @@ export class TaskSystem {
     c.state.queues[task.departmentId].push(task.id);
     c.flags.dispatchDirty = true;
     c.emit('TASK_REQUEUED', { taskId: task.id, reason });
-    c.log.add(c.now(), 'TASK', `Task ${task.id} requeued: ${reason}`, { taskId: task.id });
+    c.log.add(c.now(), 'TASK', `Aufgabe ${task.id} zurück in die Warteschlange: ${reason}`, { taskId: task.id });
   }
 
   private finish(task: Task): void {

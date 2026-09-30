@@ -19,17 +19,17 @@ export class DebugController {
   readonly controls: readonly DebugControl[] = [
     { id: 'start', label: 'Start' },
     { id: 'pause', label: 'Pause' },
-    { id: 'resume', label: 'Resume' },
-    { id: 'reset', label: 'Reset' },
-    { id: 'speed', label: 'Speed', needs: 'speed' },
-    { id: 'spawnTask', label: 'Spawn Task', needs: 'department' },
-    { id: 'createMeeting', label: 'Create Meeting' },
-    { id: 'triggerApproval', label: 'Trigger Approval' },
-    { id: 'grantAllApprovals', label: 'Grant All Approvals' },
-    { id: 'setAgentAvailable', label: 'Set Agent Available', needs: 'agent' },
-    { id: 'setAgentWorking', label: 'Set Agent Working', needs: 'agent' },
-    { id: 'sendAgentToKitchen', label: 'Send Agent to Kitchen', needs: 'agent' },
-    { id: 'sendAgentToBench', label: 'Send Agent to Bench', needs: 'agent' },
+    { id: 'resume', label: 'Fortsetzen' },
+    { id: 'reset', label: 'Zurücksetzen' },
+    { id: 'speed', label: 'Tempo setzen', needs: 'speed' },
+    { id: 'spawnTask', label: 'Aufgabe erzeugen', needs: 'department' },
+    { id: 'createMeeting', label: 'Meeting erzeugen' },
+    { id: 'triggerApproval', label: 'Freigabe auslösen' },
+    { id: 'grantAllApprovals', label: 'Alle Freigaben erteilen' },
+    { id: 'setAgentAvailable', label: 'Agent verfügbar setzen', needs: 'agent' },
+    { id: 'setAgentWorking', label: 'Agent arbeiten lassen', needs: 'agent' },
+    { id: 'sendAgentToKitchen', label: 'Agent in die Küche schicken', needs: 'agent' },
+    { id: 'sendAgentToBench', label: 'Agent zur Bank schicken', needs: 'agent' },
   ];
   readonly speeds = SIM_SPEEDS;
 
@@ -62,7 +62,7 @@ export class DebugController {
   /** Meeting mit den angegebenen (oder den ersten drei verfügbaren) Agenten. */
   createMeeting(agentIds?: AgentId[]) {
     const ids = agentIds ?? this.engine.getAgents().filter((a) => a.status === 'AVAILABLE' && a.meetingId === null).slice(0, 3).map((a) => a.id);
-    return this.engine.createMeeting({ title: 'Debug meeting (DEMO)', participantAgentIds: ids, origin: 'MANUAL' });
+    return this.engine.createMeeting({ title: 'Debug Meeting (DEMO)', participantAgentIds: ids, origin: 'MANUAL' });
   }
 
   /** Lässt die erste laufende Mock Aufgabe um Freigabe bitten, sonst wird eine kurze Freigabeaufgabe erzeugt. */
@@ -70,7 +70,7 @@ export class DebugController {
     const working = this.engine.getTasks().find((t) => t.origin === 'MOCK' && t.status === 'IN_PROGRESS');
     if (working) return this.engine.requestApproval(working.id);
     return this.engine.createTask({
-      title: 'Approval demo (DEMO)',
+      title: 'Freigabe Demo (DEMO)',
       departmentId: 'HERKULESJOBS',
       requiredCapabilities: ['follow_up'],
       workDurationMs: 3_000,

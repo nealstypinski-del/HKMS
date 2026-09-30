@@ -48,7 +48,7 @@ describe('Minimap Daten', () => {
   it('liefert Etagen, Zonen und Agentenzahlen je Zone und Status', () => {
     const e = makeEngine();
     const map = e.getMinimap();
-    expect(map.map((f) => f.id)).toEqual(['floor-0', 'floor-1', 'floor-2', 'floor-3']);
+    expect(map.map((f) => f.id)).toEqual(['floor-0', 'floor-1', 'floor-2', 'floor-3', 'floor-4']);
     expect(map.reduce((s, f) => s + f.agentCount, 0)).toBe(22);
     const hjBench = map[1]!.zones.find((z) => z.id === 'agent-bench-hj')!;
     expect(hjBench).toMatchObject({ agentCount: 8, byStatus: { AVAILABLE: 8 }, kind: 'AGENT_BENCH' });

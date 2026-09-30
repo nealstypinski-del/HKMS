@@ -164,7 +164,7 @@ export class SimulationEngine {
     }
     c.systems.mock.setGenerator({ enabled: true, ...(opts.generator ?? {}) });
     this.emit('SIMULATION_STARTED', { operations: s.operations, scenarioId: s.scenarioId });
-    c.log.add(c.now(), 'SIMULATION', `Simulation started (${s.operations}${s.scenarioId ? `, ${s.scenarioId}` : ''})`);
+    c.log.add(c.now(), 'SIMULATION', `Simulation gestartet (${s.operations}${s.scenarioId ? `, ${s.scenarioId}` : ''})`);
     this.done(undefined);
   }
 
@@ -343,14 +343,14 @@ export class SimulationEngine {
     let meeting: Meeting | null = null;
     if (msg.visualizeAsMeeting) {
       const res = c.systems.meetings.create({
-        title: `Agent message: ${msg.type}`,
+        title: `Agentennachricht: ${msg.type}`,
         participantAgentIds: [msg.fromAgentId, msg.toAgentId],
         durationMs: 20_000,
         origin: 'AGENT_MESSAGE',
         ...(msg.taskId ? { taskId: msg.taskId } : {}),
       });
       if (res.ok) meeting = res.value;
-      else c.log.add(c.now(), 'MEETING', `Visualization of message skipped: ${res.error}`);
+      else c.log.add(c.now(), 'MEETING', `Visualisierung der Nachricht übersprungen: ${res.error}`);
     }
     return this.done(ok(meeting));
   }
@@ -419,7 +419,7 @@ export class SimulationEngine {
     if (a.taskId) return fail('AGENT_UNAVAILABLE', `${a.name} arbeitet bereits`);
     if (a.status === 'OFFLINE' || a.status === 'ERROR') return fail('AGENT_UNAVAILABLE', `${a.name} ist ${a.status}`);
     const res = this.ctx.systems.tasks.create({
-      title: 'Debug task (DEMO)',
+      title: 'Debug Aufgabe (DEMO)',
       departmentId: a.departmentId,
       requiredCapabilities: [a.capabilities[0]!],
       priority: 'HIGH',
@@ -462,11 +462,11 @@ export class SimulationEngine {
     switch (e.type) {
       case 'provider.started':
         this.emit('PROVIDER_STARTED', { providerId: e.providerId });
-        c.log.add(c.now(), 'PROVIDER', `Provider ${e.providerId} started`);
+        c.log.add(c.now(), 'PROVIDER', `Provider ${e.providerId} gestartet`);
         return this.done(ok(null));
       case 'provider.stopped':
         this.emit('PROVIDER_STOPPED', { providerId: e.providerId, ...(e.reason ? { reason: e.reason } : {}) });
-        c.log.add(c.now(), 'PROVIDER', `Provider ${e.providerId} stopped`);
+        c.log.add(c.now(), 'PROVIDER', `Provider ${e.providerId} gestoppt`);
         return this.done(ok(null));
       case 'provider.session.started': {
         if (c.systems.tasks.findExternal(e.providerId, e.sessionId)) return fail('INVALID', 'Session existiert bereits');
