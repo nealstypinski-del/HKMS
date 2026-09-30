@@ -23,3 +23,7 @@ npm run dev
 1. Blender-Assets (Schreibtische, Sofas, Aufzug, Figuren) als GLB exportieren und per `useGLTF` laden
 2. Etagen 1 bis 3 (HerkulesJobs, KasselMemes, AI/Development) mit eigener Designsprache
 3. Zustandsmodell entkoppeln, damit Loop 1 die Statusdaten liefern kann
+
+## Begehbare Welt (Bergpark und HQ Innenwelt)
+
+Siehe `WORLD.md`: Außenwelt mit Kaskade und Herkules, begehbares HQ mit Treppe, Rolltreppen, Büros und Konferenzräumen (Third Person), Schnittstellen, Prüfskripte und Messergebnisse.

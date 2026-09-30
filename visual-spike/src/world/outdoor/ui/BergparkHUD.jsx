@@ -27,6 +27,8 @@ const PLACES = [
 
 export default function BergparkHUD({ mode, setMode, settings, setSettings, api, agentApi, onBack }) {
   const [dbg, setDbg] = useState(true)
+  const [hud, setHud] = useState(true)
+  useEffect(() => { const f = (e) => { if (e.code === 'KeyH') setHud((v) => !v) }; window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f) }, [])
   const [, tick] = useState(0)
   const [tour, setTour] = useState(null)
   const [sweep, setSweep] = useState(null)
@@ -43,10 +45,12 @@ export default function BergparkHUD({ mode, setMode, settings, setSettings, api,
   const z = worldZones.states
   const goto = (fn) => { const a = fn(); if (mode === 'tycoon') setMode('tp'); api.teleport(...a) }
 
+  if (!hud) return <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 5 }}><B onClick={() => setHud(true)}>Menü (H)</B></div>
   return (
     <>
       <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 5, maxWidth: 210 }}>
         <div style={{ ...panel, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+          <B onClick={() => setHud(false)}>Menü ausblenden (H)</B>
           <B onClick={onBack}>Etagenansicht</B>
           <B on={mode === 'tp'} onClick={() => setMode('tp')}>Third Person</B>
           <B on={mode === 'fp'} onClick={() => setMode('fp')}>First Person</B>

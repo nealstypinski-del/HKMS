@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 
@@ -21,18 +21,17 @@ export default function VegetationLOD({ items, lods, material, fraction = 1, rad
   void meshes
   const drawDist = lods[lods.length - 1].maxDist
 
-  useEffect(() => {
-    refs.current.forEach((m) => {
-      if (!m) return
-      // Farben einmal anlegen
-      const c = new Float32Array(capacity * 3)
-      m.instanceColor = new THREE.InstancedBufferAttribute(c, 3)
-      m.instanceColor.setUsage(THREE.DynamicDrawUsage)
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-      m.count = 0
-    })
-    frame.current = 999 // sofort aktualisieren
-  }, [capacity])
+  // Instanzfarben beim Anhängen des Meshes anlegen (auch nach Qualitätswechsel und Neuaufbau)
+  const attach = (i) => (el) => {
+    refs.current[i] = el
+    if (el && !el.instanceColor) {
+      el.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3)
+      el.instanceColor.setUsage(THREE.DynamicDrawUsage)
+      el.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+      el.count = 0
+      frame.current = 999
+    }
+  }
 
   useFrame(({ camera }) => {
     frame.current++
@@ -62,7 +61,7 @@ export default function VegetationLOD({ items, lods, material, fraction = 1, rad
       let li = 0
       while (li < lods.length - 1 && d > lods[li].maxDist) li++
       const m = refs.current[li]
-      if (!m) continue
+      if (!m || !m.instanceColor) continue
       const n = counts[li]++
       const sc = it.s
       const cs = Math.cos(it.ry) * sc
@@ -98,7 +97,7 @@ export default function VegetationLOD({ items, lods, material, fraction = 1, rad
       {lods.map((l, i) => (
         <instancedMesh
           key={i}
-          ref={(el) => { refs.current[i] = el }}
+          ref={attach(i)}
           args={[l.geometry, material, capacity]}
           frustumCulled={false}
           castShadow={castShadowLod0 && i === 0}

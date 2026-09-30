@@ -30,7 +30,8 @@ async function sample(n) {
     tris = Math.max(tris, outdoorStats.triangles)
   }
   const mean = dts.reduce((a, b) => a + b, 0) / dts.length
-  return { fps: 1000 / mean, frameMs: mean, calls: outdoorStats.calls, triangles: outdoorStats.triangles, trees: outdoorStats.visibleTrees, agents: outdoorStats.visibleAgents }
+  const med = [...dts].sort((a, b) => a - b)[Math.floor(dts.length / 2)]
+  return { fps: 1000 / mean, fpsMedian: 1000 / med, frameMs: mean, calls: outdoorStats.calls, triangles: outdoorStats.triangles, trees: outdoorStats.visibleTrees, agents: outdoorStats.visibleAgents }
 }
 
 // ctx: { api, setMode, setSettings, agentApi }

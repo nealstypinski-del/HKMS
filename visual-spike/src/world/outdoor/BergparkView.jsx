@@ -9,6 +9,7 @@ import { labelRoot } from '../../labelRoot.js'
 import { setTimeOfDay } from './environment/outdoorEnvironment.js'
 import { startMockWorkflow, stopMockWorkflow } from './cascades/mockWorkflow.js'
 import { outdoorStats } from './runtime/stats.js'
+import { runSweep } from './ui/perfSweep.js'
 import { worldZones } from './streaming/WorldZoneManager.js'
 
 const DEFAULTS = { quality: 'HIGH', effects: true, labels: true, camBob: true, smoothing: true, fov: 70, interior: true }
@@ -21,7 +22,7 @@ export default function BergparkView({ onBack }) {
   const q = QUALITY[settings.quality]
   useEffect(() => {
     startMockWorkflow()
-    if (typeof window !== 'undefined') window.__bergpark = { api: api.current, agentApi: agentApi.current, stats: outdoorStats, zones: worldZones, setMode, setSettings, setTimeOfDay }
+    if (typeof window !== 'undefined') window.__bergpark = { api: api.current, agentApi: agentApi.current, stats: outdoorStats, zones: worldZones, setMode, setSettings, setTimeOfDay, sweep: (o) => runSweep({ api: api.current, setMode, setSettings, agentApi: agentApi.current }, o) }
     return () => stopMockWorkflow()
   }, [])
   return (

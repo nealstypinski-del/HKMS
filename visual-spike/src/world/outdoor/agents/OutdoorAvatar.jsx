@@ -20,17 +20,23 @@ export default function OutdoorAvatar({ state, shirt = '#ff8a3d', hair = '#2b211
   const body = useRef()
   const legL = useRef(); const legR = useRef(); const armL = useRef(); const armR = useRef()
   const phase = useRef(Math.random() * 6)
+  const shadowTick = useRef(0)
   const shirtM = useMemo(() => mat(shirt), [shirt])
   const skinM = useMemo(() => mat(SKIN[skin % SKIN.length]), [skin])
   const hairM = useMemo(() => mat(hair), [hair])
   const pantsM = useMemo(() => mat(pants), [pants])
 
-  useFrame(({ clock }, dt) => {
+  useFrame(({ clock, camera }, dt) => {
     const r = root.current
     if (!r) return
     r.visible = state.visible !== false && !state.cull
     if (!r.visible) return
     r.position.set(state.x, state.y, state.z)
+    // Schatten nur für nahe Figuren (spart je Figur mehrere Drawcalls im Schattenpass)
+    if (++shadowTick.current % 15 === 1) {
+      const near = Math.hypot(camera.position.x - state.x, camera.position.z - state.z) < 16
+      r.traverse((o) => { if (o.isMesh) o.castShadow = near })
+    }
     r.rotation.y = state.yaw
     const t = clock.elapsedTime
     const a = state.activity
@@ -69,12 +75,12 @@ export default function OutdoorAvatar({ state, shirt = '#ff8a3d', hair = '#2b211
   return (
     <group ref={root}>
       <group ref={body}>
-        <group ref={legL} position={[-0.1, 0.92, 0]}><mesh geometry={legGeo} material={pantsM} castShadow /></group>
-        <group ref={legR} position={[0.1, 0.92, 0]}><mesh geometry={legGeo} material={pantsM} castShadow /></group>
-        <mesh geometry={torsoGeo} material={shirtM} position={[0, 1.24, 0]} castShadow />
-        <group ref={armL} position={[-0.29, 1.5, 0]}><mesh geometry={armGeo} material={shirtM} castShadow /></group>
-        <group ref={armR} position={[0.29, 1.5, 0]}><mesh geometry={armGeo} material={shirtM} castShadow /></group>
-        <mesh geometry={headGeo} material={skinM} position={[0, 1.66, 0]} castShadow />
+        <group ref={legL} position={[-0.1, 0.92, 0]}><mesh geometry={legGeo} material={pantsM} /></group>
+        <group ref={legR} position={[0.1, 0.92, 0]}><mesh geometry={legGeo} material={pantsM} /></group>
+        <mesh geometry={torsoGeo} material={shirtM} position={[0, 1.24, 0]} />
+        <group ref={armL} position={[-0.29, 1.5, 0]}><mesh geometry={armGeo} material={shirtM} /></group>
+        <group ref={armR} position={[0.29, 1.5, 0]}><mesh geometry={armGeo} material={shirtM} /></group>
+        <mesh geometry={headGeo} material={skinM} position={[0, 1.66, 0]} />
         <mesh geometry={hairGeo} material={hairM} position={[0, 1.7, -0.01]} />
       </group>
     </group>

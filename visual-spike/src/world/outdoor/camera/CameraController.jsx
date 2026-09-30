@@ -83,6 +83,7 @@ export default function CameraController({ mode, settings, api }) {
         camera.position.set(...pos); controls.current.target.set(...target); controls.current.update()
       }
     }
+    api.getPlayer = () => ({ x: player.x, y: st.current.surf, z: player.z, yaw: player.yaw, activity: player.activity })
     api.setView = (pos, target) => { camera.position.set(...pos); camera.lookAt(...target) }
     api.startTour = () => {
       const s = st.current
@@ -181,18 +182,24 @@ export default function CameraController({ mode, settings, api }) {
     const a = set.smoothing ? 1 - Math.exp(-dt * 10) : 1
     s.vx += (dx * target - s.vx) * a
     s.vz += (dz * target - s.vz) * a
-    player.x += s.vx * dt
-    player.z += s.vz * dt
-    const belt = conveyorAt(player.x, player.z, s.surf)
-    if (belt) player.z += belt.dz * dt
-    resolveCollisions(player, 0.4, s.surf)
+    // Teilschritte, damit bei niedrigen Bildraten weder Treppenstufen noch Wände übersprungen werden
+    const n = Math.max(1, Math.ceil(dt / 0.02))
+    const h = dt / n
+    let belt = null
+    for (let i = 0; i < n; i++) {
+      player.x += s.vx * h
+      player.z += s.vz * h
+      belt = conveyorAt(player.x, player.z, s.surf)
+      if (belt) player.z += belt.dz * h
+      resolveCollisions(player, 0.4, s.surf)
+      s.surf = walkY(player.x, player.z, s.surf)
+    }
     const sp = Math.hypot(s.vx, s.vz)
     player.speed = sp
     // Ausrichtung des Avatars: in Laufrichtung, bei Stillstand beibehalten
     if (sp > 0.4) player.yaw = lerpAng(player.yaw, Math.atan2(s.vx, s.vz), 1 - Math.exp(-dt * 12))
     player.activity = belt && sp < 1 ? 'IDLE' : sp > 6.5 ? 'RUN' : sp > 0.4 ? 'WALK' : 'IDLE'
     s.bob += dt * sp * 2.2
-    s.surf = walkY(player.x, player.z, s.surf)
     s.y += (s.surf - s.y) * (1 - Math.exp(-dt * 16))
     player.y = s.y
   }
