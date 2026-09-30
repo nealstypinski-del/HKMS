@@ -43,11 +43,13 @@ export const SEAT_DZ = 0.78
 export const ELEVATOR_CABIN = { x: 10.5, z: -6.3 } as const
 export const ELEVATOR_STAND = { x: 10.5, z: -3.4 } as const
 export const MEETING_TABLE = { x: -6, z: 4.6, radius: 1.15, seatRadius: 1.75 } as const
+/** Konferenzraum mit Glaswänden, Tür an der Nordseite (zur Hauptachse) */
+export const MEETING_ROOM = { x0: -8.6, x1: -3.6, z0: 1.9, z1: 7.4, doorX0: -6.7, doorX1: -5.3 } as const
 
 export const LOBBY_LAYOUT = {
   reception: { x: -8.6, z: -5.6 },
   hqDisplay: { x: -1.6, z: -7.85 },
-  bench: { x: 0.5, z: 3.7, seats: 8 },
+  bench: { x: -0.5, z: 3.0, seats: 6 },
   sofa: { x: -7.5, z: 2.6 },
   coffeeTable: { x: -7.5, z: 4.5 },
   armchairs: [
@@ -99,6 +101,13 @@ function buildGraph(level: number, laneXs: number[]): Graph {
       prev = id
     }
   }
+  if (level > 0) {
+    // Konferenzraum: Tür an der Nordwand, Knoten vor und hinter der Tür
+    const doorX = (MEETING_ROOM.doorX0 + MEETING_ROOM.doorX1) / 2
+    nodes.push({ id: `f${level}-mr-door`, floor: level, x: doorX, z: MEETING_ROOM.z0 })
+    nodes.push({ id: `f${level}-mr-in`, floor: level, x: doorX, z: MEETING_ROOM.z0 + 0.6 })
+    edges.push([aisleId(-6), `f${level}-mr-door`], [`f${level}-mr-door`, `f${level}-mr-in`])
+  }
   const elevId = `f${level}-elevator`
   nodes.push({ id: elevId, floor: level, x: ELEVATOR_STAND.x, z: ELEVATOR_STAND.z })
   edges.push([aisleId(ELEVATOR_STAND.x), elevId])
@@ -131,7 +140,7 @@ function lobbyFloor(): FloorLayout {
   const L = LOBBY_LAYOUT
   const slots: Slot[] = []
   for (let i = 0; i < L.bench.seats; i++) {
-    slots.push({ id: `f0-bench-${i}`, area: 'agentBench', floor: 0, x: L.bench.x - 3.5 + i, z: L.bench.z, yaw: Math.PI, pose: 'sit', seatY: 0.48 })
+    slots.push({ id: `f0-bench-${i}`, area: 'agentBench', floor: 0, x: L.bench.x - (L.bench.seats - 1) / 2 + i, z: L.bench.z, yaw: Math.PI, pose: 'sit', seatY: 0.48 })
   }
   const sofaXs = [-8.85, -7.95, -7.05, -6.15]
   sofaXs.forEach((x, i) => slots.push({ id: `f0-lounge-sofa-${i}`, area: 'lounge', floor: 0, x, z: L.sofa.z + 0.35, yaw: 0, pose: 'sit', seatY: 0.46 }))

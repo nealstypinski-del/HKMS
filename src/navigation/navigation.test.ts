@@ -49,3 +49,12 @@ describe('SlotAllocator', () => {
     expect(alloc.claim('extra', slots)).toBeUndefined()
   })
 })
+
+describe('Konferenzraum', () => {
+  it('führt Wege zu Meeting Plätzen durch die Tür an der Nordwand', () => {
+    const slot = slotsOf(1, 'meetingRoom')[0]!
+    const legs = planRoute({ floor: 1, x: -6, z: 0.6 }, slot)
+    const door = legs.find((l) => l.kind === 'walk' && Math.abs(l.x + 6) < 0.2 && Math.abs(l.z - 1.9) < 0.2)
+    expect(door).toBeDefined()
+  })
+})

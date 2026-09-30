@@ -31,8 +31,7 @@ export function DevFloor() {
           ctx.fillText('mock · keine echte Pipeline', 24, h - 16)
         }}
       />
-      <Plant pos={[3.6, 0, 6.8]} />
-      <Plant pos={[11.2, 0, 6.8]} scale={1.2} />
+      <Plant pos={[11.4, 0, 3.8]} scale={1.2} />
       <Lamp pos={[9.4, 0, 3.4]} color="#c8bfff" />
     </DeptFloor>
   )

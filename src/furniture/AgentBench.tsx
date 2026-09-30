@@ -18,13 +18,13 @@ export function AgentBench() {
       <Box pos={[x, 0.62, z + 0.5]} size={[length, 0.4, 0.12]} color="#33405e" />
       <Box pos={[x - length / 2, 0.4, z + 0.1]} size={[0.12, 0.8, 1.1]} color="#26304a" />
       <Box pos={[x + length / 2, 0.4, z + 0.1]} size={[0.12, 0.8, 1.1]} color="#26304a" />
-      <Box pos={[x - 3.4, 1.6, z + 0.5]} size={[0.07, 3.2, 0.07]} color="#26304a" />
-      <Box pos={[x + 3.4, 1.6, z + 0.5]} size={[0.07, 3.2, 0.07]} color="#26304a" />
-      <Box pos={[x, 3.0, z + 0.5]} size={[7.0, 0.9, 0.1]} color="#161d33" />
+      <Box pos={[x - length / 2 + 0.1, 1.6, z + 0.5]} size={[0.07, 3.2, 0.07]} color="#26304a" />
+      <Box pos={[x + length / 2 - 0.1, 1.6, z + 0.5]} size={[0.07, 3.2, 0.07]} color="#26304a" />
+      <Box pos={[x, 3.0, z + 0.5]} size={[length, 0.9, 0.1]} color="#161d33" />
       <TextPanel
         pos={[x, 3.0, z + 0.56]}
-        size={[6.8, 0.8]}
-        px={[1024, 118]}
+        size={[length - 0.2, 0.8]}
+        px={[1024, 128]}
         draw={(ctx, w, h) => {
           ctx.fillStyle = '#0f1730'
           ctx.fillRect(0, 0, w, h)
@@ -35,7 +35,7 @@ export function AgentBench() {
           ctx.fillText('AGENTENBANK', 130, h / 2 + 2)
           ctx.fillStyle = '#7f8ab3'
           ctx.font = '500 30px system-ui, sans-serif'
-          ctx.fillText('verfügbare Agenten', 640, h / 2 + 4)
+          ctx.fillText('verfügbare Agenten', 620, h / 2 + 4)
         }}
       />
     </group>

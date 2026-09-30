@@ -23,7 +23,12 @@ export interface SavedCamera {
   target: [number, number, number]
 }
 
+export type ViewMode = 'overview' | 'walk'
+
 interface OfficeState {
+  mode: ViewMode
+  walkLevel: number
+  prevFocus: FloorFocus
   selection: Selection
   hover: Hover
   focus: FloorFocus
@@ -38,6 +43,9 @@ interface OfficeState {
   resetView: () => void
   saveCamera: (c: SavedCamera) => void
   bumpWorld: () => void
+  enterWalk: () => void
+  exitWalk: (level: number) => void
+  setWalkLevel: (level: number) => void
 }
 
 let seq = 0
@@ -48,6 +56,9 @@ const isVec3 = (v: unknown): v is [number, number, number] => Array.isArray(v) &
 export const useOfficeStore = create<OfficeState>()(
   persist(
     (set) => ({
+      mode: 'overview' as ViewMode,
+      walkLevel: 0,
+      prevFocus: 0 as FloorFocus,
       selection: null,
       hover: null,
       focus: 0,
@@ -73,6 +84,9 @@ export const useOfficeStore = create<OfficeState>()(
       },
       resetView: () => set({ focus: 0, cameraRequest: request({ kind: 'reset' }) }),
       saveCamera: (savedCamera) => set({ savedCamera }),
+      enterWalk: () => set((s) => ({ mode: 'walk', walkLevel: 0, prevFocus: s.focus, focus: 'all', selection: null, hover: null })),
+      exitWalk: (level) => set({ mode: 'overview', focus: level, cameraRequest: request({ kind: 'floor', level }) }),
+      setWalkLevel: (walkLevel) => set({ walkLevel }),
       bumpWorld: () => set((s) => ({ worldEpoch: s.worldEpoch + 1, selection: null, hover: null })),
     }),
     {

@@ -1,11 +1,13 @@
 import { Canvas } from '@react-three/fiber'
 import { CharacterLayer } from '../characters/CharacterLayer'
 import { useOfficeStore } from '../store/office.store'
+import { WalkWorld } from '../walk/WalkWorld'
 import { Building } from './Building'
 import { CameraController, DEFAULT_POSITION } from './CameraController'
 
 /** Die 3D Szene. Kennt nur Darstellung, keine Geschäftslogik. */
 export function OfficeWorld({ onReady }: { onReady?: () => void }) {
+  const walking = useOfficeStore((s) => s.mode === 'walk')
   return (
     <Canvas
       shadows
@@ -35,6 +37,7 @@ export function OfficeWorld({ onReady }: { onReady?: () => void }) {
       <Building />
       <CharacterLayer />
       <CameraController />
+      {walking && <WalkWorld />}
     </Canvas>
   )
 }

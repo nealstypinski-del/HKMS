@@ -7,7 +7,10 @@ import { Desk } from '../../furniture/Desk'
 import { Plant, Whiteboard } from '../../furniture/Decor'
 import { MeetingTable } from '../../furniture/MeetingTable'
 import { Box } from '../primitives'
+import { ConferenceRoom } from '../ConferenceRoom'
 import { ElevatorShaft } from '../Elevator'
+import { Stairs } from '../Stairs'
+import { TOP_LEVEL } from '../../config/office.config'
 import { DeptScreen } from '../StatusScreens'
 
 /** Gemeinsamer Aufbau der Abteilungsetagen: Zonen, Schreibtische, Abteilungsschilder, Besprechungstisch. */
@@ -36,6 +39,8 @@ export function DeptFloor({ level, dev = false, children }: { level: number; dev
         )
       })}
       <MeetingTable level={level} accent={cfg.accent} />
+      <ConferenceRoom accent={cfg.accent} label={cfg.shortName} />
+      {level < TOP_LEVEL && <Stairs />}
       <ElevatorShaft level={level} />
       <Plant pos={[-11.2, 0, 7.0]} scale={1.2} />
       <Plant pos={[11.2, 0, 2.6]} />

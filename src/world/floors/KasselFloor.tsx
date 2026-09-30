@@ -1,8 +1,7 @@
 import { BeanBag, Lamp, Plant, Rug } from '../../furniture/Decor'
-import { Sofa } from '../../furniture/Sofa'
-import { Box } from '../primitives'
 import { fillRound } from '../TextPanel'
 import { WallScreen } from '../../furniture/Decor'
+import { ThemeWall } from '../ThemeWall'
 import { DeptFloor } from './DeptFloor'
 
 const PALETTE = ['#2fd6c0', '#e15b7a', '#f2c94c', '#5b6ee1', '#ff8a3d', '#8e6bd8']
@@ -43,14 +42,13 @@ export function KasselFloor() {
         />
       ))}
       {/* Brainstorming Fläche */}
-      <Rug pos={[7.4, 0, 5.0]} size={[5.6, 3.4]} color="#a9e6dd" />
-      <BeanBag pos={[5.8, 0, 4.6]} color="#e15b7a" />
-      <BeanBag pos={[7.2, 0, 5.6]} color="#f2c94c" />
-      <BeanBag pos={[8.6, 0, 4.6]} color="#5b6ee1" />
-      <Sofa pos={[-1.5, 0, 6.5]} yaw={Math.PI} width={3.2} color="#2fd6c0" />
-      <Box pos={[7.2, 0.5, 3.7]} size={[0.5, 0.5, 0.5]} color="#f2c94c" />
-      <Plant pos={[3.6, 0, 6.8]} />
-      <Lamp pos={[10.4, 0, 6.6]} color="#ffb8d0" />
+      <Rug pos={[0.6, 0, 3.8]} size={[5.4, 2.6]} color="#a9e6dd" />
+      <BeanBag pos={[-1.2, 0, 3.4]} color="#e15b7a" />
+      <BeanBag pos={[0.6, 0, 4.4]} color="#f2c94c" />
+      <BeanBag pos={[2.4, 0, 3.4]} color="#5b6ee1" />
+      <ThemeWall pos={[-11.83, 2.6, -3.0]} title="Content Wall" tiles={['Infobeiträge', 'Nachrichten', 'Gewinnspiele']} accent="#2fd6c0" />
+      <Plant pos={[11.4, 0, 3.8]} />
+      <Lamp pos={[3.0, 0, 3.2]} color="#ffb8d0" />
     </DeptFloor>
   )
 }

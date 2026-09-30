@@ -39,7 +39,7 @@ function StatusIcon({ status }: { status: AgentStatus }) {
   }
 }
 
-function Hair({ style, color, accessory }: { style: string; color: string; accessory?: string }) {
+export function Hair({ style, color, accessory }: { style: string; color: string; accessory?: string }) {
   const c = mat(color)
   const cap = <mesh geometry={GEO.sphere} material={c} position={[0, 0.07, -0.01]} scale={[0.215, 0.15, 0.22]} castShadow />
   const beanie = accessory === 'beanie'
@@ -62,7 +62,7 @@ function Hair({ style, color, accessory }: { style: string; color: string; acces
   )
 }
 
-function Accessory({ kind }: { kind?: string }) {
+export function Accessory({ kind }: { kind?: string }) {
   if (kind === 'glasses') {
     return (
       <group position={[0, 0.01, 0.19]}>
@@ -89,7 +89,7 @@ interface RigProps {
   avatar: AgentAvatar
 }
 
-function Torso({ avatar }: RigProps) {
+export function Torso({ avatar }: RigProps) {
   const shirt = pick(SHIRT_COLORS, avatar.shirtVariant, '#5b6ee1')
   const style = avatar.shirtStyle
   const body = style === 'vest' ? '#e9ecf4' : shirt

@@ -1,10 +1,11 @@
-import { RotateCcw, Trash2 } from 'lucide-react'
+import { Footprints, RotateCcw, Trash2 } from 'lucide-react'
 import { useAgentStats } from '../agents/agent.hooks'
 import { STATUS_META, type AgentStatus } from '../agents/agent.types'
 import { BRAND } from '../config/office.config'
 import { useOfficeStore } from '../store/office.store'
 import { resetWorld } from '../world/worldReset'
 import { SimulationControls } from './SimulationControls'
+import { exitWalkMode } from './WalkHud'
 
 function Counter({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -19,6 +20,7 @@ function Counter({ label, value, color }: { label: string; value: number; color:
 export function TopBar() {
   const stats = useAgentStats()
   const resetView = useOfficeStore((s) => s.resetView)
+  const mode = useOfficeStore((s) => s.mode)
   const color = (s: AgentStatus) => STATUS_META[s].color
   return (
     <header className="glass pointer-events-auto absolute inset-x-3 top-3 z-20 flex items-center gap-6 rounded-xl px-4 py-2.5">
@@ -40,6 +42,13 @@ export function TopBar() {
         <span className="rounded border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-[11px] font-bold tracking-wider text-amber-300" title="Alle Agenten sind simuliert. Keine echte KI, keine Zugangsdaten.">
           {BRAND.providerBadge.toUpperCase()}
         </span>
+        <button
+          onClick={() => (mode === 'walk' ? exitWalkMode() : useOfficeStore.getState().enterWalk())}
+          className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold tracking-wide ${mode === 'walk' ? 'border-km bg-km/20 text-km' : 'border-line text-slate-200 hover:bg-panel-2'}`}
+          title="Third Person Rundgang durch das Gebäude"
+        >
+          <Footprints size={14} /> {mode === 'walk' ? 'RUNDGANG BEENDEN' : 'RUNDGANG STARTEN'}
+        </button>
         <SimulationControls />
         <button onClick={resetView} className="rounded-lg border border-line p-2 text-slate-300 hover:bg-panel-2 hover:text-white" title="Ansicht zurücksetzen">
           <RotateCcw size={15} />

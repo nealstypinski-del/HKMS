@@ -7,6 +7,8 @@ import { Box, Cyl } from '../primitives'
 import { TextPanel } from '../TextPanel'
 import { HQDisplay } from '../StatusScreens'
 import { ElevatorShaft } from '../Elevator'
+import { Escalator } from '../Escalator'
+import { Stairs } from '../Stairs'
 
 function Reception() {
   const { x, z } = LOBBY_LAYOUT.reception
@@ -60,11 +62,12 @@ export function Lobby() {
         <Armchair key={i} pos={[a.x, 0, a.z]} yaw={a.yaw} color="#e15b7a" />
       ))}
       <Plant pos={[-11.2, 0, 7.0]} scale={1.2} />
-      <Plant pos={[-3.2, 0, 6.6]} />
       <Tree pos={[11.0, 0, 6.4]} />
       <Plant pos={[9.4, 0, -0.9]} />
       <Lamp pos={[-11.2, 0, 1.6]} />
       <ElevatorShaft level={0} />
+      <Escalator />
+      <Stairs />
     </group>
   )
 }

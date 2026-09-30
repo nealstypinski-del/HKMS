@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import type * as THREE from 'three'
 import { FLOOR_DEPTH, FLOOR_HEIGHT, FLOOR_THICKNESS, FLOOR_WIDTH, floorByLevel, floorY } from '../config/office.config'
 import { useOfficeStore } from '../store/office.store'
+import { HALF_D, HALF_W, holesOf, subtractHoles } from '../config/walkWorld'
 import { Box, glass } from './primitives'
 import { LIFT_DISTANCE, floorLift } from './runtime'
 
@@ -70,11 +71,25 @@ export function FloorLevel({ level, children }: { level: number; children: React
     g.position.y = floorY(level) + lift
     g.visible = lift < LIFT_DISTANCE - 0.25
   })
+  const holes = holesOf(level)
+  const slabParts = subtractHoles({ x0: -HALF_W, x1: HALF_W, z0: -HALF_D, z1: HALF_D }, holes)
+  const lights: Array<[number, number]> = []
+  for (const x of [-8, 0, 8]) for (const z of [-4, 3]) if (!holes.some((h) => x + 1 > h.x0 && x - 1 < h.x1 && z + 0.4 > h.z0 && z - 0.4 < h.z1)) lights.push([x, z])
   const light = cfg.company === 'kasselmemes' ? '#b8fff2' : cfg.company === 'herkulesjobs' ? '#ffe2c4' : level === 3 ? '#d8d2ff' : '#fff6e6'
   return (
     <group ref={group} position={[0, floorY(level), 0]}>
-      <Box pos={[0, -FLOOR_THICKNESS / 2, 0]} size={[W, FLOOR_THICKNESS, D]} color={cfg.floorColor} />
-      <Box pos={[0, -FLOOR_THICKNESS - 0.05, 0]} size={[W + 0.3, 0.12, D + 0.3]} color="#1a2240" />
+      {slabParts.map((r, i) => (
+        <group key={i}>
+          <Box pos={[(r.x0 + r.x1) / 2, -FLOOR_THICKNESS / 2, (r.z0 + r.z1) / 2]} size={[r.x1 - r.x0, FLOOR_THICKNESS, r.z1 - r.z0]} color={cfg.floorColor} />
+          <Box pos={[(r.x0 + r.x1) / 2, -FLOOR_THICKNESS - 0.02, (r.z0 + r.z1) / 2]} size={[r.x1 - r.x0 - 0.02, 0.03, r.z1 - r.z0 - 0.02]} color="#f2f4f9" emissive="#ffffff" ei={0.12} cast={false} />
+        </group>
+      ))}
+      {[[0, -D / 2 - 0.05, W + 0.3, 0.15], [0, D / 2 + 0.05, W + 0.3, 0.15], [-W / 2 - 0.05, 0, 0.15, D], [W / 2 + 0.05, 0, 0.15, D]].map(([x, z, w, d], i) => (
+        <Box key={i} pos={[x as number, -FLOOR_THICKNESS - 0.02, z as number]} size={[w as number, 0.12, d as number]} color="#1a2240" />
+      ))}
+      {lights.map(([x, z]) => (
+        <Box key={`${x}${z}`} pos={[x, -FLOOR_THICKNESS - 0.05, z]} size={[1.8, 0.03, 0.5]} color="#fffdf5" emissive="#fff6e0" ei={1.6} cast={false} />
+      ))}
       <Box pos={[0, 0.0, D / 2 + 0.1]} size={[W + 0.4, 0.06, 0.12]} color={cfg.accent} emissive={cfg.accent} ei={1.1} cast={false} />
       <Box pos={[W / 2 + 0.1, 0.0, 0]} size={[0.12, 0.06, D + 0.4]} color={cfg.accent} emissive={cfg.accent} ei={1.1} cast={false} />
       {[

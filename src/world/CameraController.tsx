@@ -76,9 +76,10 @@ export function CameraController() {
 
   useEffect(() => () => clearTimeout(saveTimer.current), [])
 
+  const mode = useOfficeStore((s) => s.mode)
   useFrame((_, rawDt) => {
     const c = controlsRef.current
-    if (!c) return
+    if (!c || useOfficeStore.getState().mode === 'walk') return
     const dt = Math.min(rawDt, 0.05)
     const req = useOfficeStore.getState().cameraRequest
     if (req && req.seq !== lastSeq.current) {
@@ -108,6 +109,7 @@ export function CameraController() {
     <OrbitControls
       ref={controlsRef}
       makeDefault
+      enabled={mode === 'overview'}
       enableDamping
       dampingFactor={0.09}
       minDistance={7}
