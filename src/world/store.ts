@@ -37,6 +37,9 @@ interface WorldStore {
   player: Avatar
   simulateActivity: boolean
   /** Sims Wandmodus: hoch (Glas), halb (Brüstung), weg. */
+  /** Während des Benchmarks sind Agentenstarts und Löschen gesperrt (sonst stimmen die Messwerte nicht). */
+  benchmarkRunning: boolean
+  setBenchmarkRunning: (b: boolean) => void
   notice: string | null
   setNotice: (n: string | null) => void
   wallMode: WallModeSetting
@@ -81,8 +84,8 @@ interface WorldStore {
   // Agenten
   setAgentStatus: (id: string, s: AgentStatus) => void
   launchAgents: (opts: { floorId?: string; departmentId?: string; count: number; status?: AgentStatus }) => string[]
-  removeAgents: (filter: (a: Agent) => boolean) => void
-  stress: (n: number) => void
+  removeAgents: (filter: (a: Agent) => boolean, force?: boolean) => void
+  stress: (n: number, force?: boolean) => void
 }
 
 export const useWorld = create<WorldStore>((set, get) => ({
@@ -98,6 +101,8 @@ export const useWorld = create<WorldStore>((set, get) => ({
   graphics: saved.graphics,
   player: saved.player,
   simulateActivity: true,
+  benchmarkRunning: false,
+  setBenchmarkRunning: (b) => set({ benchmarkRunning: b === true }),
   notice: null,
   setNotice: (n) => set({ notice: n }),
   wallMode: 'high',
@@ -164,9 +169,9 @@ export const useWorld = create<WorldStore>((set, get) => ({
     else worldEvents.emit('onElevatorSelected', { floorId: st.floorId })
   },
   setHover: (h) => set((s) => ({ hover: h && typeof h === 'object' && isSelectionType(h.type) && typeof h.id === 'string' && (h.type !== 'agent' || s.agents[h.id]) ? h : null })),
-  setPanel: (p) => { if (p === null || isPanel(p)) set({ panel: p }) },
-  setMap: (o) => set({ mapOpen: o === true }),
-  setElevator: (o) => set({ elevatorOpen: o === true }),
+  setPanel: (p) => { if (p === null || isPanel(p)) set(p === null ? { panel: null } : { panel: p, mapOpen: false, elevatorOpen: false }) },
+  setMap: (o) => set(o === true ? { mapOpen: true, panel: null, elevatorOpen: false } : { mapOpen: false }),
+  setElevator: (o) => set(o === true ? { elevatorOpen: true, panel: null, mapOpen: false } : { elevatorOpen: false }),
   setTimeMode: (t) => {
     if (!(TIME_MODES as readonly unknown[]).includes(t)) return
     set({ timeMode: t })
@@ -214,6 +219,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
     const known = BUILDING.floors.find((f) => f.id === floorId)
     const floor = known ? known.id : get().floorId
     const dept = departmentId && deptsWithDesks(floor).some((d) => d.id === departmentId) ? departmentId : undefined
+    if (get().benchmarkRunning) { set({ notice: 'Der Benchmark läuft. Erst abbrechen oder abwarten.' }); return [] }
     const { count: n, reason } = allowedLaunch(count, Object.keys(get().agents).length)
     const msg = limitMessage(reason, n)
     if (msg) set({ notice: msg })
@@ -227,8 +233,9 @@ export const useWorld = create<WorldStore>((set, get) => ({
     return created.map((a) => a.id)
   },
 
-  removeAgents: (filter) => set((s) => {
+  removeAgents: (filter, force = false) => set((s) => {
     if (typeof filter !== 'function') return s
+    if (s.benchmarkRunning && !force) return { ...s, notice: 'Der Benchmark läuft. Erst abbrechen oder abwarten.' }
     const agents = Object.fromEntries(Object.entries(s.agents).filter(([, a]) => !filter(a)))
     const followGone = s.followId !== null && !agents[s.followId]
     return {
@@ -241,9 +248,10 @@ export const useWorld = create<WorldStore>((set, get) => ({
     }
   }),
 
-  stress: (n) => {
+  stress: (n, force = false) => {
     const st = get()
-    st.removeAgents((a) => a.id.startsWith('agent-stress-'))
+    if (st.benchmarkRunning && !force) { set({ notice: 'Der Benchmark läuft. Erst abbrechen oder abwarten.' }); return }
+    st.removeAgents((a) => a.id.startsWith('agent-stress-'), true)
     n = Math.min(sanitizeCount(n), MAX_LAUNCH_AT_ONCE)
     if (n <= 0) return
     const depts = deptsWithDesks(st.floorId).map((d) => d.id)

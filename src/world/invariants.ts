@@ -28,5 +28,7 @@ export function checkInvariants(s: WorldSnapshot): string[] {
   if (!['high', 'half', 'none'].includes(s.wallMode)) v.push(`wallMode ungültig: ${String(s.wallMode)}`)
   if (!['auto', 'day', 'evening', 'night'].includes(s.timeMode)) v.push(`timeMode ungültig: ${String(s.timeMode)}`)
   if (Object.keys(s.agents).length > 300) v.push('mehr als 300 Agenten')
+  if (s.panel && s.mapOpen) v.push('Panel und Karte gleichzeitig offen')
+  if (s.elevatorOpen && (s.panel || s.mapOpen)) v.push('Aufzugsauswahl zusammen mit Panel oder Karte offen')
   return v
 }

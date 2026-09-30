@@ -6,8 +6,8 @@ import { deptsWithDesks } from '../world/mockAgents'
 import { sim } from '../world/sim'
 import { useWorld, QUALITY_PRESETS, type Quality, type TimeMode } from '../world/store'
 import type { Avatar } from '../world/types'
-import { useTick } from './hooks'
-import { bench, onBench, perf, runBenchmark } from './perf'
+import { useCooldown, useTick } from './hooks'
+import { bench, cancelBenchmark, onBench, perf, runBenchmark } from './perf'
 import { useEffect } from 'react'
 
 function Seg<T extends string>({ value, options, onChange }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void }) {
@@ -106,14 +106,17 @@ export function GraphicsPanel({ onClose }: { onClose: () => void }) {
       <Toggle label="Visuelle Simulation" hint="SIMULIERT: Agenten wechseln zufällig zwischen Arbeit, Pause und Warten. Keine echte Agentenaktivität." on={sim_} onChange={setSim} />
       <h4>Stresstest</h4>
       <div className="chips">
-        {[10, 25, 50, 100].map((n) => <button key={n} onClick={() => stress(n)}>{n} Agenten</button>)}
-        <button onClick={() => stress(0)}>Zurücksetzen</button>
-        <button className="hot" disabled={bench.running} onClick={() => runBenchmark(() => perf.calls)}>{bench.running ? 'Benchmark läuft…' : 'Benchmark starten'}</button>
+        {[10, 25, 50, 100].map((n) => <button key={n} disabled={bench.running} onClick={() => stress(n)}>{n} Agenten</button>)}
+        <button disabled={bench.running} onClick={() => stress(0)}>Zurücksetzen</button>
+        {bench.running
+          ? <button className="hot" onClick={cancelBenchmark}>Benchmark abbrechen</button>
+          : <button className="hot" onClick={() => { void runBenchmark(() => perf.calls) }}>Benchmark starten</button>}
       </div>
+      {bench.note && <p className="note small">{bench.note}</p>}
       {bench.rows.length > 0 && (
         <table className="bench">
           <thead><tr><th>Agenten</th><th>FPS</th><th>ms Ø</th><th>ms p95</th><th>Draw Calls</th></tr></thead>
-          <tbody>{bench.rows.map((r) => <tr key={r.agents}><td>{r.agents}</td><td>{r.fps}</td><td>{r.avgMs}</td><td>{r.p95Ms}</td><td>{r.calls}</td></tr>)}</tbody>
+          <tbody>{bench.rows.map((r) => <tr key={r.agents} className={r.valid ? '' : 'invalid'}><td>{r.agents}</td><td>{r.valid ? r.fps : '-'}</td><td>{r.valid ? r.avgMs : '-'}</td><td>{r.valid ? r.p95Ms : '-'}</td><td>{r.calls}</td></tr>)}</tbody>
         </table>
       )}
       <p className="note small">Preset LOW/MEDIUM/HIGH setzt: {Object.keys(QUALITY_PRESETS.low).length} Einzeleinstellungen, die du danach einzeln ändern kannst.</p>
@@ -167,6 +170,8 @@ export function LaunchPanel({ onClose }: { onClose: () => void }) {
   const agents = useWorld((s) => s.agents)
   const [dept, setDept] = useState('')
   const [count, setCount] = useState(10)
+  const [cooling, cool] = useCooldown(700)
+  const benchRunning = useWorld((s) => s.benchmarkRunning)
   const floor = getFloor(floorId)
   const depts = useMemo(() => deptsWithDesks(floorId), [floorId])
   const occ = sim.deskOccupancy(floorId)
@@ -194,8 +199,8 @@ export function LaunchPanel({ onClose }: { onClose: () => void }) {
       </div>
       {count > free && <p className="note warn">Es sind nur ungefähr {free} Plätze frei. Der Rest wartet im Aufzugsfoyer und rückt nach, sobald ein Platz frei wird.</p>}
       <div className="chips">
-        <button className="hot" onClick={() => { launch({ floorId, departmentId: dept || undefined, count }) }}>{count} Agenten starten</button>
-        <button onClick={() => remove((a) => a.floorId === floorId)}>Etage leeren</button>
+        <button className="hot" disabled={cooling || benchRunning} onClick={() => cool(() => { launch({ floorId, departmentId: dept || undefined, count }) })}>{count} Agenten starten</button>
+        <button disabled={benchRunning} onClick={() => remove((a) => a.floorId === floorId)}>Etage leeren</button>
       </div>
     </Panel>
   )

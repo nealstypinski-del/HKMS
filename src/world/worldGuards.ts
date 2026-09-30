@@ -14,6 +14,9 @@ export interface WorldSnapshot {
   graphics: Graphics
   wallMode: WallModeSetting
   timeMode: TimeMode
+  panel: string | null
+  mapOpen: boolean
+  elevatorOpen: boolean
 }
 
 /** Reine Prüfungen für Eingaben von Aktionen. Eine Aufgabe: unbekannte Werte erkennen, bevor sie in den Zustand gelangen. */
