@@ -13,7 +13,7 @@ import { effectiveGraphics, useWorld } from './world/store'
 export default function App() {
   const g = useWorld((s) => effectiveGraphics(s.graphics))
   const dpr: [number, number] = g.performanceMode || g.quality === 'low' ? [1, 1] : g.quality === 'high' ? [1, 2] : [1, 1.5]
-  const showPerf = import.meta.env.DEV || new URLSearchParams(location.search).has('perf')
+  const showPerf = import.meta.env.DEV || !!import.meta.env.VITE_PERF || new URLSearchParams(location.search).has('perf')
   return (
     <div className="app">
       <Canvas
