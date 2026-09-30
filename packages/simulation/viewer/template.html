@@ -1,0 +1,57 @@
+<title>Herkules Hochhaus 3D</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Vollbild 3D Szene, Bedienfelder als Glasflächen darüber. Bewusst nur hell/dunkel gemischt: Szene bei Tag, Oberfläche dunkel. */
+:root { --ink: #10162a; --glass: rgba(16, 22, 42, 0.78); --line: rgba(255, 255, 255, 0.14); --fg: #eef2fb; --muted: #a5b1cb; --hj: #ff8a3d; --km: #2fd6c0; --warn: #ffc94d;
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif; --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace; color-scheme: dark; }
+html, body { height: 100%; background: #a9d2f7; color: var(--fg); overflow: hidden; }
+body { font-family: var(--font-body); font-size: 14px; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.panel { position: fixed; background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 10px 30px rgba(8, 12, 30, 0.35); min-width: 0; }
+#top { left: max(14px, env(safe-area-inset-left)); top: max(14px, env(safe-area-inset-top)); width: min(360px, calc(100vw - 28px)); }
+h1 { font-family: var(--font-display); font-size: 1.35rem; margin: 0 0 2px; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0 0 10px; font-size: 12.5px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button, select { font: inherit; color: var(--fg); background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 9px; padding: 6px 11px; cursor: pointer; }
+button:hover, select:hover { background: rgba(255, 255, 255, 0.16); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--km); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--km); color: #04211d; border-color: var(--km); font-weight: 500; }
+button.warn { border-color: var(--warn); color: var(--warn); } button:disabled { opacity: 0.4; cursor: default; }
+select { max-width: 100%; }
+.seg { display: inline-flex; gap: 0; border-radius: 9px; overflow: hidden; border: 1px solid var(--line); }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); } .seg button:last-child { border-right: 0; }
+#clockbox { right: max(14px, env(safe-area-inset-right)); top: max(14px, env(safe-area-inset-top)); text-align: right; font-family: var(--font-mono); }
+#clock { display: block; font-size: 1.7rem; font-variant-numeric: tabular-nums; } #day { color: var(--muted); font-size: 12px; }
+#chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: flex-end; }
+.chip { display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.07); border-radius: 8px; padding: 3px 8px; font-size: 12px; }
+.chip i { width: 8px; height: 8px; border-radius: 50%; } .chip b { font-family: var(--font-mono); font-weight: 500; } .chip span { color: var(--muted); }
+#logbox { right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: min(420px, calc(100vw - 28px)); }
+#logbox h2 { margin: 0 0 6px; font-family: var(--font-display); font-size: 0.95rem; }
+#log { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-family: var(--font-mono); font-size: 11.5px; }
+#log li { display: grid; grid-template-columns: 58px 1fr; gap: 8px; overflow-wrap: anywhere; } #log time { color: var(--muted); }
+#viewbox { left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); max-width: calc(100vw - 28px); }
+#views { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+#info { left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); width: min(320px, calc(100vw - 28px)); }
+#info b { font-family: var(--font-display); font-size: 1.05rem; display: block; } #info .m { color: var(--muted); font-size: 12.5px; display: block; margin-top: 2px; }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; background: #a9d2f7; color: #10162a; font-family: var(--font-display); font-size: 1.2rem; }
+.hint { color: var(--muted); font-size: 11.5px; margin-top: 8px; }
+@media (max-width: 720px) { #logbox { display: none; } #chips { justify-content: flex-start; } #clockbox { top: auto; bottom: 74px; } #info { bottom: 120px; } }
+</style>
+<canvas id="gl" aria-label="Dreidimensionale Ansicht des Herkules Hochhauses"></canvas>
+<div id="top" class="panel">
+  <h1>Herkules Hochhaus</h1>
+  <p class="sub">Live Simulation, alle Daten sind Demo. Es wird nichts versendet.</p>
+  <div class="row"><select id="scenario" aria-label="Szenario"></select>
+    <div class="seg" role="group" aria-label="Tempo"><button data-speed="1" aria-pressed="false">1x</button><button data-speed="2" aria-pressed="false">2x</button><button data-speed="5" aria-pressed="true">5x</button><button data-speed="10" aria-pressed="false">10x</button></div></div>
+  <div class="row" style="margin-top:8px"><button id="pause">Pause</button><button id="approve" class="warn" disabled>Freigaben erteilen (0)</button><button id="restart">Neu starten</button></div>
+  <p class="hint">Ziehen dreht, Umschalt oder rechte Maustaste verschiebt, Mausrad zoomt. Klick auf einen Agenten zeigt Details.</p>
+</div>
+<div id="clockbox" class="panel"><span id="clock">--:--:--</span><span id="day">Berliner Zeit</span><div id="chips"></div></div>
+<div id="viewbox" class="panel"><div id="views" role="group" aria-label="Ansicht"></div></div>
+<div id="info" class="panel" hidden><b id="iname"></b><span class="m" id="idept"></span><span class="m" id="istatus" style="margin-top:6px"></span><span class="m" id="itask" style="margin-top:6px"></span><span class="m" id="icaps" style="font-family:var(--font-mono);font-size:11px;margin-top:6px"></span><button id="follow" style="margin-top:10px;width:100%">Kamera folgt diesem Agenten</button></div>
+<div id="logbox" class="panel"><h2>Protokoll</h2><ol id="log"></ol></div>
+<div id="loading">Herkules Hochhaus wird aufgebaut ...</div>
+<script>window.addEventListener("error",function(e){var l=document.getElementById("loading");if(l){l.hidden=false;l.textContent="Fehler beim Aufbau: "+e.message+" (Zeile "+(e.lineno||"?")+")";}});</script>
+<script>/*BUNDLE*/</script>
