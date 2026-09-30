@@ -62,7 +62,10 @@ function Ground() {
   const mat = useMemo(() => new MeshLambertMaterial({ color: '#8d919a', map: getGridTexture() }), [])
   useFrame(() => {
     const c = envColors(env.tod)
-    mat.color.copy(c.bottom).lerp(new Color('#7c808a'), 0.72).multiplyScalar(0.55 + 0.45 * Math.min(1, env.tod * 1.4))
+    // Tag: helle Steinfläche, Nacht: bläulich im Mondlicht, aber gut erkennbar
+    mat.color.set('#3d4766').lerp(new Color('#8d919a'), Math.min(1, env.tod * 1.5))
+    // Mondlicht: schwache Eigenhelligkeit, damit die Fläche nachts nicht schwarz wird
+    mat.emissive.set('#1c2846').multiplyScalar(1 - Math.min(1, env.tod * 2))
   })
   return <mesh geometry={groundGeo} material={mat} rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow />
 }

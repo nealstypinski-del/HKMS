@@ -91,7 +91,7 @@ export const Figure = memo(function Figure({ avatar, lod, getPose }: FigureProps
     return (
       <group>
         <group ref={hips} position-y={0.67}>
-          <mesh ref={midM} geometry={geos.mid('stand')} material={figureMaterial} castShadow />
+          <mesh ref={midM} geometry={geos.mid('stand')} material={figureMaterial} />
         </group>
       </group>
     )
@@ -120,7 +120,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 const _v = new Vector3()
 
-const LOD_FULL = 16, LOD_MID = 42, LOD_HIDE = 120
+const LOD_FULL = 11, LOD_MID = 40, LOD_HIDE = 120
 
 export const AgentCharacter = memo(function AgentCharacter({ id }: { id: string }) {
   const agent = useAgent(id)

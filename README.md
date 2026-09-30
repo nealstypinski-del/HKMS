@@ -9,7 +9,7 @@ Rein visuelles Fundament: **keine echte Anbindung** an Claude, Codex, ChatGPT od
 npm install
 npm run dev          # http://localhost:5173, mit Performance Overlay
 npm run build        # Typprüfung + Produktionsbuild
-npm test             # 44 Tests
+npm test             # 59 Tests
 ```
 
 Performance Overlay in einem Produktionsbuild: `?perf` an die URL hängen.
@@ -26,6 +26,7 @@ Performance Overlay in einem Produktionsbuild: `?perf` an die URL hängen.
 
 Treppe (Etage 0 nach 1) und Rolltreppen einfach hinauflaufen. `E` am Aufzug öffnet die Etagenwahl.
 Oben rechts: ETAGEN, KARTE, ANSICHT, GRAFIK, FIGUR, + STARTEN.
+Unter ANSICHT: Wandmodus wie bei den Sims (HOCH mit Glas, HALB nur Brüstung, WEG) und Drehen der Übersicht um 90 Grad.
 
 ## Aufbau
 
@@ -51,6 +52,14 @@ src/ui/       Oberfläche
 - Der Renderer hält keinen Geschäftszustand. Agenten kommen aus dem Store (`useAgent(id)`), der Status (`working`, `meeting`, `idle`, `break`, `waiting`, `offline`) steuert die Bewegung.
 - IDs: `floor-*`, `dept-*`, `desk-*`, `computer-*`, `agent-*`.
 - Simulierte Aktivität (Schalter in GRAFIK) ist von echter Aktivität getrennt (`Agent.simulated`).
+
+## Optik und Leistung
+
+- Bodenbeläge (Parkett, Teppich, Fliesen, Marmor) sind prozedural und im Weltraum abgebildet. Wände haben eine tapezierte Brüstung mit Glas darüber.
+- Ausstattung als Instanzen: Aktenschränke, Drucker, Wasserspender, Getränkeautomaten, Teppiche, Pendelleuchten, Stehlampen, Bilder, Uhren, Schreibtischkleinkram.
+- Figuren mit Gesicht, Händen und Schuhen, Statusdiamant über dem Kopf (ein Draw Call für alle), Gehzyklus in allen Detailstufen.
+- Standard ist die Qualität HIGH. Bleibt die Bildrate dauerhaft unter 26 FPS, senkt die Seite die Grafik selbst schrittweise und meldet das.
+- Gemessen mit 100 Agenten (Software Rendering, GPU unabhängige Größen): Dritte Person 332 Draw Calls und 181.719 Dreiecke, Ego 327 und 182.585, Übersicht 350 und 115.497.
 
 ## Bekannte Grenzen
 

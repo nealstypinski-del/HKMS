@@ -11,7 +11,7 @@ export const HEADWEAR: Headwear[] = ['none', 'cap', 'beanie', 'crown']
 export const ACCESSORIES: Accessory[] = ['none', 'glasses', 'headphones']
 
 export const DEFAULT_PLAYER: Avatar = {
-  skinVariant: 1, hairStyle: 'short', hairVariant: 1, shirtVariant: 7, trousersVariant: 0, shoesVariant: 1, headwear: 'none', accessory: 'none',
+  skinVariant: 1, hairStyle: 'short', hairVariant: 1, shirtVariant: 9, trousersVariant: 3, shoesVariant: 0, headwear: 'none', accessory: 'none',
 }
 
 // Kleiner deterministischer Zufall, damit Agenten bei gleichem Seed gleich aussehen.

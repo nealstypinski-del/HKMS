@@ -13,7 +13,7 @@ import { framePhase, gait, WALK_FRAMES } from './gait'
 export const figureMaterial = new MeshLambertMaterial({ vertexColors: true })
 
 type Shape = 'box' | 'sphere' | 'cyl' | 'cone'
-interface Piece { shape: Shape; pos: [number, number, number]; scale: [number, number, number]; color: string; rot?: [number, number, number] }
+interface Piece { shape: Shape; pos: [number, number, number]; scale: [number, number, number]; color: string; rot?: [number, number, number]; fine?: boolean }
 
 const BASE: Record<Shape, BufferGeometry> = {
   box: new BoxGeometry(1, 1, 1),
@@ -21,11 +21,17 @@ const BASE: Record<Shape, BufferGeometry> = {
   cyl: new CylinderGeometry(0.5, 0.5, 1, 10),
   cone: new ConeGeometry(0.5, 1, 8),
 }
+const BASE_LOW: Record<Shape, BufferGeometry> = {
+  box: BASE.box,
+  sphere: new SphereGeometry(0.5, 7, 5),
+  cyl: new CylinderGeometry(0.5, 0.5, 1, 7),
+  cone: new ConeGeometry(0.5, 1, 6),
+}
 const _q = new Quaternion(), _e = new Euler(), _p = new Vector3(), _s = new Vector3()
 
-function bake(pieces: Piece[], parent?: Matrix4): BufferGeometry {
-  const geos = pieces.map((pc) => {
-    const g = BASE[pc.shape].clone()
+function bake(pieces: Piece[], parent?: Matrix4, low = false): BufferGeometry {
+  const geos = pieces.filter((pc) => !(low && pc.fine)).map((pc) => {
+    const g = (low ? BASE_LOW : BASE)[pc.shape].clone()
     const m = new Matrix4().compose(_p.set(...pc.pos), _q.setFromEuler(_e.set(...(pc.rot ?? [0, 0, 0]))), _s.set(...pc.scale))
     if (parent) m.premultiply(parent)
     g.applyMatrix4(m)
@@ -40,6 +46,7 @@ function bake(pieces: Piece[], parent?: Matrix4): BufferGeometry {
 }
 
 const B = (pos: [number, number, number], scale: [number, number, number], color: string, rot?: [number, number, number]): Piece => ({ shape: 'box', pos, scale, color, rot })
+const fine = (p: Piece): Piece => ({ ...p, fine: true })
 const S = (pos: [number, number, number], scale: [number, number, number], color: string): Piece => ({ shape: 'sphere', pos, scale, color })
 const C = (pos: [number, number, number], dia: number, h: number, color: string, rot?: [number, number, number]): Piece => ({ shape: 'cyl', pos, scale: [dia, h, dia], color, rot })
 
@@ -105,13 +112,13 @@ export function getFigureGeos(a: Avatar): FigureGeos {
   const skinDark = new Color(skin).multiplyScalar(0.86).getStyle()
   const head: Piece[] = [
     S([0, 0, 0], [0.5, 0.54, 0.5], skin),
-    // Gesicht: Augäpfel, Pupillen, Brauen, Nase, Mund, Ohren
-    S([-0.1, 0.03, 0.2], [0.095, 0.095, 0.06], '#f7f7f4'), S([0.1, 0.03, 0.2], [0.095, 0.095, 0.06], '#f7f7f4'),
-    S([-0.1, 0.03, 0.232], [0.05, 0.055, 0.03], '#1a1c22'), S([0.1, 0.03, 0.232], [0.05, 0.055, 0.03], '#1a1c22'),
-    B([-0.1, 0.115, 0.225], [0.1, 0.022, 0.02], hair, [0, 0, 0.12]), B([0.1, 0.115, 0.225], [0.1, 0.022, 0.02], hair, [0, 0, -0.12]),
-    S([0, -0.03, 0.248], [0.06, 0.06, 0.06], skinDark),
-    B([0, -0.115, 0.225], [0.11, 0.02, 0.02], '#8a3b3b'),
-    S([-0.255, -0.01, 0], [0.06, 0.1, 0.07], skinDark), S([0.255, -0.01, 0], [0.06, 0.1, 0.07], skinDark),
+    // Gesicht (nur in der Nahstufe): Augäpfel, Pupillen, Brauen, Nase, Mund, Ohren
+    fine(S([-0.1, 0.03, 0.2], [0.095, 0.095, 0.06], '#f7f7f4')), fine(S([0.1, 0.03, 0.2], [0.095, 0.095, 0.06], '#f7f7f4')),
+    fine(S([-0.1, 0.03, 0.232], [0.05, 0.055, 0.03], '#1a1c22')), fine(S([0.1, 0.03, 0.232], [0.05, 0.055, 0.03], '#1a1c22')),
+    fine(B([-0.1, 0.115, 0.225], [0.1, 0.022, 0.02], hair, [0, 0, 0.12])), fine(B([0.1, 0.115, 0.225], [0.1, 0.022, 0.02], hair, [0, 0, -0.12])),
+    fine(S([0, -0.03, 0.248], [0.06, 0.06, 0.06], skinDark)),
+    fine(B([0, -0.115, 0.225], [0.11, 0.02, 0.02], '#8a3b3b')),
+    fine(S([-0.255, -0.01, 0], [0.06, 0.1, 0.07], skinDark)), fine(S([0.255, -0.01, 0], [0.06, 0.1, 0.07], skinDark)),
     ...hairPieces(a.hairStyle, hair), ...headwearPieces(a.headwear, shirt), ...accessoryPieces(a.accessory),
   ]
   const headM = new Matrix4().makeTranslation(0, 0.74, 0)
@@ -119,17 +126,17 @@ export function getFigureGeos(a: Avatar): FigureGeos {
     B([0, 0.27, 0], [0.38, 0.5, 0.22], shirt),
     S([-0.2, 0.46, 0], [0.16, 0.16, 0.16], shirt), S([0.2, 0.46, 0], [0.16, 0.16, 0.16], shirt), // Schultern
     C([0, 0.55, 0], 0.15, 0.1, skin), // Hals
-    B([0, 0.5, 0.06], [0.16, 0.03, 0.1], '#f1efe8'), // Kragen
+    fine(B([0, 0.5, 0.06], [0.16, 0.03, 0.1], '#f1efe8')), // Kragen
     B([0, 0.04, 0], [0.395, 0.05, 0.225], '#23252b'), // Gürtel
-    B([0, 0.04, 0.115], [0.06, 0.04, 0.01], '#c9a24a'), // Schnalle
+    fine(B([0, 0.04, 0.115], [0.06, 0.04, 0.01], '#c9a24a')), // Schnalle
   ]
   const upperArm = [C([0, -0.13, 0], 0.115, 0.28, shirt)]
-  const fore = [C([0, -0.12, 0], 0.09, 0.24, skin), S([0, -0.26, 0], [0.11, 0.12, 0.09], skin)] // Hand
+  const fore = [C([0, -0.12, 0], 0.09, 0.24, skin), fine(S([0, -0.26, 0], [0.11, 0.12, 0.09], skin))] // Hand
   const thigh = [C([0, -0.15, 0], 0.165, 0.3, trousers)]
   const shinP = [
     C([0, -0.15, 0], 0.14, 0.3, trousers),
     B([0, -0.325, 0.03], [0.15, 0.06, 0.21], shoe), S([0, -0.315, 0.12], [0.145, 0.085, 0.13], shoe), // Schuh mit Kappe
-    B([0, -0.352, 0.03], [0.155, 0.014, 0.25], '#f2f2f0'), // Sohle
+    fine(B([0, -0.352, 0.03], [0.155, 0.014, 0.25], '#f2f2f0')), // Sohle
   ]
 
   const upper = mergeGeometries([bake(torso), bake(head, headM)], false)!
@@ -151,17 +158,17 @@ export function getFigureGeos(a: Avatar): FigureGeos {
   }
   const build = (pose: string) => {
     const { th, sh, ar } = anglesFor(pose)
-    const parts: BufferGeometry[] = [bake(torso), bake(head, headM)]
+    const parts: BufferGeometry[] = [bake(torso, undefined, true), bake(head, headM, true)]
     ;[-1, 1].forEach((sx, i) => {
       const shoulder = new Matrix4().makeTranslation(sx * 0.26, 0.44, 0)
       const armRot = new Matrix4().makeRotationX(ar[i])
-      parts.push(bake(upperArm, shoulder.clone().multiply(armRot)))
-      parts.push(bake(fore, shoulder.clone().multiply(armRot).multiply(elbow)))
+      parts.push(bake(upperArm, shoulder.clone().multiply(armRot), true))
+      parts.push(bake(fore, shoulder.clone().multiply(armRot).multiply(elbow), true))
       const hip = new Matrix4().makeTranslation(sx * 0.1, 0, 0)
       const thRot = new Matrix4().makeRotationX(th[i])
-      parts.push(bake(thigh, hip.clone().multiply(thRot)))
+      parts.push(bake(thigh, hip.clone().multiply(thRot), true))
       const knee = new Matrix4().makeTranslation(0, -0.3, 0).multiply(new Matrix4().makeRotationX(sh[i]))
-      parts.push(bake(shinP, hip.clone().multiply(thRot).multiply(knee)))
+      parts.push(bake(shinP, hip.clone().multiply(thRot).multiply(knee), true))
     })
     return mergeGeometries(parts, false)!
   }
