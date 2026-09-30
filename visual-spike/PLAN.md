@@ -91,3 +91,7 @@ Weitere Missbrauchsfälle dazu: **M15** Browser meldet WebGPU, Gerät scheitert 
 ## Zusammenführung mit dem Basis Branch
 
 Der Basis Branch brachte einen neuen animierten Charakter (`character.glb`, geskinnt mit Idle, Walk, Run, SitIdle, SitType) und eine neue `Effects.jsx`. Die Menge der Bergpark Crowd nutzt weiter den alten starren Charakter als `character_rigid.glb`, `Effects.jsx` wurde nur um `enableNormalPass={ssao}` ergänzt. Offener Punkt **I1**: Crowd auf den geskinnten Charakter umstellen, damit beide Terminals dieselben Figuren zeigen.
+
+## Grenzen zu anderen Terminals
+
+Außerhalb von `src/world/` ändert dieser Zweig nur: `App.jsx` (lazy Import, Ansichtswahl, ein Knopf), `Effects.jsx` (eine Zeile, `enableNormalPass`), `package.json` (Paket `n8ao`), `vite.config.js` (`base './'`), `README.md` (4 Zeilen) sowie neue Dateien (PLAN, WORLD, tools, webgpu-probe, character_rigid.glb). Der Seitentitel in `index.html` bleibt der des Basis Branches. Die Standardansicht ohne Parameter ist weiterhin die Etagenansicht der anderen Terminals.

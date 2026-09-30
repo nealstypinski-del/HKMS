@@ -65,6 +65,7 @@ export default function BergparkHUD({ mode, setMode, settings, setSettings, api,
           <b>Teleport</b>
           {PLACES.map(([n, f]) => <B key={n} onClick={() => goto(f)}>{n}</B>)}
           <B onClick={() => { setMode('tp'); api.startShowcase?.() }} style={{ background: '#ff8a3d', color: '#111', fontWeight: 800 }}>HERKULES ZEIGEN</B>
+          <B onClick={() => { api.stopShowcase?.(); api.setTycoonView?.([0, 75, -40], [0, 22, -230]); setMode('tycoon') }} style={{ background: '#2fd6c0', color: '#111', fontWeight: 800 }}>KASKADE ZEIGEN</B>
           <B on={!!tour} onClick={() => (tour ? api.stopTour() : (setMode('tp'), api.startTour()))}>{tour ? `Tour: ${tour} (Stopp)` : 'RUN OUTDOOR TOUR'}</B>
         </div>
         <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 3 }}>
