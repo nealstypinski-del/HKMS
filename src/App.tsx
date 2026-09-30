@@ -11,6 +11,7 @@ import { Tower } from './render/Tower'
 import { GpuLostNotice } from './ui/GpuLostNotice'
 import { Hud } from './ui/Hud'
 import { TooSmall } from './ui/TooSmall'
+import { TouchControls } from './ui/TouchControls'
 import { PerfOverlay, PerfProbe } from './ui/PerfOverlay'
 import { effectiveGraphics, useWorld } from './world/store'
 
@@ -40,6 +41,7 @@ export default function App() {
       </Canvas>
       <Hud />
       <GpuLostNotice />
+      <TouchControls />
       <TooSmall />
       {showPerf && <PerfOverlay />}
     </div>

@@ -135,7 +135,7 @@ select { background: #141b27; border: 1px solid var(--line); border-radius: 8px;
   .top { flex-wrap: wrap; } nav { margin-left: 0; flex-wrap: wrap; }
   .side, .panel.side { width: calc(100vw - 24px); top: 120px; }
   .info { width: calc(100vw - 24px); }
-  .hint { display: none; }
+  .hint { white-space: normal; text-align: center; font-size: 10px; bottom: 6px; border-radius: 12px; padding: 5px 10px; }
 }
 
 .lbl .dr { color: var(--amber); font-size: 9.5px; margin-top: 1px; }
@@ -156,3 +156,12 @@ select { background: #141b27; border: 1px solid var(--line); border-radius: 8px;
 .fatal small { color: var(--dim); font-size: 11px; max-width: 560px; overflow-wrap: anywhere; }
 
 .bench tr.invalid td { color: var(--dim); font-style: italic; }
+
+body { overscroll-behavior: none; }
+.touch { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 56px); z-index: 8; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px; pointer-events: none; }
+.touch > * { pointer-events: auto; }
+.stick { position: relative; width: 124px; height: 124px; border-radius: 50%; background: rgba(14, 19, 28, .55); border: 2px solid rgba(255, 255, 255, .22); touch-action: none; display: flex; align-items: center; justify-content: center; }
+.stick i { display: block; width: 52px; height: 52px; border-radius: 50%; background: rgba(232, 163, 61, .85); box-shadow: 0 0 0 2px rgba(0, 0, 0, .25); }
+.tbtns { display: flex; flex-direction: column; gap: 10px; }
+.tbtns button { min-width: 92px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-weight: 700; touch-action: manipulation; }
+.tbtns button.on { background: var(--amber); color: #1a1206; }

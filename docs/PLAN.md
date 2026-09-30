@@ -20,7 +20,7 @@ Jede Loop Runde nimmt das nächste offene Paket, setzt nur dieses um, testet, pu
 - [x] A4 Schnelles Wechseln von Modus, Etage, Wandmodus; Etagenwechsel während der Fahrt; Agent löschen während Auswahl oder Folgen
 - [x] A5 Spieler außerhalb der Fläche oder in Möbeln, alle Tasten gleichzeitig, Tab im Hintergrund (große Zeitschritte)
 - [x] A6 Benchmark während Stresstest, Doppelklicks, mehrere Panels
-- [ ] A7 Touchgeräte ohne Tastatur: klarer Hinweis
+- [x] A7 Touchgeräte ohne Tastatur: klarer Hinweis
 
 ## B. Dateien mit genau einer Aufgabe
 - [x] B1 (Spielerbewegung ausgelagert, Rest folgt) `CameraRig.tsx` trennen (Eingabe, Spielerbewegung, Modi)
@@ -39,3 +39,4 @@ Jede Loop Runde nimmt das nächste offene Paket, setzt nur dieses um, testet, pu
 - Runde 2: A2 erledigt. persist.ts und graphicsSettings.ts (Grafiktypen aus dem Store gelöst). Prüft jedes Feld, wirft nie, 20 KB Grenze. 72 Tests grün.
 - Runde 3: A3 (WebGL, Kontextverlust, Fehlerseite), A4 (Store Härtung, Fuzzing), A5 (Spielerbewegung in playerMove.ts, unstick, Weltgrenze) erledigt. 96 Tests. Mutationstests bestätigen, dass die Angriffstests beißen.
 - Runde 4: A6 erledigt. Benchmark mit finally, Abbruch, Hintergrund Abbruch, Sperre für Start und Löschen; Panels schließen sich gegenseitig; Doppelklick Sperre. 104 Tests, Browser Prüfung (8 Punkte) bestanden.
+- Runde 5: A7 erledigt. Touch: Joystick, Rennen, Aufzugsknopf, Pinch Zoom, Hinweis auch auf schmalen Bildschirmen. 108 Tests, Browser Prüfung (8 Punkte) mit echten Touch Ereignissen bestanden.

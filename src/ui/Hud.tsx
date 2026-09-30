@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { isTouchDevice } from './device'
 import { BUILDING } from '../world/buildingConfig'
 import { getFloor } from '../world/generate'
 import { PROVIDER_LABEL } from '../world/mockAgents'
@@ -9,6 +10,13 @@ import { useTick } from './hooks'
 import { CharacterPanel, ElevatorModal, FloorList, GraphicsPanel, LaunchPanel, ViewPanel } from './Panels'
 
 const MODE_LABEL = { tycoon: 'ÜBERSICHT', firstPerson: 'EGO', thirdPerson: 'DRITTE PERSON', building: 'GEBÄUDE', follow: 'FOLGEN' } as const
+const TOUCH_HINTS: Record<string, string> = {
+  thirdPerson: 'Joystick links: laufen · Wischen: Kamera drehen · Zwei Finger: Zoom · Knöpfe: Rennen, Aufzug',
+  firstPerson: 'Joystick links: laufen · Wischen: umsehen · Knöpfe: Rennen, Aufzug',
+  tycoon: 'Wischen: drehen · Zwei Finger: Zoom · Antippen: auswählen',
+  building: 'Wischen: drehen · Zwei Finger: Zoom · Etage antippen: wählen',
+  follow: 'Wischen: Blickwinkel · Zwei Finger: Zoom',
+}
 const HINTS: Record<string, string> = {
   thirdPerson: 'WASD: laufen · Shift: rennen · Ziehen: Kamera drehen · Mausrad: Zoom · Treppe und Rolltreppe einfach hinauflaufen · E am Aufzug',
   tycoon: 'Ziehen: drehen · Rechts ziehen oder WASD: verschieben · Mausrad: Zoom · Klick: auswählen',
@@ -182,6 +190,7 @@ function Notice() {
 }
 
 export function Hud() {
+  const [touch] = useState(isTouchDevice)
   const panel = useWorld((s) => s.panel)
   const setPanel = useWorld((s) => s.setPanel)
   const mode = useWorld((s) => s.cameraMode)
@@ -200,7 +209,7 @@ export function Hud() {
       <MapOverlay />
       <ElevatorModal />
       {mode === 'firstPerson' && <div className="cross" />}
-      <div className="hint">{HINTS[mode]}</div>
+      <div className="hint">{touch ? TOUCH_HINTS[mode] : HINTS[mode]}</div>
       {sim_ && <div className="simbadge" title="Visuelle Simulation: Statuswechsel sind zufällig, keine echte Agentenaktivität">● SIMULIERTE AKTIVITÄT</div>}
       <Notice />
       <div className="fade" key={transition} />

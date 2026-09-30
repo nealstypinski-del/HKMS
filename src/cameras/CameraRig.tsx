@@ -10,6 +10,8 @@ import { sim } from '../world/sim'
 import { useWorld, type CameraMode } from '../world/store'
 import { movePlayerStep, type MoveHooks } from '../world/playerMove'
 import { angleDiff } from '../world/angles'
+import { nearElevator } from '../world/elevatorUse'
+import { virtualInput } from '../world/virtualInput'
 import { isOutside, walkable } from '../world/walk'
 import { cameraWallClamp, WALL_TOP } from '../world/cameraClamp'
 
@@ -48,6 +50,8 @@ export function CameraRig() {
   const keys = useRef(new Set<string>())
   const drag = useRef({ active: false, button: 0, x: 0, y: 0, moved: 0, lastUser: 0 })
   const lastFloor = useRef('')
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef(0)
   const lastRotate = useRef(0)
 
   // Eingaben ---------------------------------------------------------------------------------
@@ -60,8 +64,7 @@ export function CameraRig() {
       keys.current.add(k)
       const st = useWorld.getState()
       if (k === 'e' && (st.cameraMode === 'firstPerson' || st.cameraMode === 'thirdPerson')) {
-        const f = getFloor(st.floorId)
-        if (Math.hypot(player.x - f.elevatorDoor.x, player.z - f.elevatorDoor.z) < 6) { st.setElevator(true); st.select({ type: 'elevator', id: st.floorId }); if (document.pointerLockElement) document.exitPointerLock() }
+        if (nearElevator(st.floorId, player.x, player.z)) { st.setElevator(true); st.select({ type: 'elevator', id: st.floorId }); if (document.pointerLockElement) document.exitPointerLock() }
       }
       if (k === 'escape') { st.setElevator(false); st.setPanel(null); st.setMap(false) }
     }
@@ -69,6 +72,8 @@ export function CameraRig() {
     const blur = () => keys.current.clear()
     const down = (e: PointerEvent) => {
       const st = useWorld.getState()
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.current.size === 2) { const [a, b] = [...pointers.current.values()]; pinch.current = Math.hypot(a.x - b.x, a.y - b.y) }
       drag.current = { active: true, button: e.button, x: e.clientX, y: e.clientY, moved: 0, lastUser: performance.now() }
       if (st.cameraMode === 'firstPerson' && !document.pointerLockElement && el.requestPointerLock) {
         // Kann als Promise abgelehnt werden (z. B. ohne Nutzeraktion oder in einem Rahmen): nie unbehandelt lassen.
@@ -77,6 +82,21 @@ export function CameraRig() {
     }
     const move = (e: PointerEvent) => {
       const st = useWorld.getState()
+      if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      // Zwei Finger: Zoom statt Drehen
+      if (pointers.current.size >= 2 && st.cameraMode !== 'firstPerson') {
+        const [a, b] = [...pointers.current.values()]
+        const dist = Math.hypot(a.x - b.x, a.y - b.y)
+        if (pinch.current > 10 && dist > 10) {
+          const key = st.panel === 'character' ? 'character' : st.cameraMode
+          const o = orbits.current[key]
+          const lim = LIMITS[st.cameraMode as OrbitMode] ?? LIMITS.follow
+          const min = key === 'character' ? 1.6 : lim.dMin, max = key === 'character' ? 7 : lim.dMax
+          o.dist = Math.max(min, Math.min(max, o.dist * (pinch.current / dist)))
+        }
+        pinch.current = dist
+        return
+      }
       const d = drag.current
       const locked = document.pointerLockElement === el
       if (st.cameraMode === 'firstPerson') {
@@ -103,7 +123,11 @@ export function CameraRig() {
         o.pitch = Math.max(lim.pMin, Math.min(lim.pMax, o.pitch + dy * 0.005))
       }
     }
-    const up = () => { drag.current.active = false }
+    const up = (e: PointerEvent) => {
+      pointers.current.delete(e.pointerId)
+      if (pointers.current.size < 2) pinch.current = 0
+      drag.current.active = pointers.current.size > 0 ? drag.current.active : false
+    }
     const wheel = (e: WheelEvent) => {
       const st = useWorld.getState()
       if (st.cameraMode === 'firstPerson') return
@@ -119,6 +143,7 @@ export function CameraRig() {
     el.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
     el.addEventListener('wheel', wheel, { passive: false })
     el.addEventListener('contextmenu', ctx)
     window.addEventListener('keydown', kd)
@@ -127,7 +152,7 @@ export function CameraRig() {
     document.addEventListener('visibilitychange', blur) // Tab im Hintergrund: keine hängenden Tasten
     return () => {
       document.removeEventListener('visibilitychange', blur)
-      el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up)
+      el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up)
       el.removeEventListener('wheel', wheel); el.removeEventListener('contextmenu', ctx)
       window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); window.removeEventListener('blur', blur)
     }
@@ -182,9 +207,10 @@ export function CameraRig() {
     }
 
     const kb = keys.current
-    const fwdKey = (kb.has('w') || kb.has('arrowup') ? 1 : 0) - (kb.has('s') || kb.has('arrowdown') ? 1 : 0)
-    const strKey = (kb.has('d') || kb.has('arrowright') ? 1 : 0) - (kb.has('a') || kb.has('arrowleft') ? 1 : 0)
-    const run = kb.has('shift')
+    // Tastatur und virtueller Joystick (Touch) wirken zusammen, das Ergebnis bleibt im Bereich -1 bis 1
+    const fwdKey = Math.max(-1, Math.min(1, (kb.has('w') || kb.has('arrowup') ? 1 : 0) - (kb.has('s') || kb.has('arrowdown') ? 1 : 0) + virtualInput.y))
+    const strKey = Math.max(-1, Math.min(1, (kb.has('d') || kb.has('arrowright') ? 1 : 0) - (kb.has('a') || kb.has('arrowleft') ? 1 : 0) + virtualInput.x))
+    const run = kb.has('shift') || virtualInput.run
     const pBase = () => floorBaseY(getFloor(player.floorId).config.level) + player.dy
 
     if (mode === 'firstPerson') {
