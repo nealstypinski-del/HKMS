@@ -146,3 +146,11 @@ select { background: #141b27; border: 1px solid var(--line); border-radius: 8px;
 .need i { display: block; height: 7px; border-radius: 4px; background: #1b2331; overflow: hidden; }
 .need u { display: block; height: 100%; border-radius: 4px; }
 .need b { color: var(--text); text-align: right; font-weight: 600; }
+
+.fatal { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; background: var(--bg); color: var(--text); }
+.fatal.overlay { background: rgba(6, 9, 15, .86); backdrop-filter: blur(4px); z-index: 40; }
+.fatal h1 { margin: 0; font-size: 20px; letter-spacing: .04em; }
+.fatal p, .fatal ul { margin: 0; max-width: 520px; color: var(--dim); font-size: 14px; }
+.fatal ul { text-align: left; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.fatal button { background: var(--amber); color: #1a1206; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 700; }
+.fatal small { color: var(--dim); font-size: 11px; max-width: 560px; overflow-wrap: anywhere; }

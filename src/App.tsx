@@ -3,11 +3,14 @@ import { CameraRig } from './cameras/CameraRig'
 import { AgentsLayer, PlayerCharacter } from './render/Character'
 import { Effects } from './render/Effects'
 import { SceneEnvironment } from './render/Environment'
+import { ContextGuard } from './render/ContextGuard'
 import { LabelLayer } from './render/LabelLayer'
 import { SimDriver } from './render/SimDriver'
 import { StatusGems } from './render/StatusGems'
 import { Tower } from './render/Tower'
+import { GpuLostNotice } from './ui/GpuLostNotice'
 import { Hud } from './ui/Hud'
+import { TooSmall } from './ui/TooSmall'
 import { PerfOverlay, PerfProbe } from './ui/PerfOverlay'
 import { effectiveGraphics, useWorld } from './world/store'
 
@@ -32,9 +35,12 @@ export default function App() {
         <CameraRig />
         <LabelLayer />
         <PerfProbe />
+        <ContextGuard />
         <Effects />
       </Canvas>
       <Hud />
+      <GpuLostNotice />
+      <TooSmall />
       {showPerf && <PerfOverlay />}
     </div>
   )
