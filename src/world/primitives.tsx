@@ -4,11 +4,13 @@
 import { useMemo } from 'react'
 import type { ThreeElements } from '@react-three/fiber'
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 
 export type V3 = [number, number, number]
 
 export const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
+  rbox: new RoundedBoxGeometry(1, 1, 1, 3, 0.14),
   cyl: new THREE.CylinderGeometry(1, 1, 1, 18),
   cylLow: new THREE.CylinderGeometry(1, 1, 1, 8),
   sphere: new THREE.SphereGeometry(1, 14, 10),
@@ -24,7 +26,7 @@ export function mat(color: string, emissive?: string, emissiveIntensity = 1): TH
   const key = `${color}|${emissive ?? ''}|${emissiveIntensity}`
   let m = cache.get(key)
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, metalness: 0.04 })
+    m = new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.05, envMapIntensity: 0.9 })
     if (emissive) {
       m.emissive = new THREE.Color(emissive)
       m.emissiveIntensity = emissiveIntensity
@@ -62,15 +64,19 @@ interface PrimProps {
 type MeshExtra = Omit<ThreeElements['mesh'], 'position' | 'scale' | 'rotation' | 'geometry' | 'material' | 'castShadow' | 'receiveShadow'>
 
 function make(geometry: THREE.BufferGeometry) {
-  return function Prim({ pos = [0, 0, 0], size = 1, rot, color = '#ffffff', emissive, ei, material, cast = true, receive = true, ...rest }: PrimProps & MeshExtra) {
+  return function Prim({ pos = [0, 0, 0], size = 1, rot, color = '#ffffff', emissive, ei, material, cast, receive = true, ...rest }: PrimProps & MeshExtra) {
+    const dims = num(size)
+    // Kleine Teile werfen keinen Schatten (spart einen Draw Call pro Teil im Schattenpass)
+    const casts = cast ?? Math.max(dims[0], dims[1], dims[2]) > 0.3
     const m = useMemo(() => material ?? mat(color, emissive, ei), [material, color, emissive, ei])
-    return <mesh geometry={geometry} material={m} position={pos} scale={num(size)} rotation={rot} castShadow={cast} receiveShadow={receive} {...rest} />
+    return <mesh geometry={geometry} material={m} position={pos} scale={num(size)} rotation={rot} castShadow={casts} receiveShadow={receive} {...rest} />
   }
 }
 
 /** Quader mit Kantenlängen `size` */
 export const Box = make(GEO.box)
 /** Zylinder: size = [Radius, Höhe, Radius] */
+export const RBox = make(GEO.rbox)
 export const Cyl = make(GEO.cyl)
 export const CylLow = make(GEO.cylLow)
 /** Kugel mit Radius `size` */

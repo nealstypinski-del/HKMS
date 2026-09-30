@@ -166,8 +166,10 @@ function buildColliders(): Collider[] {
   for (const a of L.armchairs) out.push(box(a.x, a.z, 0.5, 0.6, -0.3, 2))
   for (const [x, z] of [[-11.2, 7.0], [9.4, -0.9], [11, 6.4]] as const) out.push(box(x, z, 0.3, 0.3, -0.3, 2))
 
+  out.push(box(7.6, 3.0, 0.8, 0.45, -0.3, 2), box(-11.35, -1.2, 0.5, 0.5, -0.3, 2.2), box(-11.5, 0.3, 0.3, 0.3, -0.3, 2))
   for (let level = 1; level <= TOP_LEVEL; level++) {
     const y = floorY(level)
+    out.push({ x0: -11.8, x1: 9.2, z0: -8, z1: -6.9, y0: y - 0.3, y1: y + 2.4 })
     // Glaswände des Konferenzraums mit Türöffnung
     const R = MEETING_ROOM
     const t = 0.07

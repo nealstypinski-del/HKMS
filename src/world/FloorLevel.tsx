@@ -5,6 +5,8 @@ import { FLOOR_DEPTH, FLOOR_HEIGHT, FLOOR_THICKNESS, FLOOR_WIDTH, floorByLevel, 
 import { useOfficeStore } from '../store/office.store'
 import { HALF_D, HALF_W, holesOf, subtractHoles } from '../config/walkWorld'
 import { Box, glass } from './primitives'
+import { floorMaterial, wallMaterial } from './textures'
+import { WindowFrames } from '../furniture/Props'
 import { LIFT_DISTANCE, floorLift } from './runtime'
 
 const W = FLOOR_WIDTH
@@ -12,7 +14,7 @@ const D = FLOOR_DEPTH
 const H = FLOOR_HEIGHT - FLOOR_THICKNESS
 
 /** Wände sichtbar nur, solange die Kamera auf der Innenseite steht, sonst verdecken sie den Blick. */
-function Walls({ accent }: { accent: string }) {
+function Walls({ accent, wallColor, panel }: { accent: string; wallColor: string; panel: string }) {
   const back = useRef<THREE.Group>(null)
   const left = useRef<THREE.Group>(null)
   const right = useRef<THREE.Group>(null)
@@ -25,18 +27,25 @@ function Walls({ accent }: { accent: string }) {
     if (right.current) right.current.visible = x < W / 2
     if (front.current) front.current.visible = z < D / 2
   })
-  const wall = '#f4f0e6'
+  const backMat = wallMaterial(wallColor, panel, accent, W + 0.3, H)
+  const leftMat = wallMaterial(wallColor, panel, accent, D, H)
   return (
     <>
       <group ref={back}>
-        <Box pos={[0, H / 2, -D / 2]} size={[W + 0.3, H, 0.3]} color={wall} />
+        <Box pos={[0, H / 2, -D / 2]} size={[W + 0.3, H, 0.3]} material={backMat} />
         <Box pos={[0, 3.6, -D / 2 + 0.16]} size={[W, 1.1, 0.04]} color="#bfe3f2" emissive="#8fd0ea" ei={0.25} cast={false} />
+        <group position={[0, 0, -D / 2 + 0.19]}>
+          <WindowFrames length={W} axis="x" />
+        </group>
         <Box pos={[0, 0.12, -D / 2 + 0.17]} size={[W, 0.24, 0.05]} color="#59627f" cast={false} />
         <Box pos={[0, H - 0.06, -D / 2 + 0.17]} size={[W, 0.08, 0.05]} color={accent} emissive={accent} ei={0.6} cast={false} />
       </group>
       <group ref={left}>
-        <Box pos={[-W / 2, H / 2, 0]} size={[0.3, H, D]} color={wall} />
+        <Box pos={[-W / 2, H / 2, 0]} size={[0.3, H, D]} material={leftMat} />
         <Box pos={[-W / 2 + 0.16, 3.6, 0]} size={[0.04, 1.1, D - 0.6]} color="#bfe3f2" emissive="#8fd0ea" ei={0.25} cast={false} />
+        <group position={[-W / 2 + 0.19, 0, 0]}>
+          <WindowFrames length={D} axis="z" />
+        </group>
         <Box pos={[-W / 2 + 0.17, H - 0.06, 0]} size={[0.05, 0.08, D]} color={accent} emissive={accent} ei={0.6} cast={false} />
       </group>
       <group ref={right}>
@@ -80,7 +89,7 @@ export function FloorLevel({ level, children }: { level: number; children: React
     <group ref={group} position={[0, floorY(level), 0]}>
       {slabParts.map((r, i) => (
         <group key={i}>
-          <Box pos={[(r.x0 + r.x1) / 2, -FLOOR_THICKNESS / 2, (r.z0 + r.z1) / 2]} size={[r.x1 - r.x0, FLOOR_THICKNESS, r.z1 - r.z0]} color={cfg.floorColor} />
+          <Box pos={[(r.x0 + r.x1) / 2, -FLOOR_THICKNESS / 2, (r.z0 + r.z1) / 2]} size={[r.x1 - r.x0, FLOOR_THICKNESS, r.z1 - r.z0]} material={floorMaterial(cfg.surface, cfg.surfaceColor, r.x1 - r.x0, r.z1 - r.z0)} />
           <Box pos={[(r.x0 + r.x1) / 2, -FLOOR_THICKNESS - 0.02, (r.z0 + r.z1) / 2]} size={[r.x1 - r.x0 - 0.02, 0.03, r.z1 - r.z0 - 0.02]} color="#f2f4f9" emissive="#ffffff" ei={0.12} cast={false} />
         </group>
       ))}
@@ -98,7 +107,7 @@ export function FloorLevel({ level, children }: { level: number; children: React
       ].map(([x, z]) => (
         <Box key={`${x}${z}`} pos={[x as number, H / 2, z as number]} size={[0.28, H, 0.28]} color="#e6e1d4" />
       ))}
-      <Walls accent={cfg.accent} />
+      <Walls accent={cfg.accent} wallColor={cfg.wall} panel={cfg.panel} />
       <pointLight position={[0, 4.6, 0]} color={light} intensity={45} distance={26} decay={2} />
       {children}
     </group>

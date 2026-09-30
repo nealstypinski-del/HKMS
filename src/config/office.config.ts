@@ -18,13 +18,17 @@ export interface FloorConfig {
   accent: string
   floorColor: string
   zoneColor: string
+  surface: 'parquet' | 'carpet' | 'tile' | 'concrete'
+  surfaceColor: string
+  wall: string
+  panel: string
 }
 
 export const FLOORS: readonly FloorConfig[] = [
-  { level: 0, id: 'lobby', name: 'Lobby / Headquarters', shortName: 'Lobby', company: 'shared', accent: '#f3f0e8', floorColor: '#e6e1d4', zoneColor: '#cfd8dc' },
-  { level: 1, id: 'herkulesjobs', name: 'HerkulesJobs', shortName: 'HerkulesJobs', company: 'herkulesjobs', accent: '#ff8a3d', floorColor: '#ece3d2', zoneColor: '#f4c9a0' },
-  { level: 2, id: 'kasselmemes', name: 'KasselMemes', shortName: 'KasselMemes', company: 'kasselmemes', accent: '#2fd6c0', floorColor: '#dfe7e6', zoneColor: '#a9e6dd' },
-  { level: 3, id: 'dev', name: 'AI / Development', shortName: 'AI / Dev', company: 'shared', accent: '#8b7cf6', floorColor: '#d7d9e6', zoneColor: '#b9b2f0' },
+  { level: 0, id: 'lobby', name: 'Lobby / Headquarters', shortName: 'Lobby', company: 'shared', accent: '#f3f0e8', floorColor: '#e6e1d4', zoneColor: '#cfd8dc', surface: 'tile', surfaceColor: '#e2d9c6', wall: '#efe8d8', panel: '#8c6a4a' },
+  { level: 1, id: 'herkulesjobs', name: 'HerkulesJobs', shortName: 'HerkulesJobs', company: 'herkulesjobs', accent: '#ff8a3d', floorColor: '#ece3d2', zoneColor: '#f4c9a0', surface: 'carpet', surfaceColor: '#cbb89a', wall: '#f3e3cf', panel: '#b5763f' },
+  { level: 2, id: 'kasselmemes', name: 'KasselMemes', shortName: 'KasselMemes', company: 'kasselmemes', accent: '#2fd6c0', floorColor: '#dfe7e6', zoneColor: '#a9e6dd', surface: 'carpet', surfaceColor: '#a9cfc8', wall: '#e2f1ee', panel: '#3f8f88' },
+  { level: 3, id: 'dev', name: 'AI / Development', shortName: 'AI / Dev', company: 'shared', accent: '#8b7cf6', floorColor: '#d7d9e6', zoneColor: '#b9b2f0', surface: 'carpet', surfaceColor: '#8c90b3', wall: '#e6e7f2', panel: '#4b4f7a' },
 ] as const
 
 export const TOP_LEVEL = FLOORS.length - 1

@@ -2,9 +2,8 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type * as THREE from 'three'
 import type { AgentAvatar } from '../agents/agent.types'
-import { Accessory, Hair, Torso } from '../characters/Character'
-import { HAIR_COLORS, PANTS_COLORS, SHIRT_COLORS, SKIN_COLORS, pick } from '../characters/character.types'
-import { Ball, Box, GEO, mat } from '../world/primitives'
+import { Figure, type RigRefs } from '../characters/Figure'
+import { GEO, mat } from '../world/primitives'
 import { advancePhase, gaitPose } from '../characters/gait'
 import { player, poseProbe } from './playerRuntime'
 
@@ -24,10 +23,7 @@ export function PlayerAvatar() {
   const phase = useRef(0)
   const amount = useRef(0)
   const last = useRef<[number, number] | null>(null)
-  const skin = pick(SKIN_COLORS, AVATAR.skinVariant, '#e8b48d')
-  const hair = pick(HAIR_COLORS, AVATAR.hairVariant, '#2b2118')
-  const pants = pick(PANTS_COLORS, AVATAR.pantsVariant, '#2c3550')
-  const shirt = pick(SHIRT_COLORS, AVATAR.shirtVariant, '#ff8a3d')
+  const head = useRef<THREE.Group>(null)
 
   useFrame((state, rawDt) => {
     const g = root.current
@@ -63,35 +59,11 @@ export function PlayerAvatar() {
     set(armR.current, player.carried ? holdRail : gait.armR)
   })
 
+  const rig: RigRefs = { body, head, legL, legR, shinL, shinR, armL, armR }
   return (
     <group ref={root}>
       <mesh geometry={GEO.torus} material={mat('#ffffff', '#ffffff', 1.1)} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} scale={0.4} />
-      <group ref={body} position={[0, HIP, 0]}>
-        <Torso avatar={AVATAR} />
-        <group position={[0, 0.78, 0]}>
-          <Ball size={0.2} color={skin} />
-          <Box pos={[-0.07, 0.02, 0.185]} size={[0.035, 0.045, 0.02]} color="#161b2b" cast={false} />
-          <Box pos={[0.07, 0.02, 0.185]} size={[0.035, 0.045, 0.02]} color="#161b2b" cast={false} />
-          <Hair style={AVATAR.hairStyle} color={hair} accessory={AVATAR.accessory} />
-          <Accessory kind={AVATAR.accessory} />
-        </group>
-        {([[armL, -0.27], [armR, 0.27]] as const).map(([ref, x]) => (
-          <group key={x} ref={ref} position={[x, 0.47, 0]}>
-            <Box pos={[0, -0.17, 0]} size={[0.12, 0.34, 0.12]} color={shirt} />
-            <Box pos={[0, -0.42, 0]} size={[0.1, 0.18, 0.1]} color={shirt} />
-            <Ball pos={[0, -0.53, 0]} size={0.065} color={skin} />
-          </group>
-        ))}
-        {([[legL, shinL, -0.11], [legR, shinR, 0.11]] as const).map(([thigh, shin, x]) => (
-          <group key={x} ref={thigh} position={[x, 0, 0]}>
-            <Box pos={[0, -0.13, 0]} size={[0.16, 0.26, 0.16]} color={pants} />
-            <group ref={shin} position={[0, -0.26, 0]}>
-              <Box pos={[0, -0.15, 0]} size={[0.15, 0.3, 0.15]} color={pants} />
-              <Box pos={[0, -0.33, 0.03]} size={[0.16, 0.07, 0.23]} color="#20263a" />
-            </group>
-          </group>
-        ))}
-      </group>
+      <Figure avatar={AVATAR} rig={rig} hip={HIP} />
     </group>
   )
 }

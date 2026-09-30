@@ -3,6 +3,7 @@ import { AgentBench } from '../../furniture/AgentBench'
 import { Kitchen } from '../../furniture/Kitchen'
 import { Lamp, Plant, Rug, Tree } from '../../furniture/Decor'
 import { LOBBY_LAYOUT } from '../../config/floorLayouts'
+import { FoosballTable, Picture, VendingMachine, WallClock, WaterCooler } from '../../furniture/Props'
 import { Box, Cyl } from '../primitives'
 import { TextPanel } from '../TextPanel'
 import { HQDisplay } from '../StatusScreens'
@@ -65,6 +66,12 @@ export function Lobby() {
       <Tree pos={[11.0, 0, 6.4]} />
       <Plant pos={[9.4, 0, -0.9]} />
       <Lamp pos={[-11.2, 0, 1.6]} />
+      <FoosballTable pos={[7.6, 0, 3.0]} />
+      <VendingMachine pos={[-11.35, 0, -1.2]} yaw={Math.PI / 2} />
+      <WaterCooler pos={[-11.5, 0, 0.3]} yaw={Math.PI / 2} />
+      <WallClock pos={[-8.6, 3.6, -7.82]} />
+      <Picture pos={[-5.6, 2.3, -7.82]} colors={['#ff8a3d', '#2fd6c0', '#e15b7a']} />
+      <Picture pos={[-11.83, 2.3, -4.2]} rot={[0, Math.PI / 2, 0]} colors={['#5b6ee1', '#f2c94c', '#2fd6c0']} size={[1.2, 0.8]} />
       <ElevatorShaft level={0} />
       <Escalator />
       <Stairs />

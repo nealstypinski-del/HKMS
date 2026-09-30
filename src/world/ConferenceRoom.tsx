@@ -1,6 +1,7 @@
 import { MEETING_ROOM } from '../config/floorLayouts'
 import { Box, glass } from './primitives'
 import { TextPanel } from './TextPanel'
+import { floorMaterial } from './textures'
 
 /** Konferenzraum mit Glaswänden und Tür zur Hauptachse. Der Tisch steht in MeetingTable. */
 export function ConferenceRoom({ accent, label }: { accent: string; label: string }) {
@@ -12,7 +13,7 @@ export function ConferenceRoom({ accent, label }: { accent: string; label: strin
   const doorX = (R.doorX0 + R.doorX1) / 2
   return (
     <group>
-      <Box pos={[cx, 0.012, cz]} size={[R.x1 - R.x0, 0.02, R.z1 - R.z0]} color="#5b6a91" cast={false} />
+      <Box pos={[cx, 0.012, cz]} size={[R.x1 - R.x0, 0.02, R.z1 - R.z0]} material={floorMaterial('parquet', '#a06a3c', R.x1 - R.x0, R.z1 - R.z0)} cast={false} />
       {/* Nordwand mit Türöffnung */}
       <Box pos={[(R.x0 + R.doorX0) / 2, h / 2, R.z0]} size={[R.doorX0 - R.x0, h, 0.05]} material={g} cast={false} />
       <Box pos={[(R.doorX1 + R.x1) / 2, h / 2, R.z0]} size={[R.x1 - R.doorX1, h, 0.05]} material={g} cast={false} />
