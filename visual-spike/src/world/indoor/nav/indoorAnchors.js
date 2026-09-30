@@ -1,5 +1,6 @@
 // Sitzplätze und Arbeitsplätze der Innenwelt als semantische Anker für Agenten (Terminal 4 entscheidet, wer wann wohin geht).
-import { buildFurniture, ROOMS } from '../config/hq.layout.js'
+import { buildFurniture, ROOMS, HQ, STATIONS } from '../config/hq.layout.js'
+import { nearestNode } from '../../outdoor/routes/OutdoorRouteSystem.js'
 
 const ROOM_NODE = {
   lobby: 'in-lobby', herkules: 'r-herkules', kaskade: 'r-kaskade', cafe: 'r-cafe', showroom: 'r-showroom', oktogon: 'r-oktogon', wilhelmshoehe: 'r-wilhelm',
@@ -21,3 +22,15 @@ export const MEETING_ANCHORS = f.chairs.map((c) => ({
 export const INDOOR_ANCHORS = [...DESK_ANCHORS, ...MEETING_ANCHORS]
 export const getIndoorAnchor = (id) => INDOOR_ANCHORS.find((a) => a.id === id)
 export const indoorAnchorsByRoom = (room, kind) => INDOOR_ANCHORS.filter((a) => a.room === room && (!kind || a.kind === kind))
+
+// Sofaplätze (zwei je Sofa) zum Ausruhen
+export const SOFA_ANCHORS = f.sofas.flatMap((sf, i) => [-0.5, 0.5].map((off, j) => {
+  const c = Math.cos(sf.ry); const sn = Math.sin(sf.ry)
+  const x = sf.x + off * sf.w * 0.5 * c + 0.05 * sn
+  const z = sf.z - off * sf.w * 0.5 * sn + 0.05 * c
+  const y = HQ.levels[sf.level]
+  return { id: `sofa-${i}-${j}`, kind: 'sofa', room: sf.level ? 'lounge1' : 'hall0', roomName: 'Sofa', team: 'Pause', level: sf.level, x, z, y, yaw: sf.ry, node: nearestNode(sf.x, sf.z, sf.level) }
+}))
+
+// Stehplätze an Geräten
+export const STATION_ANCHORS = Object.fromEntries(Object.entries(STATIONS).map(([k, st]) => [k, { ...st, level: st.y > 2 ? 1 : 0 }]))

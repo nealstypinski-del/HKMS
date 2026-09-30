@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { envState, stepEnvironment } from './outdoorEnvironment.js'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { focus } from '../runtime/focus.js'
 import { smoothstep } from '../common/noise.js'
 
@@ -38,6 +39,14 @@ export default function OutdoorEnvironment({ quality }) {
   }, [])
   const starMat = useMemo(() => new THREE.PointsMaterial({ color: '#ffffff', size: 2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false }), [])
 
+  // Reflexionsumgebung (prozedural, ohne Netzwerkzugriff): Glas, Metall und Lack reflektieren und der Innenraum bekommt weiches Fülllicht
+  useEffect(() => {
+    const pm = new THREE.PMREMGenerator(gl)
+    const tex = pm.fromScene(new RoomEnvironment(), 0.04).texture
+    scene.environment = tex
+    return () => { scene.environment = null; tex.dispose(); pm.dispose() }
+  }, [scene, gl])
+
   useEffect(() => {
     scene.fog = new THREE.FogExp2('#cfe2ee', 0.001)
     return () => { scene.fog = null }
@@ -49,6 +58,7 @@ export default function OutdoorEnvironment({ quality }) {
     scene.fog.color.copy(e.fog)
     scene.fog.density = e.fogDensity
     gl.setClearColor(e.skyHorizon)
+    scene.environmentIntensity = quality.envIntensity * (1 - 0.7 * e.night)
     skyMat.uniforms.uTop.value.copy(e.skyTop)
     skyMat.uniforms.uHorizon.value.copy(e.skyHorizon)
     sky.current?.position.copy(camera.position)

@@ -3,10 +3,12 @@ import { QUALITY } from '../config/bergpark.config.js'
 import { outdoorStats } from '../runtime/stats.js'
 import { worldZones } from '../streaming/WorldZoneManager.js'
 import { setTimeOfDay, setWeather, envState } from '../environment/outdoorEnvironment.js'
+import { setFollowEnv } from '../../sim/simClock.js'
 import { audioSettings, startWaterAudio } from '../environment/audioAnchors.js'
 import { triggerCompletionPulse } from '../water/CompletionPulse.js'
 import { setCascadeVisualizationState } from '../cascades/cascadeVisualizationState.js'
 import MiniMap from './MiniMap.jsx'
+import { SimBar, EventTicker } from './SimUI.jsx'
 import { runSweep } from './perfSweep.js'
 import { TOUR_STOPS } from '../camera/outdoorTour.js'
 
@@ -22,23 +24,25 @@ const PLACES = [
   ['Konferenz Herkules', () => [-9, -8, Math.PI, -0.15, 0]],
   ['Ergebnisbecken', () => [-31, -131, 0.7, -0.1, null]],
   ['Kaskade unten', () => [-9.5, -131, Math.PI, -0.05, null]],
-  ['Herkules', () => [0, -372, Math.PI, 0.3, null]],
+  ['Herkules (Standort)', () => [0, -372, Math.PI, 0.3, null]],
 ]
 
 export default function BergparkHUD({ mode, setMode, settings, setSettings, api, agentApi, onBack }) {
   const [dbg, setDbg] = useState(true)
-  const [hud, setHud] = useState(true)
+  const [hud, setHud] = useState(() => window.innerWidth > 900) // auf schmalen Bildschirmen startet das Menü eingeklappt
   useEffect(() => { const f = (e) => { if (e.code === 'KeyH') setHud((v) => !v) }; window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f) }, [])
   const [, tick] = useState(0)
   const [tour, setTour] = useState(null)
+  const [show, setShow] = useState(null)
   const [sweep, setSweep] = useState(null)
-  const [outCount, setOutCount] = useState(5)
+  const [outCount, setOutCount] = useState(47)
   const set = (k, v) => setSettings((s) => ({ ...s, [k]: v }))
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 500); return () => clearInterval(t) }, [])
   useEffect(() => {
     api.onTourStart = () => setTour(TOUR_STOPS[0].label)
     api.onTourStep = (stop) => setTour(stop.label)
     api.onTourStop = () => setTour(null)
+    api.onShowcase = (t) => setShow(t)
   }, [api])
   const q = QUALITY[settings.quality]
   const s = outdoorStats
@@ -55,15 +59,17 @@ export default function BergparkHUD({ mode, setMode, settings, setSettings, api,
           <B on={mode === 'tp'} onClick={() => setMode('tp')}>Third Person</B>
           <B on={mode === 'fp'} onClick={() => setMode('fp')}>First Person</B>
           <B on={mode === 'tycoon'} onClick={() => setMode('tycoon')}>Übersicht</B>
+          <B on={mode === 'sims'} onClick={() => setMode('sims')}>Sims Ansicht</B>
         </div>
         <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 3 }}>
           <b>Teleport</b>
           {PLACES.map(([n, f]) => <B key={n} onClick={() => goto(f)}>{n}</B>)}
+          <B onClick={() => { setMode('tp'); api.startShowcase?.() }} style={{ background: '#ff8a3d', color: '#111', fontWeight: 800 }}>HERKULES ZEIGEN</B>
           <B on={!!tour} onClick={() => (tour ? api.stopTour() : (setMode('tp'), api.startTour()))}>{tour ? `Tour: ${tour} (Stopp)` : 'RUN OUTDOOR TOUR'}</B>
         </div>
         <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 3 }}>
           <b>Sportdemo und Agenten</b>
-          <div style={{ display: 'flex', gap: 3 }}>{[5, 10, 25, 50].map((c) => <B key={c} on={outCount === c} onClick={() => { setOutCount(c); agentApi.spawn?.(c) }}>{c}</B>)}</div>
+          <div style={{ display: 'flex', gap: 3 }}>{[20, 47, 75, 100].map((c) => <B key={c} on={outCount === c} onClick={() => { setOutCount(c); agentApi.spawn?.(c) }}>{c}</B>)}</div>
           <B onClick={() => agentApi.simulateTask?.()}>Aufgabe trifft ein (unterbricht Lauf)</B>
           <B onClick={() => { triggerCompletionPulse(`DEMO-${Date.now()}`, 'workflow') }}>Abschlusspuls (Demo)</B>
           <B onClick={() => setCascadeVisualizationState({ stages: { approval: { activity: 0.3, status: 'blocked', queued: 4 } } })}>Freigabe staut (Demo)</B>
@@ -74,7 +80,7 @@ export default function BergparkHUD({ mode, setMode, settings, setSettings, api,
         <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <b>Darstellung</b>
           <div style={{ display: 'flex', gap: 3 }}>{Object.keys(QUALITY).map((k) => <B key={k} on={settings.quality === k} onClick={() => set('quality', k)}>{QUALITY[k].label}</B>)}</div>
-          <div style={{ display: 'flex', gap: 3 }}>{[['DAY', 'Tag'], ['EVENING', 'Abend'], ['NIGHT', 'Nacht']].map(([k, l]) => <B key={k} on={envState.target === k} onClick={() => { setTimeOfDay(k); tick((n) => n + 1) }}>{l}</B>)}</div>
+          <div style={{ display: 'flex', gap: 3 }}>{[['DAY', 'Tag'], ['EVENING', 'Abend'], ['NIGHT', 'Nacht']].map(([k, l]) => <B key={k} on={envState.target === k} onClick={() => { setFollowEnv(false); setTimeOfDay(k); tick((n) => n + 1) }}>{l}</B>)}</div>
           <div style={{ display: 'flex', gap: 3 }}>{[['CLEAR', 'Klar'], ['CLOUDY', 'Wolken'], ['FOG', 'Nebel']].map(([k, l]) => <B key={k} on={envState.weather === k} onClick={() => { setWeather(k); tick((n) => n + 1) }}>{l}</B>)}</div>
           <label><input type="checkbox" checked={settings.effects} onChange={(e) => set('effects', e.target.checked)} /> Effekte (Schweiß)</label>
           <label><input type="checkbox" checked={settings.labels} onChange={(e) => set('labels', e.target.checked)} /> Namensschilder</label>
@@ -109,9 +115,14 @@ export default function BergparkHUD({ mode, setMode, settings, setSettings, api,
       )}
 
       <MiniMap agents={agentApi.agents} onTeleport={(x, zz) => { if (mode === 'tycoon') setMode('tp'); api.teleport(x, zz, Math.PI, -0.1, null) }} />
-      <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', color: '#dbe6ff', font: '12px system-ui', background: 'rgba(11,16,32,.6)', padding: '4px 10px', borderRadius: 8, zIndex: 4 }}>
-        WASD gehen · Umschalt rennen · Maus ziehen umsehen · Q E drehen · Mausrad Kameraabstand · Rolltreppe und Treppe im Empfang
-      </div>
+      {show && (
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 90, textAlign: 'center', zIndex: 7, pointerEvents: 'none' }}>
+          <div style={{ display: 'inline-block', background: 'rgba(11,16,32,.72)', color: '#fff', padding: '10px 22px', borderRadius: 12, font: '800 26px system-ui', letterSpacing: 2 }}>{show}</div>
+          <div style={{ marginTop: 8 }}><button style={{ pointerEvents: 'auto' }} onClick={() => api.stopShowcase()}>Fahrt beenden</button></div>
+        </div>
+      )}
+      <SimBar mode={mode} setMode={setMode} agentApi={agentApi} />
+      <EventTicker agentApi={agentApi} />
     </>
   )
 }

@@ -28,7 +28,7 @@ function Platform({ pal }) {
 }
 
 export default function App() {
-  const [view, setView] = useState(() => (new URLSearchParams(window.location.search).get('view') === 'bergpark' ? 'bergpark' : 'floors'))
+  const [view, setView] = useState(() => (new URLSearchParams(window.location.search).get('view') || import.meta.env.VITE_DEFAULT_VIEW || 'floors') === 'bergpark' ? 'bergpark' : 'floors')
   const [idx, setIdx] = useState(0)
   const floor = FLOORS[idx]
   const pal = floor.palette

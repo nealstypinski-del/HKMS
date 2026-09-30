@@ -12,9 +12,10 @@ import HerkulesMonument from './herkules/HerkulesMonument.jsx'
 import ForestSystem from './forest/ForestSystem.jsx'
 import { worldZones } from './streaming/WorldZoneManager.js'
 import OutdoorAgents from './agents/OutdoorAgents.jsx'
+import PostFX from './environment/PostFX.jsx'
 
 // Die gesamte Außenwelt in einer Szene. Eine Welt, skalierbare Qualität (LOW, MEDIUM, HIGH).
-export default function DigitalBergpark({ settings, agentApi }) {
+export default function DigitalBergpark({ settings, agentApi, mode }) {
   const quality = QUALITY[settings.quality]
   const [interior, setInterior] = useState(false)
   useEffect(() => {
@@ -37,7 +38,8 @@ export default function DigitalBergpark({ settings, agentApi }) {
       <ResultPool waterQuality={quality.water} />
       <HerkulesMonument />
       <ForestSystem quality={quality} />
-      <OutdoorAgents settings={settings} quality={quality} api={agentApi} />
+      <OutdoorAgents settings={settings} quality={quality} api={agentApi} mode={mode} />
+      <PostFX quality={quality} />
     </>
   )
 }

@@ -7,6 +7,7 @@ import { textTexture } from '../common/textures.js'
 import HQInterior from '../../indoor/render/HQInterior.jsx'
 import { buildInterior } from '../../indoor/render/interiorGeometry.js'
 import { HQ } from '../../indoor/config/hq.layout.js'
+import { useView } from '../runtime/viewState.js'
 
 const H = WORLD.hq
 const FH = HQ.floorH
@@ -18,6 +19,18 @@ const D = H.halfD * 2 + 0.6
 export default function HQExterior({ detail = 'shell', shadows = false }) {
   const M = sharedMaterials()
   const G = useMemo(buildInterior, [])
+  const view = useView()
+  const cm = (level) => {
+    const base = HQ.levels[level]
+    const plane = view.wallMode === 'half' ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), base + 1.3)] : []
+    return {
+      glass: new THREE.MeshStandardMaterial({ color: '#a9dcf5', transparent: true, opacity: 0.2, roughness: 0.05, metalness: 0.4, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: plane }),
+      mull: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5, clippingPlanes: plane }),
+      spandrel: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, clippingPlanes: plane }),
+    }
+  }
+  const cm0 = useMemo(() => cm(0), [view.wallMode])
+  const cm1 = useMemo(() => cm(1), [view.wallMode])
   const mats = useMemo(() => {
     const glass = new THREE.MeshStandardMaterial({ color: '#a9dcf5', transparent: true, opacity: 0.2, roughness: 0.05, metalness: 0.4, depthWrite: false, side: THREE.DoubleSide })
     const mull = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 })
@@ -37,12 +50,16 @@ export default function HQExterior({ detail = 'shell', shadows = false }) {
       <HQInterior detail={detail} shadows={shadows} />
 
       {/* Glasfassade Etage 0 und 1 */}
-      <mesh geometry={G.curtainGlass} material={mats.glass} renderOrder={4} />
-      <mesh geometry={G.curtainMull} material={mats.mull} castShadow={shadows} />
-      <mesh geometry={G.curtainSpandrel} material={mats.spandrel} castShadow={shadows} />
+      {[0, 1].map((lv) => (lv === 1 && !(view.cutLevel === 'all' || view.cutLevel === 1) ? null : (
+        <group key={lv} visible={view.wallMode !== 'down'}>
+          <mesh geometry={G.levels[lv].curtainGlass} material={lv ? cm1.glass : cm0.glass} renderOrder={4} />
+          <mesh geometry={G.levels[lv].curtainMull} material={lv ? cm1.mull : cm0.mull} castShadow={shadows} />
+          <mesh geometry={G.levels[lv].curtainSpandrel} material={lv ? cm1.spandrel : cm0.spandrel} castShadow={shadows} />
+        </group>
+      )))}
 
       {/* Etagen 2 und 3: Massing mit Fensterbändern (noch nicht begehbar) */}
-      {[2, 3].map((i) => (
+      {view.cutLevel === 'all' && [2, 3].map((i) => (
         <group key={i} position={[0, i * FH, 0]}>
           <mesh position={[0, 0.15, 0]} material={mats.slab} castShadow={shadows}>
             <boxGeometry args={[W + 0.4, 0.3, D + 0.4]} />
@@ -61,6 +78,7 @@ export default function HQExterior({ detail = 'shell', shadows = false }) {
         </group>
       ))}
       {/* Dach mit Markenband */}
+      {view.cutLevel === 'all' && <group>
       <mesh position={[0, 4 * FH + 0.15, 0]} material={mats.slab} castShadow={shadows}>
         <boxGeometry args={[W + 0.6, 0.3, D + 0.6]} />
       </mesh>
@@ -77,6 +95,7 @@ export default function HQExterior({ detail = 'shell', shadows = false }) {
       <mesh position={[0, 2 * FH + 2.4, -D / 2 - 0.03]} material={mats.dark}>
         <boxGeometry args={[17.6, 2.5, 0.1]} />
       </mesh>
+      </group>}
     </group>
   )
 }

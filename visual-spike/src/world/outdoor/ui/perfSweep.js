@@ -12,6 +12,7 @@ export const VIEWPOINTS = [
   { id: 'F', name: 'HQ Lobby', mode: 'tp', pos: [0, -11], heading: 0, pitch: -0.1 },
   { id: 'G', name: 'Etage 1 Redaktion', mode: 'tp', pos: [-13, 4.5], heading: -Math.PI / 2, pitch: -0.1, y: 4.5 },
   { id: 'H', name: 'Rolltreppe', mode: 'tp', pos: [-1.5, -1], heading: 0, pitch: -0.12 },
+  { id: 'I', name: 'Sims Ansicht', mode: 'sims' },
 ]
 
 const raf = () => new Promise((r) => requestAnimationFrame(r))

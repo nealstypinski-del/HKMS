@@ -48,7 +48,7 @@ export function conveyorAt(x, z, y) {
 }
 
 // ---------------------------------------------------------------- Kollisionsflächen
-const R = (x0, z0, x1, z1, y0, y1) => ({ x0, z0, x1, z1, y0, y1 })
+const R = (x0, z0, x1, z1, y0, y1, rad) => ({ x0, z0, x1, z1, y0, y1, rad })
 export function buildIndoorColliders() {
   const out = []
   for (const w of WALLS) {
@@ -66,7 +66,8 @@ export function buildIndoorColliders() {
   for (const v of VOIDS) out.push(R(v.x0, v.z0 - 0.05, v.x1, v.z0 + 0.05, F1 - 0.1, F1 + 1.2))
   // Rolltreppen: Balustraden und Körper
   for (const e of ESCALATORS) {
-    for (const s of [-1, 1]) out.push(R(e.x + s * 0.55 - 0.08, ESC.z0, e.x + s * 0.55 + 0.08, ESC.z1 + 0.1, -1, 99))
+    // Balustraden sperren nur mit kleinem Radius, sonst bliebe zwischen ihnen kein Platz für die Figur
+    for (const s of [-1, 1]) out.push(R(e.x + s * 0.55 - 0.08, ESC.z0, e.x + s * 0.55 + 0.08, ESC.z1 + 0.1, -1, 99, 0.05))
     out.push(R(e.x - 0.55, ESC.z0 + 0.9, e.x + 0.55, ESC.z1, -1, 0.05))
   }
   // Nordkante der Öffnungen (Geländer nur an den Seiten der Rolltreppen bereits vorhanden), Zwischenstreifen bleibt frei
@@ -98,4 +99,16 @@ export function boomLimit(colliders, px, pz, py, dx, dz, maxD) {
     }
   }
   return maxD
+}
+
+// Einstiegshilfe: nahe am Rolltreppeneingang wird die Figur sanft zur Spurmitte geführt
+export function laneAssist(x, z, y) {
+  if (!insideHQ(x, z, 0)) return null
+  for (const e of ESCALATORS) {
+    const dx = Math.abs(x - e.x)
+    const onRamp = z >= ESC.z0 - 0.9 && z <= ESC.z1 + 0.3 && dx < 0.75
+    const entry = e.dir > 0 ? (z < ESC.z0 + 0.6 && y < 0.6) : (z > ESC.z1 - 0.6 && y > F1 - 0.6)
+    if (onRamp && (entry || conveyorAt(x, z, y))) return e.x
+  }
+  return null
 }

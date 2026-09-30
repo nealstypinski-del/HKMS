@@ -1,6 +1,6 @@
 // Prüfung der Innenwelt ohne Grafik (node tools/verify-indoor.mjs): Treppe, Rolltreppen, Türen, Wände, Erreichbarkeit. Exitcode 1 bei Fehlern.
 import { HQ, STAIRS, ESC, ESCALATORS, ROOMS, WALLS, VOIDS, buildFurniture, wallSegments } from '../src/world/indoor/config/hq.layout.js'
-import { walkY, conveyorAt, buildIndoorColliders, stairY } from '../src/world/indoor/nav/indoorWalk.js'
+import { walkY, conveyorAt, laneAssist, buildIndoorColliders, stairY } from '../src/world/indoor/nav/indoorWalk.js'
 import { DESK_ANCHORS, MEETING_ANCHORS } from '../src/world/indoor/nav/indoorAnchors.js'
 import { resolveCollisions, setIndoorColliders } from '../src/world/outdoor/camera/collision.js'
 import { findPathTo } from '../src/world/outdoor/routes/OutdoorRouteSystem.js'
@@ -35,6 +35,8 @@ function step(p, dx, dz, speed, dt) {
   p.x += (dx / l) * speed * dt; p.z += (dz / l) * speed * dt
   const belt = conveyorAt(p.x, p.z, p.surf)
   if (belt) p.z += belt.dz * dt
+  const lc = laneAssist(p.x, p.z, p.surf)
+  if (lc !== null) p.x += (lc - p.x) * Math.min(1, dt * 9)
   resolveCollisions(p, 0.4, p.surf)
   const ny = walkY(p.x, p.z, p.surf)
   const d = Math.abs(ny - p.surf)
@@ -88,6 +90,17 @@ for (const e of ESCALATORS) {
   }
   const expect = (ESC.z1 - ESC.z0) / (ESC.speed * Math.cos(ESC.angle))
   check(`Rolltreppe ${e.id === 'up' ? 'aufwärts' : 'abwärts'} (Etage ${up ? '0 nach 1' : '1 nach 0'})`, Math.abs(ride - expect) < 1.0 && Math.abs(p.surf - (up ? 4.5 : 0)) < 0.05, `Fahrzeit ${f(ride, 1)} s (Soll ${f(expect, 1)} s), Start z=${f(startZ)} y=${f(startY)}, Ende z=${f(p.z)} y=${f(p.surf, 2)}, größter Höhensprung ${f(maxJump, 3)} m`)
+}
+
+// Einstieg mit Versatz: Spieler läuft 0,3 m neben der Spurmitte auf die Rolltreppe und wird mitgenommen
+for (const e of ESCALATORS) {
+  for (const off of [-0.3, 0.3]) {
+    const up = e.dir > 0
+    p = makePlayer(e.x + off, up ? -7 : 4.2, up ? 0 : 4.5)
+    goTo(p, e.x + off, up ? -3.5 : 1.5, 3.0, 8)
+    const onBelt = !!conveyorAt(p.x, p.z, p.surf)
+    check(`Rolltreppe ${up ? 'aufwärts' : 'abwärts'}: Einstieg mit ${off > 0 ? '+' : ''}${off} m Versatz`, onBelt && Math.abs(p.x - e.x) < 0.25, `auf dem Band: ${onBelt}, x=${f(p.x, 2)} (Spurmitte ${e.x}), Höhe ${f(p.surf, 2)} m`)
+  }
 }
 
 // Öffnungen auf Etage 1: nicht hineinfallen

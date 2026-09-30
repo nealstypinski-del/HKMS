@@ -148,7 +148,7 @@ export function buildFurniture() {
   addTable(conferenceTable(0, 'oktogon', 14.5, 2, 6.4, 2, 4, true))
   addTable(conferenceTable(0, 'wilhelmshoehe', 14.5, 10, 2.4, 1.4, 2))
   // Café: kleine Tische
-  for (const [x, z] of [[-18, 9], [-13, 9], [-18, 12], [-13, 12]]) {
+  for (const [x, z] of [[-19, 8.6], [-15, 8.6], [-19, 10.6], [-15, 10.6]]) {
     tables.push({ level: 0, room: 'cafe', x, z, w: 1.0, d: 1.0, y: 0, round: true })
     chairs.push(chairAt(0, 'cafe', x - 0.8, z, Math.PI / 2), chairAt(0, 'cafe', x + 0.8, z, -Math.PI / 2))
   }
@@ -193,6 +193,10 @@ export function buildFurniture() {
     { level: 0, x: 21.88, z: -8, ry: -Math.PI / 2, w: 6, h: 2.2, text: 'SHOWROOM', sub: 'Unsere Produkte', color: '#ff8a3d' },
     { level: 0, x: -21.88, z: 10, ry: Math.PI / 2, w: 5, h: 1.4, text: 'CAFÉ BERGPARK', sub: 'Pause im Grünen', color: '#c9a24a' },
     { level: 0, x: 4.5, z: -11.0, y: 3.2, ry: Math.PI, w: 4.2, h: 0.9, text: 'HERKULES AI HQ', sub: 'Empfang', color: '#ff8a3d', hanging: true },
+    { level: 0, x: 1.6, z: -6.2, y: 3.15, ry: Math.PI, w: 1.5, h: 0.5, text: '▲ ETAGE 1', sub: '', color: '#3ddc84', hanging: true },
+    { level: 0, x: 3.4, z: -6.2, y: 3.15, ry: Math.PI, w: 1.5, h: 0.5, text: '▼ NUR AUSGANG', sub: '', color: '#ff5c5c', hanging: true },
+    { level: 1, x: 3.4, z: 3.6, y: 3.15, ry: 0, w: 1.5, h: 0.5, text: '▼ ERDGESCHOSS', sub: '', color: '#3ddc84', hanging: true },
+    { level: 1, x: 1.6, z: 3.6, y: 3.15, ry: 0, w: 1.5, h: 0.5, text: '▲ NUR AUSGANG', sub: '', color: '#ff5c5c', hanging: true },
   )
   racks.push({ level: 1, x: 21.3, z: 5, ry: -Math.PI / 2 }, { level: 1, x: 21.3, z: 3.6, ry: -Math.PI / 2 })
   return { desks, tables, chairs, sofas, plants, screens, banners: banners.filter((b) => b.w > 0), racks, counters }
@@ -213,4 +217,40 @@ export function buildSigns() {
     }
   }
   return s
+}
+
+
+// ---------------------------------------------------------------- Platzierungen für die Blender Assets (GLB) und weitere Ausstattung
+// Blender Assets blicken nach +Z. Der Sitzende auf Stühlen blickt nach +Z, am Schreibtisch nach -Z (Stuhl um PI gedreht).
+export function buildPlacements() {
+  const f = buildFurniture()
+  const P = { desks: [], desks3: [], chairs: [], sofas: [], trees: [], shelves: [], lamps: [], pods: [], extras: [] }
+  for (const d of f.desks) {
+    const chairPos = rot(0, 0.85, d.ry)
+    ;(d.monitors === 2 ? P.desks3 : P.desks).push({ level: d.level, x: d.x, z: d.z, ry: d.ry })
+    P.chairs.push({ level: d.level, x: d.x + chairPos[0], z: d.z + chairPos[1], ry: d.ry + Math.PI, c: d.room === 'km' ? '#2a8f86' : d.room === 'ai' ? '#3a5bb0' : d.room === 'vertrieb' ? '#b8572a' : '#3a4256' })
+  }
+  for (const c of f.chairs) P.chairs.push({ level: c.level, x: c.x, z: c.z, ry: c.ry + Math.PI, c: c.room === 'cafe' ? '#c9a24a' : '#3a4256' })
+  for (const s of f.sofas) P.sofas.push({ level: s.level, x: s.x, z: s.z, ry: s.ry, sx: s.w / 2, c: s.color })
+  for (const p of f.plants) P.trees.push({ level: p.level, x: p.x, z: p.z, s: 0.5 * (p.s || 1) + 0.15, ry: (p.x * 7 + p.z * 3) % 6 })
+  // Regale an den Wänden
+  const shelf = (level, x, z, ry) => P.shelves.push({ level, x, z, ry })
+  for (const z of [-12.2, -4.2]) shelf(1, -21.55, z, Math.PI / 2)
+  for (const z of [4.0, 9.0]) shelf(1, -21.55, z, Math.PI / 2)
+  for (const z of [-12.2, -4.2]) shelf(1, 21.55, z, -Math.PI / 2)
+  shelf(0, -20, -2.6, Math.PI); shelf(0, -17.6, -2.6, Math.PI); shelf(0, -21.55, 4.6, Math.PI / 2)
+  shelf(1, 21.55, 0, -Math.PI / 2); shelf(1, 21.55, 4.6, -Math.PI / 2)
+  // Stehlampen
+  for (const [l, x, z] of [[0, -6.4, -6], [0, 6.4, -6], [0, -6.4, 12.4], [0, 6.4, 12.4], [1, -6.4, -6], [1, 6.4, -6], [1, 6.4, 12.4], [1, -6.4, 12.4], [0, -21, 0.2], [0, 21, 12.6], [1, -21, 13], [1, 21, -13]]) P.lamps.push({ level: l, x, z })
+  // Kulissenwände (Pod Wand mit Schild)
+  P.pods.push({ level: 0, x: 6.7, z: -11.6, ry: -Math.PI / 2, sx: 0.6 }, { level: 0, x: 14.5, z: -13.55, ry: 0, sx: 1 }, { level: 1, x: 0, z: -13.55, ry: 0, sx: 0.9 })
+  return P
+}
+
+// Stationen für die Agenten (Kaffee, Wasserspender, Sofas). Werden von Wegeknoten und Verhalten benutzt.
+export const STATIONS = {
+  coffee: { id: 'station-coffee', x: -18, z: 12.1, yaw: 0, y: 0, node: 'st-coffee', label: 'Kaffee' },
+  cooler: { id: 'station-cooler', x: -1.5, z: 12.9, yaw: 0, y: 0, node: 'st-cooler', label: 'Wasserspender' },
+  printer: { id: 'station-printer', x: 11, z: 4.3, yaw: Math.PI, y: HQ.levels[1], node: 'st-printer', label: 'Drucker' },
+  whiteboard: { id: 'station-whiteboard', x: -12, z: -3.4, yaw: Math.PI, y: HQ.levels[1], node: 'st-whiteboard', label: 'Whiteboard' },
 }

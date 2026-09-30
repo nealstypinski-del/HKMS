@@ -73,10 +73,11 @@ export function resolveCollisions(pos, radius = 0.4, y = 0) {
   const all = indoorRects.length ? rects.concat(indoorRects) : rects
   for (const r of all) {
     if (r.y0 !== undefined && (y + 1.2 < r.y0 || y > r.y1)) continue
-    const x0 = r.x0 - radius
-    const x1 = r.x1 + radius
-    const z0 = r.z0 - radius
-    const z1 = r.z1 + radius
+    const rr = r.rad ?? radius
+    const x0 = r.x0 - rr
+    const x1 = r.x1 + rr
+    const z0 = r.z0 - rr
+    const z1 = r.z1 + rr
     if (pos.x > x0 && pos.x < x1 && pos.z > z0 && pos.z < z1) {
       const pl = pos.x - x0
       const pr = x1 - pos.x

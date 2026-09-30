@@ -38,8 +38,8 @@ export const levelOfAgent = (a) => (a.y > 2.2 && insideHQ(a.x, a.z) ? 1 : 0)
 
 // Direkt an einen Platz setzen (Startzustand: Agent arbeitet bereits am Schreibtisch)
 export function placeAtSeat(a, seat, label) {
-  a.seat = seat; a.mode = 'anchor'; a.visible = true; a.activity = 'SIT'; a.speed = 0
-  a.x = seat.x; a.y = seat.y; a.z = seat.z; a.yaw = seat.yaw; a.label = label || seat.team; a.poly = null
+  a.seat = seat; a.mode = 'anchor'; a.visible = true; a.activity = seat.kind === 'desk' ? 'TYPE' : seat.kind === 'seat' ? 'TALK_SIT' : 'SIT'; a.speed = 0
+  a.x = seat.x; a.y = seat.y; a.z = seat.z; a.yaw = seat.yaw; a.label = label || seat.team; a.poly = null; a.spot = null
 }
 
 export function assignIntent(a, intent, opts = {}) {
@@ -121,6 +121,18 @@ export function seatPosition(anchor, index) {
   return { x: anchor.x + rx * off, z: anchor.z + rz * off }
 }
 
+// Zu einem Stehplatz oder Sitz (Station) gehen, dort Aktivität für Minuten ausführen (wird vom Verhalten aufgerufen)
+export function goSpot(a, spot, { activity = 'IDLE', duration = 3, label = '' } = {}) {
+  release(a)
+  a.seat = null
+  a.intent = 'GO_TO_SEAT'
+  const path = findPathTo(a.x, a.z, spot.node, levelOfAgent(a))
+  const poly = polylineFromPts([...path.pts, { id: spot.id || 'spot', x: spot.x, z: spot.z, y: spot.y ?? 0, kind: 'indoor' }])
+  startPoly(a, poly, { activity: 'WALK', base: WALK * 1.1 })
+  a.spot = { ...spot, activity, duration }
+  a.label = label
+}
+
 // Sofort unterbrechbar: keine Ausdauerprüfung, kein Warten
 export function interrupt(a) {
   release(a)
@@ -142,6 +154,7 @@ export function stepAgent(a, dt) {
     a.speed = sp
     if (a.s >= a.poly.length) {
       if (a.loop) a.s = a.loopStart
+      else if (a.spot) { const sp = a.spot; a.spot = null; a.mode = 'anchor'; a.speed = 0; a.x = sp.x; a.z = sp.z; a.y = sp.y ?? 0; a.yaw = sp.yaw ?? a.yaw; a.activity = sp.activity; a.baseActivity = sp.activity; a.brain.actionT = sp.duration; return }
       else if (a.seat) { placeAtSeat(a, a.seat, a.intent === 'ATTEND_MEETING' ? 'Meeting' : a.seat.team ? `arbeitet · ${a.seat.team}` : 'Arbeitet'); return }
       else if (a.intent === 'RETURN_TO_HQ') { a.mode = 'inside'; a.visible = false; a.activity = 'IDLE'; a.speed = 0; a.label = 'im HQ'; return }
       else { arrive(a); return }

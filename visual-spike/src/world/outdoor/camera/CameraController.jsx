@@ -4,15 +4,16 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { WORLD } from '../config/bergpark.config.js'
 import { resolveCollisions, setIndoorColliders, getAllRects } from './collision.js'
-import { walkY, conveyorAt, buildIndoorColliders, boomLimit } from '../../indoor/nav/indoorWalk.js'
+import { walkY, conveyorAt, laneAssist, buildIndoorColliders, boomLimit } from '../../indoor/nav/indoorWalk.js'
 import { heightAt } from '../terrain/heightField.js'
 import { insideHQ } from '../../indoor/config/hq.layout.js'
+import { selection } from '../runtime/selection.js'
+import { MONUMENT } from '../config/bergpark.config.js'
 import { samplePolyline, SURFACE_SPEED } from '../routes/OutdoorRouteSystem.js'
 import { TOUR_STOPS, legBetween, lookTarget, stopPosition } from './outdoorTour.js'
 import { focus } from '../runtime/focus.js'
 import { worldZones } from '../streaming/WorldZoneManager.js'
 import { updateWaterAudio } from '../environment/audioAnchors.js'
-import OutdoorAvatar from '../agents/OutdoorAvatar.jsx'
 
 const EYE = WORLD.eyeHeight
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a))
@@ -21,7 +22,7 @@ const lerpAng = (a, b, t) => a + angDiff(a, b) * t
 // Innenkollider einmal registrieren (Wände, Möbel, Treppen, Rolltreppen)
 setIndoorColliders(buildIndoorColliders())
 
-export const player = { x: 0, y: 0, z: -12, yaw: Math.PI, activity: 'IDLE', speed: 0, visible: true }
+export const player = { x: 0, y: 0, z: -12, yaw: Math.PI, activity: 'IDLE', speed: 0, visible: true, seed: 0.42, phase: 0, height: 1, look: { shirt: '#ff8a3d', pants: '#2c3350', hair: '#2b2118', skin: '#e0a97f' } }
 
 // Kamerasteuerung mit drei Ansichten:
 //  tp      Third Person hinter dem Avatar (WASD, Shift = Rennen, Mausziehen = umschauen)
@@ -34,10 +35,11 @@ export default function CameraController({ mode, settings, api }) {
   const keys = useRef({})
   const st = useRef({
     heading: Math.PI, pitch: -0.12, vx: 0, vz: 0, y: 0, surf: 0, bob: 0, dist: 5.5,
-    savedTycoon: null, prevMode: null, tour: null, camPos: new THREE.Vector3(), init: false,
+    savedTycoon: null, savedSims: null, prevMode: null, tour: null, show: null, camPos: new THREE.Vector3(), init: false,
   })
 
   const tycoonDefault = useMemo(() => ({ pos: new THREE.Vector3(-250, 190, 130), target: new THREE.Vector3(0, 28, -200) }), [])
+  const simsDefault = useMemo(() => ({ pos: new THREE.Vector3(34, 27, 32), target: new THREE.Vector3(0, 3, 0) }), [])
 
   useEffect(() => {
     const down = (e) => { keys.current[e.code] = true; if (['ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault() }
@@ -93,6 +95,25 @@ export default function CameraController({ mode, settings, api }) {
       api.onTourStart?.()
     }
     api.stopTour = () => { st.current.tour = null; api.onTourStop?.() }
+    // Herkules Kamerafahrt: Anfahrt über die Kaskade, Umrundung des Oktogons, Nahaufnahme der Figur
+    api.startShowcase = () => {
+      const by = heightAt(MONUMENT.x, MONUMENT.z)
+      const cz = MONUMENT.z
+      const V = (x, y, z) => new THREE.Vector3(x, by + y, z)
+      const pos = []
+      const look = []
+      pos.push(V(0, 40, -285), V(0, 55, -330), V(28, 72, -350)); look.push(V(0, 62, -400), V(0, 70, -400), V(0, 78, -400))
+      for (let i = 0; i <= 8; i++) { // Umrundung im Uhrzeigersinn, dabei steigend
+        const a = Math.PI * 0.15 + (i / 8) * Math.PI * 1.6
+        pos.push(V(Math.sin(a) * 64, 62 + i * 3.5, cz + Math.cos(a) * 64 - cz + cz)); look.push(V(0, 40 + i * 4, cz))
+      }
+      pos.push(V(12, 70, cz + 26), V(6, 68, cz + 15)); look.push(V(0, 66.5, cz), V(0, 66.6, cz))
+      st.current.show = { t: 0, dur: 42, pos: new THREE.CatmullRomCurve3(pos, false, 'centripetal'), look: new THREE.CatmullRomCurve3(look, false, 'centripetal') }
+      st.current.tour = null
+      api.onShowcase?.('HERKULES', 0)
+    }
+    api.showcaseSeek = (t) => { if (st.current.show) st.current.show.t = t }
+    api.stopShowcase = () => { st.current.show = null; api.onShowcase?.(null) }
   }, [api, camera])
 
   useFrame((_, dtRaw) => {
@@ -102,26 +123,77 @@ export default function CameraController({ mode, settings, api }) {
     api.mode = mode
     if (!s.init) { s.y = heightAt(player.x, player.z); s.surf = s.y; s.init = true }
 
-    // Moduswechsel: Tycoon Ansicht sichern und wiederherstellen
+    // Moduswechsel: Orbit Ansichten (Übersicht, Sims) sichern und wiederherstellen
+    const orbit = mode === 'tycoon' || mode === 'sims'
     if (s.prevMode !== mode) {
-      if (s.prevMode === 'tycoon' && controls.current) s.savedTycoon = { pos: camera.position.clone(), target: controls.current.target.clone() }
-      if (mode === 'tycoon') {
-        const v = s.savedTycoon || tycoonDefault
+      if (controls.current) {
+        if (s.prevMode === 'tycoon') s.savedTycoon = { pos: camera.position.clone(), target: controls.current.target.clone() }
+        if (s.prevMode === 'sims') s.savedSims = { pos: camera.position.clone(), target: controls.current.target.clone() }
+      }
+      if (orbit) {
+        const v = mode === 'sims' ? (s.savedSims || simsDefault) : (s.savedTycoon || tycoonDefault)
         camera.position.copy(v.pos)
         camera.up.set(0, 1, 0)
         if (controls.current) { controls.current.target.copy(v.target); controls.current.update() }
         camera.rotation.order = 'XYZ'
-      }
-      if (mode !== 'tycoon') camera.rotation.order = 'YXZ'
+      } else camera.rotation.order = 'YXZ'
       s.prevMode = mode
     }
 
-    if (mode === 'tycoon') {
-      const t = controls.current?.target
-      focus.x = t?.x ?? 0; focus.z = t?.z ?? -200; focus.y = t?.y ?? 20; focus.mode = 'tycoon'
-      camera.fov = 50
-      camera.updateProjectionMatrix()
+    if (orbit) {
+      const c = controls.current
+      const t = c?.target
+      if (mode === 'sims' && t) {
+        // Sims Kamera: WASD verschiebt den Blickpunkt, Q und E drehen, ein gewählter Agent kann verfolgt werden
+        const f = new THREE.Vector3(camera.position.x - t.x, 0, camera.position.z - t.z).normalize().multiplyScalar(-1)
+        const r = new THREE.Vector3(-f.z, 0, f.x)
+        const dist = camera.position.distanceTo(t)
+        const v = (k.ShiftLeft ? 2.4 : 1) * dist * 0.9 * dt
+        const mv = new THREE.Vector3()
+        if (k.KeyW || k.ArrowUp) mv.addScaledVector(f, v)
+        if (k.KeyS || k.ArrowDown) mv.addScaledVector(f, -v)
+        if (k.KeyD || k.ArrowRight) mv.addScaledVector(r, v)
+        if (k.KeyA || k.ArrowLeft) mv.addScaledVector(r, -v)
+        if (mv.lengthSq() > 0) { camera.position.add(mv); t.add(mv); selection.follow = false }
+        if (k.KeyQ || k.KeyE) {
+          const ang = (k.KeyQ ? 1 : -1) * dt * 1.4
+          const off = camera.position.clone().sub(t)
+          off.applyAxisAngle(new THREE.Vector3(0, 1, 0), ang)
+          camera.position.copy(t).add(off)
+        }
+        if (selection.follow && selection.agent) {
+          const a = selection.agent
+          const goal = new THREE.Vector3(a.x, a.y + 1.4, a.z)
+          const d = goal.clone().sub(t).multiplyScalar(1 - Math.exp(-dt * 3))
+          t.add(d); camera.position.add(d)
+        }
+      }
+      focus.x = t?.x ?? 0; focus.z = t?.z ?? -200; focus.y = t?.y ?? 20; focus.mode = mode
+      const fov = mode === 'sims' ? 38 : 50
+      if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix() }
       worldZones.update(focus.x, focus.z)
+      return
+    }
+
+    // Herkules Kamerafahrt
+    if (s.show) {
+      const S = s.show
+      S.t += dt
+      const u = Math.min(1, S.t / S.dur)
+      const e = u * u * (3 - 2 * u) * 0.35 + u * 0.65 // sanfter Start und Ende
+      S.pos.getPoint(e, camera.position)
+      const tgt = S.look.getPoint(e)
+      camera.rotation.order = 'YXZ'
+      camera.lookAt(tgt)
+      player.visible = false
+      if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix() }
+      focus.x = camera.position.x; focus.z = camera.position.z; focus.y = camera.position.y
+      worldZones.update(focus.x, focus.z)
+      const caps = [[0, 'HERKULES'], [5, 'Wahrzeichen von Kassel Wilhelmshöhe'], [13, 'Oktogon mit Arkaden: 21,5 m hoch'], [22, 'Pyramidenturm aus vier Stufen: 39 m'], [30, 'Gesamthöhe des Monuments: 71 m'], [36, 'Herkulesfigur: 8,30 m, Keule 4,70 m']]
+      let txt = caps[0][1]
+      for (const [t0, tx] of caps) if (S.t >= t0) txt = tx
+      if (txt !== S.last) { S.last = txt; api.onShowcase?.(txt, u) }
+      if (u >= 1) { s.show = null; api.onShowcase?.(null) }
       return
     }
 
@@ -191,6 +263,8 @@ export default function CameraController({ mode, settings, api }) {
       player.z += s.vz * h
       belt = conveyorAt(player.x, player.z, s.surf)
       if (belt) player.z += belt.dz * h
+      const lc = laneAssist(player.x, player.z, s.surf)
+      if (lc !== null) player.x += (lc - player.x) * Math.min(1, h * 9)
       resolveCollisions(player, 0.4, s.surf)
       s.surf = walkY(player.x, player.z, s.surf)
     }
@@ -250,14 +324,14 @@ export default function CameraController({ mode, settings, api }) {
       <OrbitControls
         ref={controls}
         makeDefault
-        enabled={mode === 'tycoon'}
-        enablePan
-        minDistance={25}
-        maxDistance={900}
-        maxPolarAngle={1.5}
+        enabled={mode === 'tycoon' || mode === 'sims'}
+        enablePan={mode === 'tycoon'}
+        minDistance={mode === 'sims' ? 7 : 25}
+        maxDistance={mode === 'sims' ? 90 : 900}
+        minPolarAngle={mode === 'sims' ? 0.35 : 0}
+        maxPolarAngle={mode === 'sims' ? 1.25 : 1.5}
         target={[0, 28, -200]}
       />
-      <OutdoorAvatar state={player} shirt="#ff8a3d" hair="#2b2118" skin={1} />
     </>
   )
 }

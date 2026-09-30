@@ -55,9 +55,9 @@ export const TOP_POOL = { x: 0, z: -347, r: 7.5 }
 export const MONUMENT = {
   x: 0,
   z: -400,
-  // Höhenaufbau in Metern, Summe = 71 m
+  // Höhenaufbau in Metern: Oktogon 21,5 + Dachplatte 0,5 + Turm 39 + Sockel 1,7 + Figur 8,3 = 71 m
   octagonR: 21,
-  octagonH: 22,
+  octagonH: 21.5, // plus 0,5 m Dachplatte
   tiers: [
     { h: 8, rBottom: 9.5, rTop: 9.2 },
     { h: 11, rBottom: 8.6, rTop: 6.0 },
@@ -84,15 +84,15 @@ export const FOREST = {
 export const QUALITY = {
   LOW: {
     label: 'Niedrig', dpr: 1, shadows: false, shadowMap: 1024, shadowRadius: 60, treeFraction: 0.16, treeNear: 30, treeMid: 80,
-    drawDistance: 240, bushes: 0, rocks: 40, tufts: 0, water: 0, sweat: 'none', lampGlow: false, agentLabelDist: 18, pulses: 4,
+    drawDistance: 240, bushes: 0, rocks: 40, tufts: 0, water: 0, sweat: 'none', lampGlow: false, agentLabelDist: 18, pulses: 4, post: { ao: false, bloom: false, smaa: false, vignette: false }, envIntensity: 0.35,
   },
   MEDIUM: {
     label: 'Mittel', dpr: 1.25, shadows: true, shadowMap: 1024, shadowRadius: 70, treeFraction: 0.45, treeNear: 50, treeMid: 130,
-    drawDistance: 380, bushes: 260, rocks: 120, tufts: 0, water: 1, sweat: 'minimal', lampGlow: true, agentLabelDist: 30, pulses: 8,
+    drawDistance: 380, bushes: 260, rocks: 120, tufts: 0, water: 1, sweat: 'minimal', lampGlow: true, agentLabelDist: 30, pulses: 8, post: { ao: false, bloom: true, smaa: true, vignette: true }, envIntensity: 0.28,
   },
   HIGH: {
     label: 'Hoch', dpr: 1.5, shadows: true, shadowMap: 2048, shadowRadius: 85, treeFraction: 1, treeNear: 75, treeMid: 190,
-    drawDistance: 560, bushes: 700, rocks: 260, tufts: 1400, water: 2, sweat: 'particles', lampGlow: true, agentLabelDist: 40, pulses: 8,
+    drawDistance: 560, bushes: 700, rocks: 260, tufts: 1400, water: 2, sweat: 'particles', lampGlow: true, agentLabelDist: 40, pulses: 8, post: { ao: true, bloom: true, smaa: true, vignette: true }, envIntensity: 0.32,
   },
 }
 

@@ -44,17 +44,15 @@ function slabGeometry(yBottom, thickness) {
   return g
 }
 
-function roomFloors() {
+function roomFloors(level) {
   const groups = { parquet: [], carpet: [], concrete: [] }
   for (const r of ROOMS) {
+    if (r.level !== level) continue
     const rects = r.level === 1 ? subtractRects(r.rect, VOIDS) : [r.rect]
-    groups[r.floor].push(...rects.map((q) => ({ level: r.level, q })))
+    groups[r.floor].push(...rects)
   }
   const out = {}
-  for (const k of Object.keys(groups)) {
-    const parts = [0, 1].map((lv) => floorQuads(groups[k].filter((e) => e.level === lv).map((e) => e.q), Y[lv] + 0.012, 2)).filter((g) => g.attributes.position.count)
-    out[k] = parts.length ? mergeGeoms(parts) : null
-  }
+  for (const k of Object.keys(groups)) out[k] = groups[k].length ? floorQuads(groups[k], Y[level] + 0.012, 2) : null
   return out
 }
 
@@ -78,9 +76,10 @@ function mergeGeoms(list) {
 const PLASTER = '#f2ede3'
 const ALU = '#2d3340'
 
-function walls() {
+function walls(level) {
   const solid = []; const frames = []; const glass = []
   for (const w of WALLS) {
+    if (w.level !== level) continue
     const yb = Y[w.level]
     const H = HQ.ceilH
     const segs = wallSegments(w)
@@ -121,14 +120,15 @@ function walls() {
       else put(d - half, d + half, yb + (dh + H) / 2 + 0.04, H - dh - 0.1, PLASTER, solid)
     }
   }
-  return { solid: mergeParts(solid), frames: mergeParts(frames), glass: mergeParts(glass) }
+  const mp = (a) => (a.length ? mergeParts(a) : null)
+  return { solid: mp(solid), frames: mp(frames), glass: mp(glass) }
 }
 
 // Fassade Etage 0 und 1: Pfosten, Glas, Türportal in der Nordseite
-function curtainWall() {
+function curtainWall(level) {
   const mull = []; const glass = []; const spandrel = []
   const W = HQ.halfW; const D = HQ.halfD; const doorHalf = 2.5
-  for (const lv of [0, 1]) {
+  for (const lv of [level]) {
     const yb = Y[lv]
     const H = HQ.ceilH
     // Nord (mit Tür), Süd, West, Ost
@@ -164,9 +164,9 @@ function curtainWall() {
 }
 
 // Deckenleuchten (leuchtende Paneele), keine Lichtquellen
-function ceilingLights() {
+function ceilingLights(level) {
   const parts = []
-  for (const lv of [0, 1]) {
+  for (const lv of [level]) {
     const y = Y[lv] + HQ.ceilH - 0.04
     for (let x = -19.5; x <= 19.6; x += 3) {
       for (let z = -12; z <= 12.1; z += 3) {
@@ -178,53 +178,8 @@ function ceilingLights() {
   return mergeParts(parts)
 }
 
-// --------------------------------------------------------------- Möbel
+// --------------------------------------------------------------- Möbel (nur Teile ohne Blender Asset, Sofas, Stühle, Schreibtische kommen als GLB)
 const WOOD = '#c99b6b'; const WOOD_D = '#8a5d38'; const DARK = '#3a4256'; const BLACK = '#20232b'
-const SCREEN_COLORS = ['#2fd6c0', '#7ab6ff', '#ffd27d', '#c79bff', '#7ff2df']
-
-function chairParts(x, y, z, ry, color) {
-  const at = (lx, lz) => { const [ox, oz] = rot(lx, lz, ry); return [x + ox, z + oz] }
-  const [bx, bz] = at(0, 0.24)
-  return [
-    bake(new THREE.CylinderGeometry(0.28, 0.28, 0.035, 10), { p: [x, y + 0.05, z], color: BLACK }),
-    bake(new THREE.CylinderGeometry(0.035, 0.035, 0.38, 6), { p: [x, y + 0.24, z], color: '#777d8c' }),
-    B(0.5, 0.08, 0.5, x, y + 0.46, z, color, ry),
-    B(0.46, 0.5, 0.06, bx, y + 0.78, bz, color, ry),
-  ]
-}
-
-function deskParts(d) {
-  const { x, z, ry, y } = d
-  const at = (lx, lz) => { const [ox, oz] = rot(lx, lz, ry); return [x + ox, z + oz] }
-  const parts = []
-  const P = (w, h, dd, lx, ly, lz, color) => { const [wx, wz] = at(lx, lz); parts.push(B(w, h, dd, wx, y + ly, wz, color, ry)) }
-  P(1.6, 0.04, 0.8, 0, 0.74, 0, WOOD)
-  P(1.6, 0.05, 0.02, 0, 0.72, 0.4, d.accent || '#2fd6c0')
-  P(0.05, 0.72, 0.7, -0.75, 0.36, 0, DARK)
-  P(0.05, 0.72, 0.7, 0.75, 0.36, 0, DARK)
-  P(1.45, 0.4, 0.03, 0, 0.5, -0.33, DARK)
-  const mx = d.monitors === 2 ? [-0.34, 0.34] : [0]
-  for (const m of mx) {
-    P(0.18, 0.02, 0.14, m, 0.77, -0.18, BLACK)
-    P(0.04, 0.22, 0.03, m, 0.88, -0.2, BLACK)
-    P(0.62, 0.38, 0.03, m, 1.08, -0.2, BLACK)
-  }
-  P(0.42, 0.015, 0.14, 0, 0.77, 0.14, BLACK)
-  P(0.06, 0.03, 0.09, 0.3, 0.77, 0.16, BLACK)
-  P(0.07, 0.09, 0.07, -0.65, 0.81, 0.1, hash(x * 3 + z) > 0.5 ? '#e15b7a' : '#f6f1e7') // Tasse
-  const [cx, cz] = at(0, 0.85)
-  parts.push(...chairParts(cx, y, cz, ry, hash(x + z * 7) > 0.5 ? '#3a4256' : '#5b6ee1'))
-  return parts
-}
-
-function screenQuads(d) {
-  const { x, z, ry, y } = d
-  const mx = d.monitors === 2 ? [-0.34, 0.34] : [0]
-  return mx.map((m, i) => {
-    const [ox, oz] = rot(m, -0.183, ry)
-    return bake(new THREE.PlaneGeometry(0.56, 0.32), { p: [x + ox, y + 1.08, z + oz], r: [-0.05, ry, 0], color: SCREEN_COLORS[Math.floor(hash(x * 5 + z * 3 + i) * SCREEN_COLORS.length)] })
-  })
-}
 
 function tableParts(t) {
   const y = Y[t.level]
@@ -236,66 +191,85 @@ function tableParts(t) {
     return p
   }
   p.push(B(t.w, 0.06, t.d, t.x, y + 0.74, t.z, WOOD_D))
-  p.push(B(t.w * 0.7, 0.02, 0.18, t.x, y + 0.78, t.z, '#20232b')) // Medienstreifen
+  p.push(B(t.w * 0.7, 0.02, 0.18, t.x, y + 0.78, t.z, '#20232b'))
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) p.push(B(0.08, 0.72, 0.08, t.x + sx * (t.w / 2 - 0.25), y + 0.36, t.z + sz * (t.d / 2 - 0.2), DARK))
+  // Pendelleuchte über dem Tisch
+  p.push(bake(new THREE.CylinderGeometry(0.01, 0.01, 0.9, 4), { p: [t.x, y + HQ.ceilH - 0.45, t.z], color: '#20232b' }))
+  p.push(bake(new THREE.CylinderGeometry(0.16, 0.42, 0.24, 12), { p: [t.x, y + HQ.ceilH - 1.02, t.z], color: '#efe9db' }))
+  p.push(bake(new THREE.CylinderGeometry(0.34, 0.34, 0.02, 12), { p: [t.x, y + HQ.ceilH - 1.15, t.z], color: '#fff2c8' }))
   return p
 }
 
-function sofaParts(s) {
-  const y = Y[s.level]
-  const at = (lx, lz) => { const [ox, oz] = rot(lx, lz, s.ry); return [s.x + ox, s.z + oz] }
-  const parts = []
-  const P = (w, h, d, lx, ly, lz, c) => { const [wx, wz] = at(lx, lz); parts.push(B(w, h, d, wx, y + ly, wz, c, s.ry)) }
-  P(s.w, 0.34, 0.9, 0, 0.3, 0, s.color)
-  P(s.w, 0.5, 0.2, 0, 0.7, -0.38, s.color)
-  P(0.18, 0.5, 0.9, -s.w / 2 + 0.09, 0.5, 0, s.color)
-  P(0.18, 0.5, 0.9, s.w / 2 - 0.09, 0.5, 0, s.color)
-  P(s.w - 0.2, 0.2, 0.7, 0, 0.55, 0.05, '#ffffff')
-  for (const sx of [-1, 1]) P(0.06, 0.13, 0.06, sx * (s.w / 2 - 0.1), 0.065, 0.35, DARK)
+const rugQuad = (x, z, w, d, y, color) => B(w, 0.014, d, x, y + 0.012, z, color)
+
+function art(x, y, z, ry, w, h, seed) {
+  const cols = ['#ff8a3d', '#2fd6c0', '#5b6ee1', '#e15b7a', '#f2c94c', '#3aa76d']
+  const parts = [B(w + 0.08, h + 0.08, 0.04, x, y, z, '#20232b', ry), B(w, h, 0.045, x, y, z, '#f6f1e7', ry)]
+  const [ox, oz] = rot(0, 0.03, ry)
+  for (let i = 0; i < 4; i++) {
+    const lx = (hash(seed + i) - 0.5) * w * 0.6
+    const ly = (hash(seed + i * 3) - 0.5) * h * 0.5
+    const [rx, rz] = rot(lx, 0, ry)
+    parts.push(B(w * (0.15 + hash(seed + i * 5) * 0.2), h * (0.15 + hash(seed + i * 7) * 0.25), 0.03, x + rx + ox, y + ly, z + rz + oz, cols[Math.floor(hash(seed + i * 11) * cols.length)], ry))
+  }
   return parts
 }
 
-function plantParts(p) {
-  const y = Y[p.level]
-  const s = p.s || 1
-  return [
-    bake(new THREE.CylinderGeometry(0.25 * s, 0.2 * s, 0.45 * s, 8), { p: [p.x, y + 0.22 * s, p.z], color: '#efe9db' }),
-    bake(new THREE.CylinderGeometry(0.03, 0.05, 0.9 * s, 5), { p: [p.x, y + 0.85 * s, p.z], color: '#6b4a32' }),
-    bake(new THREE.IcosahedronGeometry(0.55 * s, 0), { p: [p.x, y + 1.5 * s, p.z], s: [1, 1.2, 1], color: '#4caf6a' }),
-    bake(new THREE.IcosahedronGeometry(0.38 * s, 0), { p: [p.x + 0.25 * s, y + 1.15 * s, p.z + 0.1], color: '#3c9a5a' }),
-    bake(new THREE.IcosahedronGeometry(0.34 * s, 0), { p: [p.x - 0.22 * s, y + 1.25 * s, p.z - 0.12], color: '#59bd7a' }),
-  ]
-}
-
-function furniture() {
+function furnitureLevel(level) {
   const f = buildFurniture()
+  const y0 = Y[level]
   const parts = []
   const scr = []
-  for (const d of f.desks) {
-    d.accent = d.room === 'km' ? '#2fd6c0' : d.room === 'ai' ? '#4da3ff' : '#ff8a3d'
-    parts.push(...deskParts(d)); scr.push(...screenQuads(d))
-  }
-  for (const t of f.tables) parts.push(...tableParts(t))
-  for (const c of f.chairs) parts.push(...chairParts(c.x, c.y, c.z, c.ry, hash(c.x * 9 + c.z) > 0.5 ? '#3a4256' : '#8a5d38'))
-  for (const s of f.sofas) parts.push(...sofaParts(s))
-  for (const p of f.plants) parts.push(...plantParts(p))
-  for (const c of f.counters) {
-    const y = Y[c.level]
-    parts.push(B(c.w, c.h, c.d, c.x, y + c.h / 2, c.z, c.color), B(c.w + 0.1, 0.05, c.d + 0.1, c.x, y + c.h + 0.02, c.z, c.top))
-  }
-  for (const r of f.racks) {
-    const y = Y[r.level]
-    parts.push(B(0.9, 2.1, 0.7, r.x, y + 1.05, r.z, '#1a2030', r.ry))
+  for (const t of f.tables.filter((q) => q.level === level)) parts.push(...tableParts(t))
+  for (const c of f.counters.filter((q) => q.level === level)) parts.push(B(c.w, c.h, c.d, c.x, y0 + c.h / 2, c.z, c.color), B(c.w + 0.1, 0.05, c.d + 0.1, c.x, y0 + c.h + 0.02, c.z, c.top))
+  for (const r of f.racks.filter((q) => q.level === level)) {
+    parts.push(B(0.9, 2.1, 0.7, r.x, y0 + 1.05, r.z, '#1a2030', r.ry))
     for (let i = 0; i < 12; i++) {
       const [ox, oz] = rot(-0.36, 0, r.ry)
-      scr.push(bake(new THREE.PlaneGeometry(0.5, 0.05), { p: [r.x + ox, y + 0.3 + i * 0.15, r.z + oz], r: [0, r.ry - Math.PI / 2, 0], color: hash(i + r.z) > 0.5 ? '#4da3ff' : '#3ddc84' }))
+      scr.push(bake(new THREE.PlaneGeometry(0.5, 0.05), { p: [r.x + ox, y0 + 0.3 + i * 0.15, r.z + oz], r: [0, r.ry - Math.PI / 2, 0], color: hash(i + r.z) > 0.5 ? '#4da3ff' : '#3ddc84' }))
     }
   }
-  // Café Ausstattung: Kaffeemaschine und Vitrine auf dem Tresen
-  parts.push(B(0.5, 0.45, 0.4, -18, Y[0] + 1.3, 13.2, '#20232b'), B(1.2, 0.5, 0.45, -13, Y[0] + 1.32, 13.2, '#e9e4d8'))
-  // Produktinseln im Showroom
-  for (const [x, z] of [[11, -12], [15, -5], [19, -11]]) parts.push(B(1.6, 0.5, 1.6, x, Y[0] + 0.25, z, '#f6f1e7'), B(1.2, 0.9, 0.06, x, Y[0] + 1.05, z, '#20232b', 0.6))
-  return { furniture: mergeParts(parts), screens: mergeParts(scr) }
+  // Teppiche unter Sitzgruppen und Tischen
+  for (const s of f.sofas.filter((q) => q.level === level)) parts.push(rugQuad(s.x, s.z, Math.abs(Math.sin(s.ry)) > 0.7 ? 2.4 : s.w + 1, Math.abs(Math.sin(s.ry)) > 0.7 ? s.w + 1 : 2.4, y0, '#8a94b8'))
+  for (const t of f.tables.filter((q) => q.level === level && !q.round)) parts.push(rugQuad(t.x, t.z, t.w + 2.2, t.d + 2.6, y0, '#4a5470'))
+  if (level === 0) {
+    // Café: Kaffeemaschine, Mikrowelle, Kühlschrank, Regalbord
+    parts.push(B(0.5, 0.45, 0.4, -18, y0 + 1.3, 13.2, BLACK), B(0.36, 0.06, 0.36, -18, y0 + 1.06, 12.9, '#f6f1e7'))
+    parts.push(B(0.55, 0.32, 0.4, -15.4, y0 + 1.22, 13.2, '#c9ccd3'), B(0.75, 1.9, 0.72, -21.3, y0 + 0.95, 13.2, '#e9edf2'), B(0.05, 0.9, 0.04, -20.9, y0 + 1.2, 12.82, '#8b909b'))
+    parts.push(B(1.6, 0.04, 0.3, -13, y0 + 2.0, 13.75, WOOD_D), B(1.6, 0.04, 0.3, -13, y0 + 2.5, 13.75, WOOD_D))
+    for (let i = 0; i < 5; i++) parts.push(bake(new THREE.CylinderGeometry(0.05, 0.05, 0.11, 8), { p: [-13.6 + i * 0.32, y0 + 2.08, 13.75], color: i % 2 ? '#e15b7a' : '#f6f1e7' }))
+    // Wasserspender in der Halle
+    parts.push(B(0.36, 0.95, 0.36, -1.5, y0 + 0.48, 13.6, '#dfe6f2'), bake(new THREE.CylinderGeometry(0.16, 0.16, 0.42, 10), { p: [-1.5, y0 + 1.16, 13.6], color: '#9fdcff' }), B(0.3, 0.02, 0.2, -1.5, y0 + 0.74, 13.42, '#3a4256'))
+    // Produktinseln im Showroom
+    for (const [x, z] of [[11, -12], [15, -5], [19, -11]]) parts.push(B(1.6, 0.5, 1.6, x, y0 + 0.25, z, '#f6f1e7'), B(1.2, 0.9, 0.06, x, y0 + 1.05, z, '#20232b', 0.6), B(0.5, 0.35, 0.5, x + 0.2, y0 + 0.68, z - 0.1, '#ff8a3d'))
+    // Bilder und Uhren
+    parts.push(...art(-6.94, 2.3, 1, Math.PI / 2, 1.6, 1.0, 1), ...art(6.94, 2.3, -4.5, -Math.PI / 2, 1.4, 1.0, 5), ...art(-14.5, 2.2, 5.93, Math.PI, 1.4, 0.9, 9), ...art(14.5, 2.2, -1.93, Math.PI, 1.6, 1.0, 13))
+    parts.push(bake(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 20), { p: [0, 3.3, 13.9], r: [Math.PI / 2, 0, 0], color: '#f6f1e7' }), B(0.02, 0.15, 0.02, 0, 3.34, 13.86, BLACK), B(0.12, 0.02, 0.02, 0.05, 3.3, 13.86, BLACK))
+    // Mülleimer
+    for (const [x, z] of [[-8, -3], [8, -3], [-8, 5], [8, 5], [-16, 12.4]]) parts.push(bake(new THREE.CylinderGeometry(0.16, 0.13, 0.42, 10), { p: [x, y0 + 0.21, z], color: '#5a6072' }))
+  } else {
+    // Etage 1: Kopierer, Aktenschränke, Whiteboards, Hochtische mit Hockern
+    for (const [x, z] of [[-8.4, -2.9], [-8.4, 13.2], [8.4, -2.9], [8.4, 5.3]]) parts.push(B(0.8, 1.0, 0.65, x, y0 + 0.5, z, '#dfe3ea'), B(0.74, 0.05, 0.5, x, y0 + 1.03, z, '#3a4256'), B(0.5, 0.02, 0.3, x, y0 + 1.06, z, '#f6f1e7'))
+    for (const [x, z, ry] of [[-21.2, -2.4, Math.PI / 2], [21.2, -2.4, -Math.PI / 2], [-21.2, 13.4, Math.PI / 2]]) parts.push(B(0.45, 1.3, 0.9, x, y0 + 0.65, z, '#8b909b', ry), B(0.02, 0.05, 0.3, x - Math.sign(x) * 0.23, y0 + 0.95, z, '#20232b', ry))
+    for (const [x, z, ry] of [[-12, -3.4, 0], [12, 4.3, 0]]) {
+      parts.push(B(1.6, 1.1, 0.04, x, y0 + 1.45, z, '#f6f1e7', ry), B(1.7, 0.06, 0.06, x, y0 + 0.9, z, '#8b909b', ry), B(0.05, 1.7, 0.05, x - 0.8, y0 + 0.85, z, '#8b909b', ry), B(0.05, 1.7, 0.05, x + 0.8, y0 + 0.85, z, '#8b909b', ry))
+      for (let i = 0; i < 4; i++) parts.push(B(0.5 + hash(i + x) * 0.5, 0.03, 0.02, x - 0.3 + hash(i) * 0.2, y0 + 1.75 - i * 0.2, z + 0.03, ['#e15b7a', '#2fd6c0', '#5b6ee1', '#ff8a3d'][i], ry))
+    }
+    for (const [x, z] of [[-3.6, -12.4], [3.6, -12.4]]) {
+      parts.push(bake(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 16), { p: [x, y0 + 1.1, z], color: WOOD }), bake(new THREE.CylinderGeometry(0.04, 0.04, 1.08, 6), { p: [x, y0 + 0.54, z], color: DARK }))
+      for (let k = 0; k < 3; k++) { const a = (k / 3) * Math.PI * 2 + 0.4; parts.push(bake(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 10), { p: [x + Math.cos(a) * 0.62, y0 + 0.66, z + Math.sin(a) * 0.62], color: '#c9a24a' }), bake(new THREE.CylinderGeometry(0.03, 0.03, 0.64, 5), { p: [x + Math.cos(a) * 0.62, y0 + 0.32, z + Math.sin(a) * 0.62], color: DARK })) }
+    }
+    parts.push(...art(-6.94, 2.4, -9, Math.PI / 2, 1.4, 1.0, 21), ...art(6.94, 2.4, 0.5, -Math.PI / 2, 1.4, 1.0, 25), ...art(0, 2.4, 13.93, Math.PI, 2.4, 1.2, 31))
+    parts.push(B(2.2, 1.2, 0.06, 0, y0 + 2.0, -13.9, '#111827'), B(2.3, 1.3, 0.05, 0, y0 + 2.0, -13.93, BLACK))
+    scr.push(bake(new THREE.PlaneGeometry(2.1, 1.1), { p: [0, y0 + 2.0, -13.86], r: [0, Math.PI, 0], color: '#3b6fb0' }))
+    for (const [x, z] of [[-8, -3], [8, -3], [-8, 6.5], [8, 6.5]]) parts.push(bake(new THREE.CylinderGeometry(0.16, 0.13, 0.42, 10), { p: [x, y0 + 0.21, z], color: '#5a6072' }))
+  }
+  // Lüftungsauslässe in der Decke
+  for (let x = -18; x <= 18.1; x += 6) for (let z = -10.5; z <= 10.6; z += 7) {
+    if (level === 0 && VOIDS.some((v) => x > v.x0 - 0.7 && x < v.x1 + 0.7 && z > v.z0 - 0.7 && z < v.z1 + 0.7)) continue
+    parts.push(B(0.6, 0.03, 0.6, x, y0 + HQ.ceilH - 0.02, z, '#e9edf2'), B(0.5, 0.02, 0.5, x, y0 + HQ.ceilH - 0.04, z, '#9aa1ad'))
+  }
+  return { furniture: parts.length ? mergeParts(parts) : null, screens: scr.length ? mergeParts(scr) : null }
 }
 
 // --------------------------------------------------------------- Treppe, Geländer
@@ -386,20 +360,25 @@ function escalatorStatic() {
 let cache = null
 export function buildInterior() {
   if (cache) return cache
-  const w = walls()
-  const cw = curtainWall()
-  const fur = furniture()
-  const vr = voidRails()
   const es = escalatorStatic()
+  const vr = voidRails()
+  const level = (lv) => {
+    const w = walls(lv)
+    const cw = curtainWall(lv)
+    const fu = furnitureLevel(lv)
+    return {
+      floors: roomFloors(lv),
+      wallsSolid: w.solid, wallsFrames: w.frames, wallsGlass: w.glass,
+      curtainMull: cw.mull, curtainGlass: cw.glass, curtainSpandrel: cw.spandrel,
+      lights: ceilingLights(lv),
+      furniture: fu.furniture, screens: fu.screens,
+    }
+  }
   cache = {
-    floors: roomFloors(),
+    levels: [level(0), level(1)],
+    groundPlate: new THREE.BoxGeometry(2 * HQ.halfW + 0.6, 0.3, 2 * HQ.halfD + 0.6).translate(0, -0.15, 0),
     slab1: slabGeometry(Y[0] + HQ.ceilH, HQ.slab),
     slabRoof: slabGeometry(Y[1] + HQ.ceilH, HQ.slab),
-    groundPlate: new THREE.BoxGeometry(2 * HQ.halfW + 0.6, 0.3, 2 * HQ.halfD + 0.6).translate(0, -0.15, 0),
-    wallsSolid: w.solid, wallsFrames: w.frames, wallsGlass: w.glass,
-    curtainMull: cw.mull, curtainGlass: cw.glass, curtainSpandrel: cw.spandrel,
-    lights: ceilingLights(),
-    furniture: fur.furniture, screens: fur.screens,
     stairs: stairs(), stairGlass: stairGlass(), voidRails: vr.rails, voidGlass: vr.glass,
     ...es,
   }

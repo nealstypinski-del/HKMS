@@ -31,6 +31,8 @@ export const INDOOR_NODES = {
   'esc-dn-in': I(3.4, ESC.z1, 4.5, 'esc'),
   'esc-dn-out': I(3.4, ESC.z0, 0, 'esc'),
   'esc-dn-exit': I(3.4, -6.6),
+  // Stationen der Agenten
+  'st-coffee': I(-18, 12.1), 'st-cooler': I(-1.5, 12.9), 'st-printer': I(9.4, 5.0, 4.5), 'st-lounge1': I(0, -9.7, 4.5), 'st-lobby-sofa': I(-4.6, -8.2),
   // Etage 1
   'f1-hub-n': I(-1.5, -8.5, 4.5),
   'f1-hub-b': I(-1.5, 4.5, 4.5),
@@ -54,6 +56,7 @@ export const INDOOR_LINKS = [
   // Rolltreppen (gerichtet)
   L('in-hub-n', 'esc-up-app'), L('esc-up-app', 'esc-up-in'), L('esc-up-in', 'esc-up-out', true), L('esc-up-out', 'esc-up-exit'), L('esc-up-exit', 'f1-hub-b'),
   L('f1-hub-b', 'esc-dn-app'), L('esc-dn-app', 'esc-dn-in'), L('esc-dn-in', 'esc-dn-out', true), L('esc-dn-out', 'esc-dn-exit'), L('esc-dn-exit', 'in-hub-n'),
+  L('r-cafe', 'st-coffee'), L('in-hub-c', 'st-cooler'), L('r-ai', 'st-printer'), L('f1-hub-n', 'st-lounge1'), L('in-lobby', 'st-lobby-sofa'),
   // Etage 1
   L('f1-hub-n', 'f1-hub-b'), L('f1-hub-b', 'f1-hub-c'),
   L('f1-hub-n', 'd1-hj'), L('d1-hj', 'r-hj'), L('f1-hub-n', 'd1-vertrieb'), L('d1-vertrieb', 'r-vertrieb'),

@@ -1,19 +1,45 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
-import OutdoorAvatar from './OutdoorAvatar.jsx'
-import { createAgent, assignIntent, interrupt, stepAgent, placeAtSeat } from './outdoorAgentSim.js'
+import { useFrame, useThree } from '@react-three/fiber'
+import CrowdAvatars, { statusColor } from '../crowd/CrowdAvatars.jsx'
+import { player } from '../camera/CameraController.jsx'
 import { outdoorStats } from '../runtime/stats.js'
-import { DESK_ANCHORS, MEETING_ANCHORS } from '../../indoor/nav/indoorAnchors.js'
+import { select, selection } from '../runtime/selection.js'
+import { assignIntent, interrupt, stepAgent } from './outdoorAgentSim.js'
+import { buildPopulation } from '../../sim/population.js'
+import { stepBrain, command, bubbleFor } from '../../sim/simBrain.js'
+import { mult } from '../../sim/simClock.js'
+import { stepWorld } from '../../sim/simLoop.js'
 import { insideHQ } from '../../indoor/config/hq.layout.js'
 
-const SHIRTS = ['#ff8a3d', '#2fd6c0', '#5b6ee1', '#e15b7a', '#f2c94c', '#8e6bd8', '#3aa76d', '#e8e8e8']
-const HAIR = ['#2b2118', '#6b4423', '#c9a24a', '#1c1c1c', '#a33b2a', '#5a5a5a']
-const NAMES = ['Lena', 'Tom', 'Mira', 'Jan', 'Sofia', 'Ali', 'Nora', 'Ben', 'Kai', 'Ida', 'Paul', 'Emma', 'Max', 'Zoe', 'Leo', 'Yara', 'Clara', 'Dio', 'Sam', 'Finn', 'Mia', 'Noah', 'Eva', 'Luca', 'Hanna', 'Elias', 'Lotte', 'Jonas', 'Emil', 'Ronja']
-const ROLES = ['Research', 'Sales', 'Developer', 'Reviewer', 'Redaktion', 'QA', 'Design', 'Strategie']
-const RANDOM_INTENTS = ['RUN_CASCADES', 'RUN_FOREST', 'WALK_CASCADES', 'REST_OUTSIDE', 'STRETCH', 'WALK_TO_HERKULES']
 const MAX_LABELS = 8
-const DEMO = [['RUN_CASCADES', 2], ['RUN_FOREST', 6], ['REST_OUTSIDE', 10], ['WALK_TO_HERKULES', 14], ['STRETCH', 18]]
+
+// ---------------------------------------------------------------- Blasen und Beschriftungen
+const bubbleCache = new Map()
+function bubbleTexture(type) {
+  if (bubbleCache.has(type)) return bubbleCache.get(type)
+  const cv = document.createElement('canvas')
+  cv.width = cv.height = 128
+  const g = cv.getContext('2d')
+  const col = { question: '#ffc94d', excl: '#ff5c5c', check: '#3ddc84', coffee: '#c98a5a', chat: '#7ab6ff', zzz: '#b8a2ff', task: '#2fd6c0' }[type] || '#ffffff'
+  g.fillStyle = 'rgba(255,255,255,0.96)'
+  g.beginPath(); g.arc(64, 56, 46, 0, Math.PI * 2); g.fill()
+  g.beginPath(); g.moveTo(50, 96); g.lineTo(64, 118); g.lineTo(78, 96); g.fill()
+  g.strokeStyle = col; g.lineWidth = 6; g.beginPath(); g.arc(64, 56, 46, 0, Math.PI * 2); g.stroke()
+  g.fillStyle = col; g.strokeStyle = col; g.lineCap = 'round'; g.lineWidth = 8
+  g.font = '800 68px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'
+  if (type === 'question') g.fillText('?', 64, 60)
+  else if (type === 'excl') g.fillText('!', 64, 60)
+  else if (type === 'check') { g.beginPath(); g.moveTo(40, 58); g.lineTo(58, 76); g.lineTo(90, 38); g.stroke() }
+  else if (type === 'coffee') { g.fillRect(42, 44, 34, 34); g.strokeRect(74, 50, 14, 20); g.beginPath(); g.moveTo(52, 36); g.lineTo(52, 28); g.moveTo(64, 36); g.lineTo(64, 26); g.stroke() }
+  else if (type === 'chat') { for (const x of [42, 64, 86]) { g.beginPath(); g.arc(x, 58, 7, 0, Math.PI * 2); g.fill() } }
+  else if (type === 'zzz') { g.font = '800 44px system-ui'; g.fillText('z', 46, 72); g.font = '800 54px system-ui'; g.fillText('Z', 78, 48) }
+  else if (type === 'task') { g.fillRect(40, 38, 48, 36); g.clearRect(46, 44, 36, 4); g.fillStyle = '#fff'; g.fillRect(46, 52, 36, 3); g.fillRect(46, 60, 28, 3) }
+  const t = new THREE.CanvasTexture(cv)
+  t.colorSpace = THREE.SRGBColorSpace
+  bubbleCache.set(type, t)
+  return t
+}
 
 const labelCache = new Map()
 function labelTexture(name, role, text) {
@@ -25,7 +51,7 @@ function labelTexture(name, role, text) {
   g.fillStyle = 'rgba(11,16,32,0.82)'
   g.beginPath(); g.roundRect(4, 4, 312, 88, 18); g.fill()
   g.fillStyle = '#ffffff'; g.font = '700 30px system-ui, sans-serif'; g.textAlign = 'center'
-  g.fillText(`${name} · ${role}`, 160, 38)
+  g.fillText(`${name} · ${role}`.slice(0, 24), 160, 38)
   g.fillStyle = '#7ff2df'; g.font = '600 26px system-ui, sans-serif'
   g.fillText(text.slice(0, 26), 160, 74)
   const t = new THREE.CanvasTexture(cv)
@@ -34,29 +60,42 @@ function labelTexture(name, role, text) {
   return t
 }
 
-function AgentRig({ agent, settings, quality }) {
-  const sprite = useRef()
-  const spriteMat = useMemo(() => new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }), [])
+function Overlay({ agent, settings, quality }) {
+  const label = useRef()
+  const bub = useRef()
+  const lm = useMemo(() => new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }), [])
+  const bm = useMemo(() => new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }), [])
   const last = useRef('')
+  const lastB = useRef('')
   useFrame(() => {
-    const s = sprite.current
-    if (!s) return
-    const show = settings.labels && agent.visible && !agent.cull && agent.showLabel
-    s.visible = show
-    if (!show) return
-    s.position.set(agent.x, agent.y + 2.25, agent.z)
-    if (agent.label !== last.current) { last.current = agent.label; spriteMat.map = labelTexture(agent.name, agent.role, agent.label); spriteMat.needsUpdate = true }
+    const ok = agent.visible && !agent.cull && agent.showLabel
+    if (label.current) {
+      label.current.visible = ok && settings.labels
+      if (label.current.visible) {
+        label.current.position.set(agent.x, agent.y + 2.55 * (agent.height || 1), agent.z)
+        const k = `${agent.label}`
+        if (k !== last.current) { last.current = k; lm.map = labelTexture(agent.name, agent.role, agent.label); lm.needsUpdate = true }
+      }
+    }
+    if (bub.current) {
+      const b = bubbleFor(agent)
+      bub.current.visible = ok && !!b
+      if (bub.current.visible) {
+        bub.current.position.set(agent.x + 0.35, agent.y + 2.85 * (agent.height || 1), agent.z)
+        if (b !== lastB.current) { lastB.current = b; bm.map = bubbleTexture(b); bm.needsUpdate = true }
+      }
+    }
   })
   void quality
   return (
     <>
-      <OutdoorAvatar state={agent} shirt={agent.shirt} hair={agent.hair} skin={agent.skin} />
-      <sprite ref={sprite} material={spriteMat} scale={[2.4, 0.72, 1]} />
+      <sprite ref={label} material={lm} scale={[2.4, 0.72, 1]} />
+      <sprite ref={bub} material={bm} scale={[0.75, 0.75, 1]} />
     </>
   )
 }
 
-// Fernsicht: Agenten als kleine Marker (ein Drawcall), damit die Bewegung auch in der Übersicht lesbar bleibt
+// Fernsicht: Agenten als Marker (ein Drawcall)
 function FarMarkers({ agents }) {
   const ref = useRef()
   const m = useMemo(() => new THREE.Object3D(), [])
@@ -74,7 +113,7 @@ function FarMarkers({ agents }) {
       m.scale.set(sc, sc, sc)
       m.updateMatrix()
       mesh.setMatrixAt(n, m.matrix)
-      mesh.setColorAt(n, c.set(a.shirt))
+      mesh.setColorAt(n, c.set(a.look.shirt))
       n++
     }
     mesh.count = n
@@ -82,20 +121,20 @@ function FarMarkers({ agents }) {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
   })
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, 128]} frustumCulled={false}>
+    <instancedMesh ref={ref} args={[undefined, undefined, 160]} frustumCulled={false}>
       <capsuleGeometry args={[0.35, 1.1, 3, 6]} />
       <meshStandardMaterial roughness={0.7} emissive="#ffffff" emissiveIntensity={0.15} />
     </instancedMesh>
   )
 }
 
-// Schweiß: ein einziges Points Objekt für alle laufenden Agenten. Qualität und Effektschalter steuern die Menge.
+// Schweiß: ein Points Objekt für alle laufenden Agenten
 function Sweat({ agents, perAgent }) {
   const ref = useRef()
-  const cap = 128 * perAgent
+  const cap = 160 * perAgent
   const pos = useMemo(() => new Float32Array(cap * 3), [cap])
-  useFrame(({ clock, camera }) => {
-    const t = clock.elapsedTime
+  useFrame(({ clock: c, camera }) => {
+    const t = c.elapsedTime
     let n = 0
     for (const a of agents) {
       if (!a.visible || a.activity !== 'RUN') continue
@@ -120,124 +159,176 @@ function Sweat({ agents, perAgent }) {
   )
 }
 
-const mk = (i, home, seatLabel) => {
-  const a = createAgent(`agent-${i + 1}`, NAMES[i % NAMES.length], { role: ROLES[i % ROLES.length], shirt: SHIRTS[i % SHIRTS.length], hair: HAIR[i % HAIR.length], skin: i })
-  a.lane = ((i % 5) - 2) / 2 * 0.9
-  a.homeSeat = home
-  placeAtSeat(a, home, seatLabel || `arbeitet · ${home.team}`)
-  return a
+// Plumbob wie in den Sims: rotierender Diamant über dem Kopf, Farbe nach Status (theme.js). Ein Drawcall.
+function Plumbobs({ agents }) {
+  const ref = useRef()
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const col = useMemo(() => new THREE.Color(), [])
+  useFrame(({ clock: c }) => {
+    const mesh = ref.current
+    if (!mesh) return
+    let n = 0
+    const t = c.elapsedTime
+    for (const a of agents) {
+      if (!a.visible || a.cull || n >= 200) continue
+      const sel = selection.agent === a
+      o.position.set(a.x, a.y + 2.15 * (a.height || 1) + Math.sin(t * 2 + a.seed * 9) * 0.06, a.z)
+      o.rotation.set(0, t * 1.6 + a.seed * 6, 0)
+      o.scale.set(sel ? 0.2 : 0.13, sel ? 0.34 : 0.22, sel ? 0.2 : 0.13)
+      o.updateMatrix()
+      mesh.setMatrixAt(n, o.matrix)
+      mesh.setColorAt(n, col.set(statusColor(a.status)))
+      n++
+    }
+    mesh.count = n
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  })
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, 200]} frustumCulled={false}>
+      <octahedronGeometry args={[1, 0]} />
+      <meshBasicMaterial toneMapped={false} />
+    </instancedMesh>
+  )
 }
 
-export default function OutdoorAgents({ settings, quality, api }) {
+// Auswahlring unter dem gewählten Agenten
+function SelectionRing() {
+  const ref = useRef()
+  useFrame(({ clock: c }) => {
+    const a = selection.agent
+    const m = ref.current
+    if (!m) return
+    m.visible = !!a && a.visible && !a.cull
+    if (m.visible) { m.position.set(a.x, a.y + 0.05, a.z); m.rotation.z = c.elapsedTime }
+  })
+  return (
+    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+      <ringGeometry args={[0.55, 0.72, 32]} />
+      <meshBasicMaterial color="#3ddc84" toneMapped={false} transparent opacity={0.9} depthWrite={false} />
+    </mesh>
+  )
+}
+
+// Auswahl per Mausklick: Strahl gegen Kapseln der Agenten
+function Picker({ agents, mode }) {
+  const { gl, camera } = useThree()
+  const down = useRef(null)
+  useEffect(() => {
+    const el = gl.domElement
+    const pd = (e) => { down.current = { x: e.clientX, y: e.clientY } }
+    const pu = (e) => {
+      const d = down.current
+      down.current = null
+      if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5) return
+      const r = el.getBoundingClientRect()
+      const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+      const ray = new THREE.Raycaster()
+      ray.setFromCamera(ndc, camera)
+      let best = null; let bd = Infinity
+      const p1 = new THREE.Vector3(); const p2 = new THREE.Vector3(); const seg = new THREE.Line3()
+      for (const a of agents) {
+        if (!a.visible || a.cull) continue
+        seg.set(new THREE.Vector3(a.x, a.y + 0.25, a.z), new THREE.Vector3(a.x, a.y + 1.75 * (a.height || 1), a.z))
+        // kürzester Abstand zwischen Strahl und Strecke
+        const ro = ray.ray.origin; const rd = ray.ray.direction
+        const w0 = ro.clone().sub(seg.start); const u = rd; const v = seg.delta(p1)
+        const A = u.dot(u); const B = u.dot(v); const C = v.dot(v); const D = u.dot(w0); const E = v.dot(w0)
+        const den = A * C - B * B
+        let s = den > 1e-8 ? (B * E - C * D) / den : 0
+        let t = den > 1e-8 ? (A * E - B * D) / den : E / C
+        t = Math.min(1, Math.max(0, t)); s = Math.max(0, s)
+        const ptR = ro.clone().addScaledVector(u, s); const ptS = seg.start.clone().addScaledVector(v, t)
+        const dist = ptR.distanceTo(ptS)
+        void p2
+        if (dist < 0.65 && s < bd) { bd = s; best = a }
+      }
+      select(best, best && mode === 'sims' ? selection.follow : false)
+    }
+    el.addEventListener('pointerdown', pd)
+    window.addEventListener('pointerup', pu)
+    return () => { el.removeEventListener('pointerdown', pd); window.removeEventListener('pointerup', pu) }
+  }, [gl, camera, agents, mode])
+  return null
+}
+
+export default function OutdoorAgents({ settings, quality, api, mode }) {
   const agents = useMemo(() => [], [])
-  const timers = useRef(new Map())
   const [n, setN] = useState(0)
   const tick = useRef(0)
+  const ctx = useMemo(() => ({ events: [], outdoor: 0 }), [])
+  const log = useRef([])
 
-  // Bevölkerung: outdoorCount Agenten starten am Schreibtisch auf Etage 1 und gehen später hinaus (5 mit festen Aufgaben, weitere zufällig).
-  // Zusätzlich sitzen Agenten in Meetings und an weiteren Schreibtischen (statisch), einige laufen Rundgänge im Gebäude.
-  function spawn(outdoorCount = 5, indoor = true) {
+  // Besetzung aus den Etagendaten des Visual Spikes (sim/population.js), optional mit Gästen für Kapazitätstests
+  function spawn(total = 47) {
     agents.length = 0
-    const used = new Set()
-    const homes = DESK_ANCHORS.filter((d) => d.level === 1)
-    for (let i = 0; i < outdoorCount; i++) {
-      const home = homes[(i * 5) % homes.length]
-      const seat = used.has(home.id) ? homes.find((h) => !used.has(h.id)) : home
-      used.add(seat.id)
-      const a = mk(i, seat)
-      const [intent, delay] = i < DEMO.length ? DEMO[i] : [RANDOM_INTENTS[i % RANDOM_INTENTS.length], 6 + i * 2.3]
-      a.spawnDelay = delay
-      a.nextIntent = intent
-      a.demo = true
-      timers.current.set(a.id, 25 + Math.random() * 40)
-      agents.push(a)
-    }
-    if (indoor) {
-      let i = agents.length
-      for (const d of DESK_ANCHORS) {
-        if (used.has(d.id) || (i % 4 === 3)) { i++; continue }
-        used.add(d.id)
-        agents.push(mk(i++, d))
-      }
-      const meet = { herkules: 6, loewenburg: 8, oktogon: 4, kaskade: 3 }
-      for (const [room, cnt] of Object.entries(meet)) {
-        MEETING_ANCHORS.filter((s) => s.room === room).slice(0, cnt).forEach((s) => agents.push(mk(i++, s, `Meeting · ${s.roomName.replace('Konferenzraum ', '').replace('Meetingraum ', '')}`)))
-      }
-      // Rundgänger: Rolltreppe hoch, Treppe runter und umgekehrt
-      for (let k = 0; k < 3; k++) {
-        const a = createAgent(`agent-${i + 1}`, NAMES[i % NAMES.length], { role: 'Rundgang', shirt: SHIRTS[(i + 2) % 8], hair: HAIR[i % 6], skin: i })
-        a.lane = (k - 1) * 0.5; a.x = 0; a.z = -9; a.y = 0; a.mode = 'anchor'; a.visible = false
-        a.spawnDelay = 1 + k * 7; a.nextIntent = 'PATROL_INDOOR'; a.routeId = k % 2 ? 'indoor-loop-b' : 'indoor-loop-a'
-        agents.push(a)
-        i++
-      }
-    }
+    agents.push(...buildPopulation(total))
     outdoorStats.totalAgents = agents.length
     setN(agents.length)
   }
 
   useEffect(() => {
-    spawn(5)
+    spawn(47)
     api.spawn = spawn
     api.agents = () => agents
+    api.command = (id, cmd) => { const a = agents.find((x) => x.id === id); if (a) command(a, cmd) }
     api.assign = (id, intent, opts) => { const a = agents.find((x) => x.id === id); if (a) assignIntent(a, intent, opts) }
-    api.interrupt = (id) => { const a = agents.find((x) => x.id === id); if (a) interrupt(a) }
-    // Demo: eine Aufgabe trifft ein, der laufende Agent bricht ab und geht zurück an seinen Platz
+    api.interrupt = (id) => { const a = agents.find((x) => x.id === id); if (a) { interrupt(a); a.brain.action = 'Rückweg' } }
+    // Demo: Aufgabe trifft ein, ein laufender Agent bricht ab und geht zurück an seinen Platz
     api.simulateTask = () => {
-      const a = agents.find((x) => x.demo && x.mode === 'route' && x.baseActivity === 'RUN' && x.intent !== 'RETURN_TO_HQ') || agents.find((x) => x.demo && x.mode === 'route' && x.intent !== 'RETURN_TO_HQ')
+      const a = agents.find((x) => x.mode === 'route' && x.brain.action === 'Sport' && x.intent !== 'RETURN_TO_HQ' && x.homeSeat)
       if (!a) return null
-      interrupt(a)
-      a.label = 'Aufgabe eingegangen'
+      a.bubble = { type: 'task', ttl: 6 }
+      interrupt(a); a.brain.action = 'Rückweg'; a.label = 'Aufgabe eingegangen'
+      log.current.unshift({ t: performance.now(), text: `${a.name}: Aufgabe eingegangen, Lauf abgebrochen` })
       return a.id
     }
+    api.events = () => log.current
+    api.select = (id) => select(agents.find((x) => x.id === id) || null, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Ein Simulationsschritt für alle Agenten (auch für Tests und schnelles Vorspulen nutzbar)
-  const advance = (dt) => {
-    for (const a of agents) {
-      if (a.spawnDelay > 0) {
-        a.spawnDelay -= dt
-        if (a.spawnDelay <= 0 && a.nextIntent) {
-          if (a.nextIntent === 'PATROL_INDOOR') { a.mode = 'inside'; a.x = 0; a.z = -9; assignIntent(a, 'PATROL_INDOOR', { routeId: a.routeId }) }
-          else assignIntent(a, a.nextIntent)
-          a.nextIntent = null
-        }
-        continue
-      }
-      stepAgent(a, dt)
-      if (a.demo && a.mode === 'anchor' && a.intent && a.intent !== 'RETURN_TO_HQ' && a.intent !== 'WORK_AT_DESK' && Number(a.id.replace('agent-', '')) > DEMO.length) {
-        const t = (timers.current.get(a.id) ?? 30) - dt
-        timers.current.set(a.id, t)
-        if (t < 0) { assignIntent(a, RANDOM_INTENTS[Math.floor(Math.random() * RANDOM_INTENTS.length)]); timers.current.set(a.id, 30 + Math.random() * 40) }
-      }
+  const advance = (dtReal) => {
+    const dt = dtReal * mult()
+    stepWorld(agents, dt, ctx)
+    for (const e of ctx.events) {
+      const text = e.type === 'done' ? `${e.agent.name} hat „${e.title}“ abgeschlossen` : `${e.agent.name}: neue Aufgabe „${e.agent.task?.title}“`
+      log.current.unshift({ t: performance.now(), text })
     }
+    if (log.current.length > 30) log.current.length = 30
   }
   useEffect(() => { api.advance = (sec) => { for (let t = 0; t < sec; t += 0.1) advance(0.1) } }, [])
 
   useFrame(({ camera }, dtRaw) => {
     const dt = Math.min(dtRaw, 0.1)
-    const camIn = insideHQ(camera.position.x, camera.position.z, 1)
     advance(dt)
+    const camIn = insideHQ(camera.position.x, camera.position.z, 1)
+    const showAll = mode === 'sims'
     for (const a of agents) {
       const d = Math.hypot(camera.position.x - a.x, camera.position.z - a.z)
-      a.cull = d > 70 || (camIn && insideHQ(a.x, a.z) && Math.abs(a.y - camera.position.y) > 3.6) || (camIn !== insideHQ(a.x, a.z, 1) && d > 30)
+      a.cull = (!showAll && d > 70) || (showAll && d > 140) || (camIn && insideHQ(a.x, a.z) && Math.abs(a.y - camera.position.y) > 3.6 && !showAll) || (camIn !== insideHQ(a.x, a.z, 1) && d > 30 && !showAll)
       a._d = d
+      a.timeScale = Math.max(1, Math.min(3, mult() || 1))
     }
-    // Beschriftung nur für die nächsten Agenten (jede Beschriftung ist ein Drawcall)
     if (++tick.current % 10 === 0) {
-      const near = agents.filter((a) => a.visible && !a.cull && a._d < quality.agentLabelDist).sort((p, q) => p._d - q._d).slice(0, MAX_LABELS)
+      const near = agents.filter((a) => a.visible && !a.cull && a._d < quality.agentLabelDist * (showAll ? 2 : 1)).sort((p, q) => p._d - q._d).slice(0, MAX_LABELS)
       for (const a of agents) a.showLabel = false
       for (const a of near) a.showLabel = true
+      if (selection.agent) selection.agent.showLabel = true
     }
     outdoorStats.visibleAgents = agents.filter((a) => a.visible && !a.cull).length
     outdoorStats.totalAgents = agents.length
   })
 
   const perAgent = settings.effects ? { none: 0, minimal: 3, particles: 8 }[quality.sweat] : 0
+  const crowd = useMemo(() => [player, ...agents], [agents, n])
   return (
     <>
-      {agents.slice(0, n).map((a) => <AgentRig key={a.id} agent={a} settings={settings} quality={quality} />)}
+      <Suspense fallback={null}><CrowdAvatars list={crowd} shadows={quality.shadows} capacity={200} /></Suspense>
+      <Plumbobs agents={agents} />
+      <SelectionRing />
+      <Picker agents={agents} mode={mode} />
+      {agents.slice(0, n).map((a) => <Overlay key={a.id} agent={a} settings={settings} quality={quality} />)}
       <FarMarkers agents={agents} />
       {perAgent > 0 && <Sweat key={perAgent} agents={agents} perAgent={perAgent} />}
     </>

@@ -10,6 +10,8 @@ import { sharedMaterials } from '../common/materials.js'
 import { glowTexture, textTexture } from '../common/textures.js'
 import { registerNightMaterial } from '../environment/outdoorEnvironment.js'
 import InstancedBatch from '../common/InstancedBatch.jsx'
+import { Suspense } from 'react'
+import GlbInstanced from '../../indoor/render/GlbInstanced.jsx'
 import { zAtV } from '../cascades/cascadeLayout.js'
 
 // Bank: Sitzfläche nach +Z, Rückenlehne dahinter. Yaw = Blickrichtung der sitzenden Person.
@@ -71,6 +73,14 @@ export default function OutdoorProps({ quality }) {
     return m
   }, [])
 
+  // Poller (Blender Asset) entlang der Plaza und Topfbäume am Eingang
+  const bollards = useMemo(() => {
+    const out = []
+    for (let x = -26; x <= 26.1; x += 4) out.push({ x, z: -58, y: 0 })
+    for (let z = -54; z <= -18; z += 4) out.push({ x: -26, z, y: 0 }, { x: 26, z, y: 0 })
+    return out
+  }, [])
+  const pots = useMemo(() => [[-7, -16.6], [7, -16.6], [-24, -18], [24, -18], [-24, -56], [24, -56], [-14, -22], [14, -22]].map(([x, z]) => ({ x, z, y: 0, s: 1.1, ry: x })), [])
   const coffee = getAnchor('anchor-coffee-outdoor-01')
   const sign = useMemo(() => textTexture('Kaskaden  ↑   Herkules  ↑', { w: 1024, h: 160, font: '700 78px system-ui, sans-serif', color: '#20304a', bg: '#f6f1e7' }), [])
   const sign2 = useMemo(() => textTexture('Waldlauf  →', { w: 512, h: 160, font: '700 78px system-ui, sans-serif', color: '#20304a', bg: '#f6f1e7' }), [])
@@ -82,6 +92,10 @@ export default function OutdoorProps({ quality }) {
       <InstancedBatch items={poles} geometry={lampPole} material={M.metal} />
       <InstancedBatch items={heads} geometry={lampHead} material={M.lampHead} />
       {quality.lampGlow && <InstancedBatch items={glows} geometry={glowPlane} material={glowMat} />}
+      <Suspense fallback={null}>
+        <GlbInstanced name="bollard" items={bollards} />
+        <GlbInstanced name="tree" items={pots} shadows={quality.shadows} />
+      </Suspense>
 
       {/* Kiosk am Vorplatz (anchor-coffee-outdoor-01) */}
       <group position={[coffee.x + 3.5, coffee.y, coffee.z - 2]} rotation={[0, Math.PI, 0]} name="kiosk-coffee" userData={{ entityId: 'anchor-coffee-outdoor-01' }}>

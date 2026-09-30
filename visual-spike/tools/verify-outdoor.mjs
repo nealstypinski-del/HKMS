@@ -17,7 +17,7 @@ const check = (name, ok, detail) => { out.push(`${ok ? 'OK  ' : 'FAIL'} ${name}:
 
 // 1. Maße
 const tiers = MONUMENT.tiers.reduce((a, t) => a + t.h, 0)
-const total = MONUMENT.octagonH + 0.5 - 0.5 + tiers + MONUMENT.pedestalH + MONUMENT.figureH
+const total = MONUMENT.octagonH + 0.5 + tiers + MONUMENT.pedestalH + MONUMENT.figureH // Oktogon, Dachplatte, Turm, Sockel, Figur
 check('Monument Gesamthöhe', Math.abs(total - REF.monumentHeight) < 0.01, `${total.toFixed(2)} m (Referenz ${REF.monumentHeight} m)`)
 check('Figurenhöhe', MONUMENT.figureH === REF.figureHeight, `${MONUMENT.figureH} m`)
 check('Kaskadenlänge', CASCADE.length === REF.cascadeLength, `${CASCADE.length} m`)
@@ -57,7 +57,7 @@ check('Alle Anker vom HQ Eingang erreichbar', unreachable.length === 0, `${ANCHO
 
 // 5. Kollision (Bewegung schrittweise, das Ergebnis der Auflösung fließt in den nächsten Schritt ein)
 const walk = (x, z, dx, dz, steps) => { const q = { x, z }; for (let i = 0; i < steps; i++) { q.x += dx; q.z += dz; resolveCollisions(q, 0.4) } return q }
-let p = walk(0, -340, 0, -0.5, 160)
+let p = walk(0, -365, 0, -0.5, 100)
 check('Monument blockiert Durchlaufen', p.z > MONUMENT.z && Math.hypot(p.x - MONUMENT.x, p.z - MONUMENT.z) >= MONUMENT.colliderR, `Spieler stoppt bei z=${p.z.toFixed(2)} (Monumentmitte z=${MONUMENT.z}, Abstand ${Math.hypot(p.x - MONUMENT.x, p.z - MONUMENT.z).toFixed(2)} m)`)
 p = walk(0, -150, 0, 0.5, 100)
 check('Ergebnisbecken nicht begehbar', Math.hypot(p.x / (POOL.a + 0.4), (p.z - POOL.z) / (POOL.b + 0.4)) >= 0.999, `Spieler geht um das Becken, Endpunkt (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`)
