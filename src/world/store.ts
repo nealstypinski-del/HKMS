@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { BUILDING } from './buildingConfig'
 import { DEFAULT_PLAYER } from './avatar'
 import { worldEvents } from './events'
+import { allowedLaunch, limitMessage, sanitizeCount, MAX_LAUNCH_AT_ONCE } from './limits'
 import { player } from './player'
 import { deptsWithDesks, floorOfDepartment, initialAgents, makeAgent } from './mockAgents'
 import type { Agent, AgentStatus, Avatar } from './types'
@@ -211,11 +212,18 @@ export const useWorld = create<WorldStore>((set, get) => ({
   }),
 
   launchAgents: ({ floorId, departmentId, count, status = 'working' }) => {
-    const floor = floorId ?? get().floorId
-    const depts = departmentId ? [departmentId] : deptsWithDesks(floor).map((d) => d.id)
+    // Eingaben prüfen: unbekannte Etage oder Abteilung fallen auf sichere Werte zurück, die Anzahl wird begrenzt.
+    const known = BUILDING.floors.find((f) => f.id === floorId)
+    const floor = known ? known.id : get().floorId
+    const dept = departmentId && deptsWithDesks(floor).some((d) => d.id === departmentId) ? departmentId : undefined
+    const { count: n, reason } = allowedLaunch(count, Object.keys(get().agents).length)
+    const msg = limitMessage(reason, n)
+    if (msg) set({ notice: msg })
+    if (n === 0) return []
+    const depts = dept ? [dept] : deptsWithDesks(floor).map((d) => d.id)
     const fallback = BUILDING.floors.find((f) => f.id === floor)!.departments[0].id
     const created: Agent[] = []
-    for (let i = 0; i < count; i++) created.push(makeAgent(depts.length ? depts[i % depts.length] : fallback, status))
+    for (let i = 0; i < n; i++) created.push(makeAgent(depts.length ? depts[i % depts.length] : fallback, status))
     set((s) => ({ agents: { ...s.agents, ...Object.fromEntries(created.map((a) => [a.id, a])) }, agentsVersion: s.agentsVersion + 1 }))
     return created.map((a) => a.id)
   },
@@ -228,6 +236,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
   stress: (n) => {
     const st = get()
     st.removeAgents((a) => a.id.startsWith('agent-stress-'))
+    n = Math.min(sanitizeCount(n), MAX_LAUNCH_AT_ONCE)
     if (n <= 0) return
     const depts = deptsWithDesks(st.floorId).map((d) => d.id)
     const dl = depts.length ? depts : [BUILDING.floors.find((f) => f.id === st.floorId)!.departments[0].id]
