@@ -1,3 +1,4 @@
+import { labelRoot } from './labelRoot.js'
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
@@ -112,14 +113,14 @@ export default function Character({
           <torusGeometry args={[0.13, 0.03, 6, 16]} />
           <meshBasicMaterial color={s.color} />
         </mesh>
-        <Html position={[0, 1.8, 0]} center zIndexRange={[10, 0]}>
+        <Html portal={labelRoot} position={[0, 1.8, 0]} center zIndexRange={[10, 0]}>
           <div
             onPointerEnter={() => setHover(true)}
             onPointerLeave={() => setHover(false)}
             style={{
               background: 'rgba(11,16,32,.85)', color: '#fff', padding: '2px 8px', borderRadius: 999,
               fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5,
-              border: `1px solid ${s.color}`, cursor: 'default', position: 'relative', zIndex: hover ? 5 : 1,
+              border: `1px solid ${s.color}`, cursor: 'default', pointerEvents: 'auto', position: 'relative', zIndex: hover ? 5 : 1,
             }}>
             <span style={{ width: 7, height: 7, borderRadius: 7, background: s.color, display: 'inline-block' }} />
             {name}

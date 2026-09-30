@@ -1,3 +1,4 @@
+import { labelRoot } from './labelRoot.js'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
@@ -11,32 +12,74 @@ const Box = ({ p = [0, 0, 0], s = [1, 1, 1], c = '#fff', ...rest }) => (
   </mesh>
 )
 
-// Arbeitsplatz: Schreibtisch, Monitor(e), Stuhl. Blick nach -z (zur Rückwand).
-export function Desk({ position, active = true, dual = false, accent = C.screen }) {
+function useTerminalTexture(t) {
+  return useMemo(() => {
+    if (!t) return null
+    const cv = document.createElement('canvas')
+    cv.width = 320
+    cv.height = 180
+    const g = cv.getContext('2d')
+    g.fillStyle = '#070b14'
+    g.fillRect(0, 0, 320, 180)
+    g.fillStyle = '#1b2438'
+    g.fillRect(0, 0, 320, 22)
+    ;['#ff5c5c', '#ffc94d', '#3ddc84'].forEach((c, i) => {
+      g.fillStyle = c
+      g.beginPath()
+      g.arc(14 + i * 16, 11, 4, 0, Math.PI * 2)
+      g.fill()
+    })
+    const col = { working: '#3ddc84', waiting: '#ffc94d', error: '#ff5c5c' }[t.state] || '#dfe6f2'
+    g.font = 'bold 20px monospace'
+    g.fillStyle = col
+    g.fillText(`● ${t.state.toUpperCase()}`, 12, 50)
+    g.font = '16px monospace'
+    g.fillStyle = '#9fb3d1'
+    g.fillText(`repo:   ${t.repo}`.slice(0, 34), 12, 80)
+    g.fillText(`branch: ${t.branch}`.slice(0, 34), 12, 104)
+    g.fillStyle = '#e8fff9'
+    g.fillText(`> ${t.task}`.slice(0, 34), 12, 136)
+    g.fillStyle = '#7cf0ff'
+    g.fillText('$ _', 12, 164)
+    const tex = new THREE.CanvasTexture(cv)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [t?.repo, t?.branch, t?.task, t?.state])
+}
+
+// Arbeitsplatz: Schreibtisch, 1 bis 3 Monitore, Stuhl. Blick nach -z (zur Rückwand).
+// Mit `terminal` zeigen die Monitore einen Terminalzustand (repo, branch, task).
+export function Desk({
+  position, active = true, monitors = 1, accent = C.screen, wood = C.wood, woodDark = C.woodDark, chair = C.metal, terminal,
+}) {
   const glow = useRef()
+  const tex = useTerminalTexture(terminal)
   useFrame(({ clock }) => {
     if (glow.current && active) glow.current.emissiveIntensity = 0.8 + Math.sin(clock.elapsedTime * 3 + position[0]) * 0.25
   })
-  const screenMat = (
-    <meshStandardMaterial ref={glow} color={active ? accent : C.screenOff} emissive={active ? accent : '#000'} emissiveIntensity={0.8} />
-  )
+  const xs = monitors === 3 ? [-0.56, 0, 0.56] : monitors === 2 ? [-0.42, 0.42] : [0]
+  const w = monitors === 3 ? 0.52 : 0.72
   return (
     <group position={position}>
-      <Box p={[0, 0.72, 0]} s={[1.7, 0.08, 0.85]} c={C.wood} />
-      <Box p={[-0.75, 0.36, 0]} s={[0.08, 0.72, 0.75]} c={C.woodDark} />
-      <Box p={[0.75, 0.36, 0]} s={[0.08, 0.72, 0.75]} c={C.woodDark} />
-      {(dual ? [-0.42, 0.42] : [0]).map((x) => (
-        <group key={x} position={[x, 0.76, -0.22]}>
+      <Box p={[0, 0.72, 0]} s={[monitors === 3 ? 2.0 : 1.7, 0.08, 0.85]} c={wood} />
+      <Box p={[monitors === 3 ? -0.95 : -0.75, 0.36, 0]} s={[0.08, 0.72, 0.75]} c={woodDark} />
+      <Box p={[monitors === 3 ? 0.95 : 0.75, 0.36, 0]} s={[0.08, 0.72, 0.75]} c={woodDark} />
+      {xs.map((x, i) => (
+        <group key={x} position={[x, 0.76, -0.22]} rotation={[0, monitors === 3 ? -x * 0.25 : 0, 0]}>
           <Box p={[0, 0.06, 0]} s={[0.12, 0.12, 0.12]} c={C.metal} />
-          <Box p={[0, 0.36, 0]} s={[0.72, 0.44, 0.05]} c={C.metal} />
+          <Box p={[0, 0.36, 0]} s={[w + 0.08, 0.44, 0.05]} c={C.metal} />
           <mesh position={[0, 0.36, 0.03]}>
-            <boxGeometry args={[0.64, 0.36, 0.01]} />
-            {screenMat}
+            <boxGeometry args={[w, 0.36, 0.01]} />
+            {tex ? (
+              <meshBasicMaterial map={tex} toneMapped={false} />
+            ) : (
+              <meshStandardMaterial ref={i === 0 ? glow : undefined} color={active ? accent : C.screenOff} emissive={active ? accent : '#000'} emissiveIntensity={0.8} />
+            )}
           </mesh>
         </group>
       ))}
       <Box p={[0, 0.77, 0.15]} s={[0.5, 0.03, 0.18]} c="#f4f4f4" />
-      <Chair position={[0, 0, 0.95]} />
+      <Chair position={[0, 0, 0.95]} color={chair} />
     </group>
   )
 }
@@ -114,7 +157,7 @@ export function Elevator({ position, rotation = 0, label = 'AUFZUG' }) {
         <meshStandardMaterial color="#c9ced8" metalness={0.5} roughness={0.4} flatShading />
       </mesh>
       <Box p={[0, 2.35, 0.18]} s={[0.6, 0.14, 0.04]} c={C.orange} />
-      <Html position={[0, 2.8, 0.2]} center style={{ pointerEvents: 'none' }}>
+      <Html portal={labelRoot} position={[0, 2.8, 0.2]} center style={{ pointerEvents: 'none' }}>
         <div style={{ color: '#fff', background: '#1a2240', padding: '2px 8px', borderRadius: 6, fontSize: 12, letterSpacing: 2 }}>{label}</div>
       </Html>
     </group>
@@ -153,70 +196,106 @@ export function AgentBench({ position }) {
       <Box p={[0, 0.3, 0]} s={[6.2, 0.16, 0.9]} c={C.orange} />
       <Box p={[0, 0.7, -0.4]} s={[6.2, 0.7, 0.12]} c={C.orange} />
       {[-2.8, 0, 2.8].map((x) => <Box key={x} p={[x, 0.14, 0]} s={[0.14, 0.28, 0.7]} c={C.metal} />)}
-      <Html position={[0, 1.6, -0.4]} center style={{ pointerEvents: 'none' }}>
+      <Html portal={labelRoot} position={[0, 1.6, -0.4]} center style={{ pointerEvents: 'none' }}>
         <div style={{ color: '#111', background: C.orange, padding: '3px 12px', borderRadius: 6, fontWeight: 700, letterSpacing: 2, fontSize: 13 }}>AGENTENBANK</div>
       </Html>
     </group>
   )
 }
 
-// Zentrales Display an der Rückwand (Canvas-Textur, wird jede Sekunde aktualisiert)
-export function HQDisplay({ position, stats }) {
+// Allgemeines Wanddisplay (Canvas-Textur). lines: [{ t, c, s }]
+export function WallScreen({ position, w = 5.4, h = 2.7, title, lines = [], accent = C.orange, bg = '#0d1b2e' }) {
+  const px = Math.round((1024 * h) / w)
   const tex = useMemo(() => {
     const cv = document.createElement('canvas')
     cv.width = 1024
-    cv.height = 512
+    cv.height = px
     const t = new THREE.CanvasTexture(cv)
     t.colorSpace = THREE.SRGBColorSpace
     t.anisotropy = 8
     return t
-  }, [])
+  }, [px])
+  const key = JSON.stringify([title, lines, accent, bg])
   useEffect(() => {
     const cv = tex.image
     const g = cv.getContext('2d')
-    const grad = g.createLinearGradient(0, 0, 1024, 512)
-    grad.addColorStop(0, '#0d1b2e')
+    const grad = g.createLinearGradient(0, 0, 1024, px)
+    grad.addColorStop(0, bg)
     grad.addColorStop(1, '#173056')
     g.fillStyle = grad
-    g.fillRect(0, 0, 1024, 512)
-    g.strokeStyle = C.teal
+    g.fillRect(0, 0, 1024, px)
+    g.strokeStyle = accent
     g.lineWidth = 8
-    g.strokeRect(8, 8, 1008, 496)
-    g.fillStyle = C.orange
-    g.font = '800 68px system-ui, sans-serif'
-    g.fillText('HERKULES HQ', 48, 105)
-    g.fillStyle = '#e8fff9'
-    g.font = '600 44px system-ui, sans-serif'
-    g.fillText(`${stats.total} Agenten online`, 48, 185)
-    const rows = [
-      [`${stats.working} arbeiten`, '#3ddc84'],
-      [`${stats.waiting} warten`, '#ffc94d'],
-      [`${stats.available} verfügbar`, '#dfe6f2'],
-      [`${stats.meeting} Meeting`, '#4da3ff'],
-      [`${stats.error} Fehler`, '#ff5c5c'],
-    ]
-    let x = 48
-    g.font = '600 36px system-ui, sans-serif'
-    rows.forEach(([txt, col], i) => {
-      const y = 260 + Math.floor(i / 3) * 56
-      if (i === 3) x = 48
-      g.fillStyle = col
-      g.fillText(txt, x, y)
-      x += g.measureText(txt).width + 44
+    g.strokeRect(8, 8, 1008, px - 16)
+    g.fillStyle = accent
+    g.font = '800 72px system-ui, sans-serif'
+    g.fillText(title, 48, 110)
+    let y = 110
+    lines.forEach((l) => {
+      const size = l.s || 46
+      y += size * 1.45 + 6
+      g.fillStyle = l.c || '#e8fff9'
+      g.font = `600 ${size}px system-ui, sans-serif`
+      g.fillText(l.t, 48, y)
     })
-    g.fillStyle = '#9fb3d1'
-    g.font = '500 32px system-ui, sans-serif'
-    g.fillText('Heute: 23 Tasks abgeschlossen', 48, 400)
-    g.fillText('6 Freigaben erforderlich', 48, 448)
     tex.needsUpdate = true
-  }, [stats, tex])
+  }, [key, tex, px])
   return (
     <group position={position}>
-      <Box p={[0, 0, 0]} s={[5.6, 2.9, 0.15]} c={C.metal} />
+      <Box p={[0, 0, 0]} s={[w + 0.2, h + 0.2, 0.15]} c={C.metal} />
       <mesh position={[0, 0, 0.085]}>
-        <planeGeometry args={[5.4, 2.7]} />
+        <planeGeometry args={[w, h]} />
         <meshBasicMaterial map={tex} toneMapped={false} />
       </mesh>
     </group>
+  )
+}
+
+export function Partition({ position, len = 6, axis = 'z', color = C.orange }) {
+  const s = axis === 'z' ? [0.12, 1.3, len] : [len, 1.3, 0.12]
+  return (
+    <group position={position}>
+      <Box p={[0, 0.65, 0]} s={s} c="#f4f1ea" />
+      <Box p={[0, 1.33, 0]} s={axis === 'z' ? [0.16, 0.08, len] : [len, 0.08, 0.16]} c={color} />
+    </group>
+  )
+}
+
+export function ServerRack({ position, rotation = 0 }) {
+  const leds = useMemo(() => Array.from({ length: 12 }, (_, i) => (i * 7) % 5), [])
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <Box p={[0, 1.1, 0]} s={[0.9, 2.2, 0.9]} c="#0f1424" />
+      {leds.map((k, i) => (
+        <mesh key={i} position={[-0.25 + (i % 3) * 0.25, 0.35 + Math.floor(i / 3) * 0.5, 0.46]}>
+          <boxGeometry args={[0.12, 0.06, 0.02]} />
+          <meshStandardMaterial color="#111" emissive={['#3ddc84', '#7cf0ff', '#ffc94d', '#3ddc84', '#ff5c5c'][k]} emissiveIntensity={1.4} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// Ringlicht mit Kamera für das Video-/Reels-Studio; Blick nach lokal +z
+export function RingLight({ position, rotation = 0 }) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <Box p={[0, 0.75, 0]} s={[0.06, 1.5, 0.06]} c="#222" />
+      <Box p={[0, 0.03, 0]} s={[0.7, 0.05, 0.7]} c="#222" />
+      <mesh position={[0, 1.55, 0]} castShadow>
+        <torusGeometry args={[0.42, 0.05, 8, 24]} />
+        <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={1.6} />
+      </mesh>
+      <Box p={[0, 1.55, -0.05]} s={[0.22, 0.16, 0.3]} c="#111" />
+      <Box p={[0, 1.55, 0.14]} s={[0.1, 0.1, 0.1]} c="#333" />
+    </group>
+  )
+}
+
+export function ZoneLabel({ position, text }) {
+  return (
+    <Html portal={labelRoot} position={position} center style={{ pointerEvents: 'none' }}>
+      <div style={{ color: '#0b1020', opacity: 0.5, fontSize: 10, fontWeight: 800, letterSpacing: 2, whiteSpace: 'nowrap' }}>{text}</div>
+    </Html>
   )
 }

@@ -1,4 +1,4 @@
-# Herkules AI HQ · Visual Spike 0.1
+# Herkules AI HQ · Visual Spike 0.2
 
 Eigenständiger visueller Prototyp der 3D-Unternehmenswelt. Keine Businesslogik, keine echten Agenten.
 
@@ -13,7 +13,8 @@ npm run dev
 ## Inhalt
 
 - Runde Plattform mit leuchtendem Rand, isometrische Orthokamera (drehen und zoomen)
-- Ein Erdgeschoss mit 12 Arbeitsplätzen, Küche, Agentenbank, Lounge, Aufzug und zentralem HQ-Display
+- Vier umschaltbare Etagen (Erdgeschoss, HerkulesJobs, KasselMemes, AI/Development) mit eigener Farbwelt, Wandscreens und Terminalmonitoren
+- Alle Etagen kommen aus `src/data/floors.js`, damit Loop 1 später echte Daten liefern kann
 - 22 Low-Poly-Figuren (sitzend, laufend, Meeting) mit Statusring und Namenslabel (Rolle bei Mausover)
 - Alle Assets sind prozedural in React Three Fiber gebaut, es gibt noch keine GLB-Dateien
 
