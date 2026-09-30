@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Vector3 } from 'three'
 import { BUILDING } from '../world/buildingConfig'
-import { connectors, stepRide, tryBoard } from '../world/connectors'
+import { connectors, SPEEDS, stepRide, tryBoard } from '../world/connectors'
 import { FLOOR_H, HALF_D, HALF_W, floorBaseY } from '../world/constants'
 import { getFloor } from '../world/generate'
 import { getNav } from '../world/nav'
@@ -145,8 +145,11 @@ export function CameraRig() {
     // Fahrt auf Treppe oder Rolltreppe
     if (player.ride) {
       const res = stepRide(player, dt, dirX)
-      player.walking = false
       const c = connectors.find((k) => k.id === player.ride?.id)
+      // Auf der Treppe steigt die Figur mit Beinbewegung, auf der Rolltreppe steht sie
+      const climbing = c?.kind === 'stairs' && Math.abs(dirX) > 0.05
+      player.walking = climbing
+      if (climbing) player.walkClock += Math.abs(dirX) * SPEEDS.stairs * dt * 3.2
       if (c) {
         const travel = Math.sign(c.xHigh - c.xLow) * (c.auto === 'down' ? -1 : 1)
         player.yaw += angleDiff(player.yaw, Math.atan2(travel, 0)) * Math.min(1, 6 * dt)

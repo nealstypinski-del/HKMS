@@ -1,6 +1,6 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { memo, useMemo, useRef, useState } from 'react'
-import { Object3D, Vector3 } from 'three'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Mesh, Object3D, Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
 import { floorBaseY } from '../world/constants'
 import { getFloor } from '../world/generate'
@@ -9,6 +9,7 @@ import { sim } from '../world/sim'
 import { effectiveGraphics, useAgent, useWorld } from '../world/store'
 import type { Avatar } from '../world/types'
 import { avatarKey, figureMaterial, getFigureGeos } from './figureGeo'
+import { animStats, gait, gaitFrame, WALK_FRAMES } from './gait'
 import { basic } from './materials'
 
 export interface Pose {
@@ -36,8 +37,11 @@ export const Figure = memo(function Figure({ avatar, lod, getPose }: FigureProps
   const thL = useRef<Object3D>(null), thR = useRef<Object3D>(null)
   const shL = useRef<Object3D>(null), shR = useRef<Object3D>(null)
   const arL = useRef<Object3D>(null), arR = useRef<Object3D>(null)
-  const standM = useRef<Object3D>(null), sitM = useRef<Object3D>(null)
+  const midM = useRef<Mesh>(null)
+  const midPose = useRef('stand')
   const offset = useMemo(() => Math.random() * 10, [])
+  // Beim Wechsel der Detailstufe oder des Aussehens startet das Mesh wieder in der Stehpose
+  useEffect(() => { midPose.current = 'stand' }, [lod, key])
 
   useFrame(({ clock }) => {
     const p = getPose()
@@ -45,31 +49,34 @@ export const Figure = memo(function Figure({ avatar, lod, getPose }: FigureProps
     const s = p.sit
     const w = p.walking ? 1 : 0
     const ph = p.clock
-    const bob = w * Math.abs(Math.sin(ph)) * 0.03
+    const g = gait(ph, w)
     if (hips.current) {
-      hips.current.position.y = 0.67 + (0.515 - 0.67) * s + bob + (1 - s) * (1 - w) * Math.sin(t * 1.6) * 0.004
-      // Wartende drehen den Oberkörper langsam hin und her
+      hips.current.position.y = 0.67 + (0.515 - 0.67) * s + g.bob * (1 - s) + (1 - s) * (1 - w) * Math.sin(t * 1.6) * 0.004
+      // Wartende drehen den Oberkörper langsam hin und her, Gehende lehnen sich leicht nach vorn
       hips.current.rotation.y = p.waiting && s < 0.5 ? Math.sin(t * 0.9) * 0.5 : 0
+      hips.current.rotation.x = g.lean * (1 - s)
     }
     if (lod === 'mid') {
-      if (standM.current) standM.current.visible = s < 0.5
-      if (sitM.current) sitM.current.visible = s >= 0.5
+      // Pose wählen: sitzend, gehend (8 vorberechnete Phasen) oder stehend. Nur bei Wechsel Geometrie tauschen.
+      const pose = s >= 0.5 ? 'sit' : p.walking ? `w${gaitFrame(ph, WALK_FRAMES)}` : 'stand'
+      if (midM.current && pose !== midPose.current) { midM.current.geometry = geos.mid(pose); midPose.current = pose; animStats.midSwaps++ }
       return
     }
     if (lod !== 'full') return
-    const swing = Math.sin(ph) * 0.75 * w
     const set = (o: Object3D | null, x: number) => { if (o) o.rotation.x = x }
-    set(thL.current, (1 - s) * swing + s * -Math.PI / 2)
-    set(thR.current, (1 - s) * -swing + s * -Math.PI / 2)
-    set(shL.current, (1 - s) * Math.max(0, -Math.sin(ph)) * 0.9 * w + s * (Math.PI / 2))
-    set(shR.current, (1 - s) * Math.max(0, Math.sin(ph)) * 0.9 * w + s * (Math.PI / 2))
+    if (s < 0.05 && p.walking && animStats.fullLegSamples.length < 400) animStats.fullLegSamples.push(+g.thighL.toFixed(3))
+    set(thL.current, (1 - s) * g.thighL + s * -Math.PI / 2)
+    set(thR.current, (1 - s) * g.thighR + s * -Math.PI / 2)
+    set(shL.current, (1 - s) * g.shinL + s * (Math.PI / 2))
+    set(shR.current, (1 - s) * g.shinR + s * (Math.PI / 2))
     if (s > 0.5 && p.working) {
       const type = Math.sin(t * 13) * 0.07
       set(arL.current, -0.75 + type); set(arR.current, -0.75 - type)
     } else if (s > 0.5) {
       set(arL.current, -0.35); set(arR.current, -0.35)
     } else {
-      set(arL.current, -swing * 0.9 + Math.sin(t * 1.5) * 0.03); set(arR.current, swing * 0.9 - Math.sin(t * 1.5) * 0.03)
+      const idle = Math.sin(t * 1.5) * 0.03
+      set(arL.current, g.armL + idle); set(arR.current, g.armR - idle)
     }
   })
 
@@ -84,8 +91,7 @@ export const Figure = memo(function Figure({ avatar, lod, getPose }: FigureProps
     return (
       <group>
         <group ref={hips} position-y={0.67}>
-          <mesh ref={standM} geometry={geos.midStand} material={figureMaterial} castShadow />
-          <mesh ref={sitM} geometry={geos.midSit} material={figureMaterial} castShadow visible={false} />
+          <mesh ref={midM} geometry={geos.mid('stand')} material={figureMaterial} castShadow />
         </group>
       </group>
     )
@@ -114,7 +120,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 const _v = new Vector3()
 
-const LOD_FULL = 10, LOD_MID = 26, LOD_HIDE = 110
+const LOD_FULL = 16, LOD_MID = 42, LOD_HIDE = 120
 
 export const AgentCharacter = memo(function AgentCharacter({ id }: { id: string }) {
   const agent = useAgent(id)

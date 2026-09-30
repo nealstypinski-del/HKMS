@@ -4,6 +4,7 @@ import {
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { HAIR_COLORS, SHIRTS, SHOES, SKIN, TROUSERS } from '../world/avatar'
 import type { Avatar } from '../world/types'
+import { framePhase, gait, WALK_FRAMES } from './gait'
 
 /**
  * Figurengeometrie pro Aussehen, zu wenigen Meshes mit Vertexfarben verschmolzen.
@@ -82,9 +83,8 @@ export interface FigureGeos {
   arm: BufferGeometry // gemeinsame Geometrie für beide Arme (Ursprung an der Schulter, Ärmel plus Unterarm)
   thigh: BufferGeometry
   shin: BufferGeometry
-  /** verschmolzene Varianten für die mittlere Detailstufe */
-  midStand: BufferGeometry
-  midSit: BufferGeometry
+  /** Verschmolzene Pose für die mittlere Detailstufe: 'stand', 'sit', 'w0'..'w7' (Gehphasen). Wird bei Bedarf gebaut und gemerkt. */
+  mid: (pose: string) => BufferGeometry
   far: BufferGeometry
 }
 
@@ -120,24 +120,39 @@ export function getFigureGeos(a: Avatar): FigureGeos {
   const thighG = bake(thigh)
   const shinG = bake(shinP)
 
-  // Mittlere Stufe: alles in einer Geometrie, stehend oder sitzend
-  const build = (seated: boolean) => {
-    const parts: BufferGeometry[] = [bake(torso), bake(head, headM)]
-    for (const sx of [-1, 1]) {
-      const sh = new Matrix4().makeTranslation(sx * 0.26, 0.44, 0)
-      const armRot = new Matrix4().makeRotationX(seated ? -0.85 : 0)
-      parts.push(bake(upperArm, sh.clone().multiply(armRot)))
-      parts.push(bake(fore, sh.clone().multiply(armRot).multiply(elbow)))
-      const hip = new Matrix4().makeTranslation(sx * 0.1, 0, 0)
-      const thRot = new Matrix4().makeRotationX(seated ? -Math.PI / 2 : 0)
-      parts.push(bake(thigh, hip.clone().multiply(thRot)))
-      const knee = new Matrix4().makeTranslation(0, -0.3, 0).multiply(new Matrix4().makeRotationX(seated ? Math.PI / 2 : 0))
-      parts.push(bake(shinP, hip.clone().multiply(thRot).multiply(knee)))
+  // Mittlere Stufe: alles in einer Geometrie, je Pose gebaut und gemerkt
+  const midCache = new Map<string, BufferGeometry>()
+  const anglesFor = (pose: string) => {
+    if (pose === 'sit') return { th: [-Math.PI / 2, -Math.PI / 2], sh: [Math.PI / 2, Math.PI / 2], ar: [-0.85, -0.85] }
+    if (pose.startsWith('w')) {
+      const g = gait(framePhase(Number(pose.slice(1)), WALK_FRAMES))
+      return { th: [g.thighL, g.thighR], sh: [g.shinL, g.shinR], ar: [g.armL, g.armR] }
     }
+    return { th: [0, 0], sh: [0, 0], ar: [0, 0] }
+  }
+  const build = (pose: string) => {
+    const { th, sh, ar } = anglesFor(pose)
+    const parts: BufferGeometry[] = [bake(torso), bake(head, headM)]
+    ;[-1, 1].forEach((sx, i) => {
+      const shoulder = new Matrix4().makeTranslation(sx * 0.26, 0.44, 0)
+      const armRot = new Matrix4().makeRotationX(ar[i])
+      parts.push(bake(upperArm, shoulder.clone().multiply(armRot)))
+      parts.push(bake(fore, shoulder.clone().multiply(armRot).multiply(elbow)))
+      const hip = new Matrix4().makeTranslation(sx * 0.1, 0, 0)
+      const thRot = new Matrix4().makeRotationX(th[i])
+      parts.push(bake(thigh, hip.clone().multiply(thRot)))
+      const knee = new Matrix4().makeTranslation(0, -0.3, 0).multiply(new Matrix4().makeRotationX(sh[i]))
+      parts.push(bake(shinP, hip.clone().multiply(thRot).multiply(knee)))
+    })
     return mergeGeometries(parts, false)!
   }
+  const mid = (pose: string) => {
+    let g = midCache.get(pose)
+    if (!g) { g = build(pose); midCache.set(pose, g) }
+    return g
+  }
   const far = bake([B([0, 0.05, 0], [0.36, 1.0, 0.26], shirt), S([0, 0.72, 0], [0.5, 0.5, 0.5], skin)])
-  const g: FigureGeos = { upper, arm, thigh: thighG, shin: shinG, midStand: build(false), midSit: build(true), far }
+  const g: FigureGeos = { upper, arm, thigh: thighG, shin: shinG, mid, far }
   cache.set(key, g)
   return g
 }
