@@ -13,7 +13,7 @@ export function buildPathGeometry() {
   const col = []
   const seen = new Set()
   for (const sg of uniquePathSegments) {
-    if (sg.surface === 'plaza' || sg.surface === 'lawn') continue
+    if (sg.surface !== 'path' && sg.surface !== 'forest') continue
     const key = [sg.a.id, sg.b.id].sort().join('|')
     if (seen.has(key)) continue
     seen.add(key)

@@ -15,15 +15,25 @@ export default function OutdoorGround() {
     return t
   }, [])
   const plazaTex = useMemo(() => { const t = tex.clone(); t.repeat.set((x1 - x0) / 4, (z1 - z0) / 4); t.needsUpdate = true; return t }, [tex, x0, x1, z0, z1])
-  const fore = useMemo(() => { const t = tex.clone(); t.repeat.set(9, 9); t.needsUpdate = true; return t }, [tex])
+  const fore = useMemo(() => { const t = tex.clone(); t.repeat.set(0.25, 0.25); t.needsUpdate = true; return t }, [tex])
+  // Vorplatz mit Aussparung für den Gebäudegrundriss (sonst verdeckt er die Innenböden)
+  const foreGeo = useMemo(() => {
+    const s = new THREE.Shape()
+    s.moveTo(-33, -22); s.lineTo(33, -22); s.lineTo(33, 22); s.lineTo(-33, 22); s.lineTo(-33, -22)
+    const h = new THREE.Path()
+    h.moveTo(-22.4, -14.4); h.lineTo(-22.4, 14.4); h.lineTo(22.4, 14.4); h.lineTo(22.4, -14.4); h.lineTo(-22.4, -14.4)
+    s.holes.push(h)
+    const g = new THREE.ShapeGeometry(s)
+    g.rotateX(-Math.PI / 2)
+    return g
+  }, [])
   const ringA = useMemo(() => { const m = new THREE.MeshStandardMaterial({ color: '#ff8a3d', emissive: '#ff8a3d', emissiveIntensity: 0.3 }); registerNightMaterial(m, { base: 1.5, min: 0.2 }); return m }, [])
   const ringB = useMemo(() => { const m = new THREE.MeshStandardMaterial({ color: '#2fd6c0', emissive: '#2fd6c0', emissiveIntensity: 0.3 }); registerNightMaterial(m, { base: 1.4, min: 0.2 }); return m }, [])
   const paving = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }
   return (
     <group name="outdoor-ground">
       {/* Vorplatz rund um das HQ */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, -2]} receiveShadow>
-        <circleGeometry args={[22, 48]} />
+      <mesh geometry={foreGeo} position={[0, 0.03, 0]} receiveShadow>
         <meshStandardMaterial map={fore} color="#e6dfcf" roughness={0.95} {...paving} />
       </mesh>
       {/* Plaza Richtung Park */}
@@ -31,15 +41,15 @@ export default function OutdoorGround() {
         <planeGeometry args={[x1 - x0, z1 - z0]} />
         <meshStandardMaterial map={plazaTex} color="#e6dfcf" roughness={0.95} {...paving} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, -2]}>
-        <ringGeometry args={[14.6, 15, 64]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+        <ringGeometry args={[29.6, 30, 64]} />
         <primitive object={ringA} attach="material" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, -2]}>
-        <ringGeometry args={[13.2, 13.5, 64]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+        <ringGeometry args={[28.2, 28.5, 64]} />
         <primitive object={ringB} attach="material" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, -30]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, -36]}>
         <ringGeometry args={[6.4, 6.8, 48]} />
         <primitive object={ringB} attach="material" />
       </mesh>

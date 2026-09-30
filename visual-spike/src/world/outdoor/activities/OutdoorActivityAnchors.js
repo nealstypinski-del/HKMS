@@ -18,13 +18,13 @@ export const ANCHORS = [
   // Waldlauf
   A('forest-run-start', 'run', n('f1').x, n('f1').z, 0, 8, ['RUN_FOREST'], { routeId: 'forest-training-loop' }),
   A('forest-run-checkpoint', 'checkpoint', n('f3').x, n('f3').z, 0, 8, ['RUN_FOREST'], { routeId: 'forest-training-loop' }),
-  A('stretching-area', 'stretch', -14, -30, face(-14, -30, 0, -50), 6, ['STRETCH']),
+  A('stretching-area', 'stretch', -14, -34, face(-14, -34, 0, -56), 6, ['STRETCH']),
   A('herkules-viewpoint', 'viewpoint', n('herkules-viewpoint').x, n('herkules-viewpoint').z, Math.PI, 10, ['WALK_TO_HERKULES']),
   A('water-rest-area', 'water', 26.5, -108, Math.PI / 2, 6, ['REST_OUTSIDE', 'DRINK']),
-  A('anchor-coffee-outdoor-01', 'coffee', 14, -20, face(14, -20, 0, -10), 4, ['REST_OUTSIDE']),
+  A('anchor-coffee-outdoor-01', 'coffee', 14, -26, face(14, -26, 0, -16), 4, ['REST_OUTSIDE']),
   // Bänke: yaw = Blickrichtung der sitzenden Person
-  A('bench-rest-01', 'bench', -12, -38, face(-12, -38, 0, -60), 3, ['REST_OUTSIDE']),
-  A('bench-plaza-02', 'bench', 12, -38, face(12, -38, 0, -60), 3, ['REST_OUTSIDE']),
+  A('bench-rest-01', 'bench', -12, -42, face(-12, -42, 0, -64), 3, ['REST_OUTSIDE']),
+  A('bench-plaza-02', 'bench', 12, -42, face(12, -42, 0, -64), 3, ['REST_OUTSIDE']),
   A('bench-park-01', 'bench', -22, -92, face(-22, -92, 0, -108), 3, ['REST_OUTSIDE']),
   A('bench-park-02', 'bench', 22, -92, face(22, -92, 0, -108), 3, ['REST_OUTSIDE']),
   A('bench-water-01', 'bench', 27.5, -100, face(27.5, -100, 0, -112), 3, ['REST_OUTSIDE']),

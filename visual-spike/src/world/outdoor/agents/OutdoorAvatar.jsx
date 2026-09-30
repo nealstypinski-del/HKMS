@@ -28,7 +28,7 @@ export default function OutdoorAvatar({ state, shirt = '#ff8a3d', hair = '#2b211
   useFrame(({ clock }, dt) => {
     const r = root.current
     if (!r) return
-    r.visible = state.visible !== false
+    r.visible = state.visible !== false && !state.cull
     if (!r.visible) return
     r.position.set(state.x, state.y, state.z)
     r.rotation.y = state.yaw

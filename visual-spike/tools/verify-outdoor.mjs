@@ -1,5 +1,6 @@
 // Reproduzierbare Prüfung der Außenwelt ohne Grafik (node tools/verify-outdoor.mjs). Gibt exakte Zahlen aus, Exitcode 1 bei Fehlern.
 import { MONUMENT, REF, CASCADE, POOL } from '../src/world/outdoor/config/bergpark.config.js'
+import { NODES } from '../src/world/outdoor/routes/routeNodes.js'
 import { heightAt, cascadeElevationAtV } from '../src/world/outdoor/terrain/heightField.js'
 import { treadLength, waterStepCount, segments } from '../src/world/outdoor/cascades/cascadeLayout.js'
 import { buildSegmentData } from '../src/world/outdoor/cascades/CascadeSegment.js'
@@ -51,7 +52,7 @@ for (const r of Object.values(routes)) {
 const need = ['cascade-run-start', 'cascade-run-checkpoint-01', 'cascade-run-checkpoint-02', 'cascade-run-top', 'forest-run-start', 'forest-run-checkpoint', 'stretching-area', 'bench-rest-01', 'water-rest-area', 'bench-cascade-01', 'bench-forest-01', 'bench-herkules-01', 'anchor-coffee-outdoor-01']
 check('Pflichtanker vorhanden', need.every((id) => getAnchor(id)), `${need.filter((id) => getAnchor(id)).length}/${need.length}, insgesamt ${ANCHORS.length} Anker, davon ${ANCHORS.filter((a) => a.kind === 'bench').length} Bänke`)
 let unreachable = []
-for (const a of ANCHORS) { const p = findPathTo(a.x, a.z, 'hq-door'); if (!p || p.length < 0.1 && Math.hypot(a.x, a.z + 7.6) > 2) unreachable.push(a.id) }
+for (const a of ANCHORS) { const p = findPathTo(a.x, a.z, 'hq-door'); if (!p || (p.length < 0.1 && Math.hypot(a.x - NODES['hq-door'].x, a.z - NODES['hq-door'].z) > 2)) unreachable.push(a.id) }
 check('Alle Anker vom HQ Eingang erreichbar', unreachable.length === 0, `${ANCHORS.length - unreachable.length}/${ANCHORS.length}`)
 
 // 5. Kollision (Bewegung schrittweise, das Ergebnis der Auflösung fließt in den nächsten Schritt ein)

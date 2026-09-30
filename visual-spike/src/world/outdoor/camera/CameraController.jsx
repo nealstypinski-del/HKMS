@@ -3,8 +3,10 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { WORLD } from '../config/bergpark.config.js'
+import { resolveCollisions, setIndoorColliders, getAllRects } from './collision.js'
+import { walkY, conveyorAt, buildIndoorColliders, boomLimit } from '../../indoor/nav/indoorWalk.js'
 import { heightAt } from '../terrain/heightField.js'
-import { resolveCollisions } from './collision.js'
+import { insideHQ } from '../../indoor/config/hq.layout.js'
 import { samplePolyline, SURFACE_SPEED } from '../routes/OutdoorRouteSystem.js'
 import { TOUR_STOPS, legBetween, lookTarget, stopPosition } from './outdoorTour.js'
 import { focus } from '../runtime/focus.js'
@@ -15,6 +17,9 @@ import OutdoorAvatar from '../agents/OutdoorAvatar.jsx'
 const EYE = WORLD.eyeHeight
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a))
 const lerpAng = (a, b, t) => a + angDiff(a, b) * t
+
+// Innenkollider einmal registrieren (Wände, Möbel, Treppen, Rolltreppen)
+setIndoorColliders(buildIndoorColliders())
 
 export const player = { x: 0, y: 0, z: -12, yaw: Math.PI, activity: 'IDLE', speed: 0, visible: true }
 
@@ -28,7 +33,7 @@ export default function CameraController({ mode, settings, api }) {
   const controls = useRef()
   const keys = useRef({})
   const st = useRef({
-    heading: Math.PI, pitch: -0.12, vx: 0, vz: 0, y: 0, bob: 0, dist: 5.5,
+    heading: Math.PI, pitch: -0.12, vx: 0, vz: 0, y: 0, surf: 0, bob: 0, dist: 5.5,
     savedTycoon: null, prevMode: null, tour: null, camPos: new THREE.Vector3(), init: false,
   })
 
@@ -64,10 +69,11 @@ export default function CameraController({ mode, settings, api }) {
 
   // API für UI, Tests und Terminal Anbindung
   useEffect(() => {
-    api.teleport = (x, z, heading = st.current.heading, pitch = -0.1) => {
+    api.teleport = (x, z, heading = st.current.heading, pitch = -0.1, y = null) => {
       const s = st.current
       player.x = x; player.z = z; player.yaw = heading
-      s.heading = heading; s.pitch = pitch; s.y = heightAt(x, z)
+      s.surf = y !== null ? y : heightAt(x, z)
+      s.heading = heading; s.pitch = pitch; s.y = s.surf
       s.vx = s.vz = 0
       s.init = true
     }
@@ -93,7 +99,7 @@ export default function CameraController({ mode, settings, api }) {
     const s = st.current
     const k = keys.current
     api.mode = mode
-    if (!s.init) { s.y = heightAt(player.x, player.z); s.init = true }
+    if (!s.init) { s.y = heightAt(player.x, player.z); s.surf = s.y; s.init = true }
 
     // Moduswechsel: Tycoon Ansicht sichern und wiederherstellen
     if (s.prevMode !== mode) {
@@ -132,12 +138,16 @@ export default function CameraController({ mode, settings, api }) {
     } else {
       // Third Person: Kamera hinter dem Avatar, Kollision mit dem Boden verhindert Eintauchen
       player.visible = true
-      const d = s.dist
-      const cx = player.x - Math.sin(camHeading) * Math.cos(camPitch) * d
-      const cz = player.z - Math.cos(camHeading) * Math.cos(camPitch) * d
+      const indoors = insideHQ(player.x, player.z, 0.5)
+      const dxk = -Math.sin(camHeading) * Math.cos(camPitch)
+      const dzk = -Math.cos(camHeading) * Math.cos(camPitch)
+      const d = indoors ? boomLimit(getAllRects(), player.x, player.z, s.surf, dxk, dzk, s.dist) : s.dist
+      const cx = player.x + dxk * d
+      const cz = player.z + dzk * d
       let cy = s.y + 1.55 - Math.sin(camPitch) * d
-      const g = heightAt(cx, cz) + 0.5
+      const g = (insideHQ(cx, cz, 0.2) ? walkY(cx, cz, s.surf) : heightAt(cx, cz)) + 0.5
       if (cy < g) cy = g
+      if (indoors && insideHQ(cx, cz, 0.2)) cy = Math.min(cy, (s.surf > 2.2 ? 4.5 : 0) + 4.0)
       const kk = settings.smoothing ? 1 - Math.exp(-dt * 14) : 1
       s.camPos.lerp(new THREE.Vector3(cx, cy, cz), s.camPos.lengthSq() === 0 ? 1 : kk)
       camera.position.copy(s.camPos)
@@ -173,15 +183,17 @@ export default function CameraController({ mode, settings, api }) {
     s.vz += (dz * target - s.vz) * a
     player.x += s.vx * dt
     player.z += s.vz * dt
-    resolveCollisions(player, 0.4)
+    const belt = conveyorAt(player.x, player.z, s.surf)
+    if (belt) player.z += belt.dz * dt
+    resolveCollisions(player, 0.4, s.surf)
     const sp = Math.hypot(s.vx, s.vz)
     player.speed = sp
     // Ausrichtung des Avatars: in Laufrichtung, bei Stillstand beibehalten
     if (sp > 0.4) player.yaw = lerpAng(player.yaw, Math.atan2(s.vx, s.vz), 1 - Math.exp(-dt * 12))
-    player.activity = sp > 6.5 ? 'RUN' : sp > 0.4 ? 'WALK' : 'IDLE'
+    player.activity = belt && sp < 1 ? 'IDLE' : sp > 6.5 ? 'RUN' : sp > 0.4 ? 'WALK' : 'IDLE'
     s.bob += dt * sp * 2.2
-    const gy = heightAt(player.x, player.z)
-    s.y += (gy - s.y) * (1 - Math.exp(-dt * 18))
+    s.surf = walkY(player.x, player.z, s.surf)
+    s.y += (s.surf - s.y) * (1 - Math.exp(-dt * 16))
     player.y = s.y
   }
 
@@ -215,7 +227,8 @@ export default function CameraController({ mode, settings, api }) {
     const rem = T.poly.length - T.s
     const q = samplePolyline(T.poly, Math.min(T.s, T.poly.length))
     player.x = q.x; player.z = q.z
-    s.y += (heightAt(q.x, q.z) - s.y) * (1 - Math.exp(-dt * 12))
+    s.surf = heightAt(q.x, q.z)
+    s.y += (s.surf - s.y) * (1 - Math.exp(-dt * 12))
     player.y = s.y
     player.speed = sp
     player.yaw = q.yaw

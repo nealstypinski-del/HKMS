@@ -31,7 +31,7 @@ export default function DigitalBergpark({ settings, agentApi }) {
       <BergparkTerrain receiveShadow={quality.shadows} />
       <OutdoorGround />
       <PathNetwork />
-      <HQExterior interiorLoaded={interior && settings.interior} />
+      <HQExterior detail={interior && settings.interior ? 'full' : 'shell'} shadows={quality.shadows} />
       <OutdoorProps quality={quality} />
       <CascadeSystem quality={quality} waterQuality={quality.water} />
       <ResultPool waterQuality={quality.water} />

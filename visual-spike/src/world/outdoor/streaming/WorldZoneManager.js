@@ -9,12 +9,12 @@ const circ = (x, z, r) => ({ type: 'circle', x, z, r })
 
 export const ZONES = [
   {
-    id: 'HQ_INTERIOR', priority: 5, shapes: [rect(-9.6, 9.6, -6.6, 6.6)], thresholds: [0, 90, 220],
+    id: 'HQ_INTERIOR', priority: 5, shapes: [rect(-22, 22, -14, 14)], thresholds: [0, 110, 240],
     assets: ['hq-interior-ground-floor', 'agent-labels'],
     lodPolicy: { HIGH_DETAIL: 'Innenraum voll', LOADED: 'Innenraum voll', LOW_DETAIL: 'Glasproxy ohne Innenraum', UNLOADED: 'Glasproxy ohne Innenraum' },
   },
   {
-    id: 'HQ_EXTERIOR', priority: 4, shapes: [circ(0, -30, 55)], thresholds: [0, 120, 400],
+    id: 'HQ_EXTERIOR', priority: 4, shapes: [circ(0, -30, 60)], thresholds: [0, 120, 400],
     assets: ['hq-tower', 'plaza', 'paths', 'lamps', 'kiosk'],
     lodPolicy: { HIGH_DETAIL: 'volle Ausstattung', LOADED: 'volle Ausstattung', LOW_DETAIL: 'Gebäude und Boden', UNLOADED: 'Gebäude und Boden' },
   },

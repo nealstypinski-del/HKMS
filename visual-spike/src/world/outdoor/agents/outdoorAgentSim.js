@@ -1,13 +1,14 @@
 // Kleine Simulation der Außenagenten für Demo und Integrationsvertrag.
 // WICHTIG: Terminal 4 entscheidet über Verhalten und Verfügbarkeit. Hier gibt es nur Bewegung entlang semantischer Routen.
 // Stamina ist reiner Spiel und Anzeigezustand und begrenzt niemals echte Arbeit: interrupt() wirkt sofort.
-import { findPathTo, concatPolylines, polylineFromPts, routeForIntent, samplePolyline, SURFACE_SPEED } from '../routes/OutdoorRouteSystem.js'
+import { findPathTo, concatPolylines, polylineFromPts, routeForIntent, getRoute, samplePolyline, SURFACE_SPEED, ESCALATOR_SPEED } from '../routes/OutdoorRouteSystem.js'
+import { insideHQ } from '../../indoor/config/hq.layout.js'
 import { NODES } from '../routes/routeNodes.js'
 import { ANCHORS, getAnchor, anchorsForIntent } from '../activities/OutdoorActivityAnchors.js'
 
 export const INTENT_LABEL = {
   RUN_CASCADES: 'Kaskadenlauf', RUN_FOREST: 'Waldlauf', WALK_CASCADES: 'Spaziergang Kaskaden', WALK_TO_HERKULES: 'Weg zum Herkules',
-  REST_OUTSIDE: 'Pause', STRETCH: 'Dehnen', RETURN_TO_HQ: 'Zurück ins HQ',
+  REST_OUTSIDE: 'Pause', STRETCH: 'Dehnen', RETURN_TO_HQ: 'Zurück ins HQ', PATROL_INDOOR: 'Rundgang HQ', GO_TO_SEAT: 'Unterwegs', WORK_AT_DESK: 'Arbeitet', ATTEND_MEETING: 'Meeting',
 }
 const RUN = 3.6
 const WALK = 1.6
@@ -19,6 +20,7 @@ export function createAgent(id, name, look = {}) {
     mode: 'inside', // inside | route | anchor
     visible: false, activity: 'IDLE', speed: 0, intent: null, label: 'im HQ', lane: 0, stamina: 1,
     poly: null, s: 0, loopStart: 0, loop: false, base: WALK, anchorId: null, seatIndex: 0, spawnDelay: 0,
+    homeSeat: null, seat: null, cull: false, baseActivity: 'IDLE',
   }
 }
 
@@ -28,16 +30,35 @@ function release(a) {
 }
 
 function startPoly(a, poly, { activity, base, loop = false, loopStart = 0 }) {
-  a.poly = poly; a.s = 0; a.loop = loop; a.loopStart = loopStart; a.base = base; a.activity = activity; a.mode = 'route'; a.visible = true
+  a.poly = poly; a.s = 0; a.loop = loop; a.loopStart = loopStart; a.base = base; a.activity = activity; a.baseActivity = activity; a.mode = 'route'; a.visible = true
 }
 
 // Vertragsschnittstelle: Absicht setzen (Terminal 4 ruft dies auf)
+export const levelOfAgent = (a) => (a.y > 2.2 && insideHQ(a.x, a.z) ? 1 : 0)
+
+// Direkt an einen Platz setzen (Startzustand: Agent arbeitet bereits am Schreibtisch)
+export function placeAtSeat(a, seat, label) {
+  a.seat = seat; a.mode = 'anchor'; a.visible = true; a.activity = 'SIT'; a.speed = 0
+  a.x = seat.x; a.y = seat.y; a.z = seat.z; a.yaw = seat.yaw; a.label = label || seat.team; a.poly = null
+}
+
 export function assignIntent(a, intent, opts = {}) {
   release(a)
   a.intent = intent
   a.label = INTENT_LABEL[intent] || intent
+  a.seat = null
   const from = { x: a.x, z: a.z }
+  const level = levelOfAgent(a)
   if (a.mode === 'inside') { from.x = NODES['hq-door'].x; from.z = NODES['hq-door'].z }
+  // Ziel ist ein Innenplatz (Schreibtisch oder Konferenzstuhl), Weg über den gemeinsamen Wegegraph
+  const goSeat = (seat, label) => {
+    const path = findPathTo(from.x, from.z, seat.node, level)
+    const last = path.pts[path.pts.length - 1]
+    const poly = polylineFromPts([...path.pts, { id: seat.id, x: seat.x, z: seat.z, y: seat.y, kind: 'indoor' }])
+    void last
+    startPoly(a, poly, { activity: 'WALK', base: WALK * 1.15 })
+    a.seat = seat; a.label = label
+  }
   switch (intent) {
     case 'RUN_CASCADES': case 'RUN_FOREST': case 'WALK_CASCADES': case 'WALK_TO_HERKULES': {
       const route = routeForIntent(intent)
@@ -48,8 +69,16 @@ export function assignIntent(a, intent, opts = {}) {
       break
     }
     case 'RETURN_TO_HQ': {
-      const poly = findPathTo(from.x, from.z, 'hq-door')
+      if (a.homeSeat) { goSeat(a.homeSeat, 'Zurück an den Platz'); a.activity = 'RUN'; a.base = RUN * 1.25; break }
+      const poly = findPathTo(from.x, from.z, 'in-lobby', level)
       startPoly(a, poly, { activity: 'RUN', base: RUN * 1.3 })
+      break
+    }
+    case 'WORK_AT_DESK': case 'ATTEND_MEETING': goSeat(opts.seat, opts.label || INTENT_LABEL[intent]); break
+    case 'PATROL_INDOOR': {
+      const route = getRoute(opts.routeId || 'indoor-loop-a')
+      const first = findPathTo(from.x, from.z, route.nodes[0], level)
+      startPoly(a, concatPolylines(first, route), { activity: 'WALK', base: WALK, loop: true, loopStart: first.length })
       break
     }
     case 'REST_OUTSIDE': case 'STRETCH': {
@@ -77,6 +106,7 @@ export function assignIntent(a, intent, opts = {}) {
 function nearestNodeFor(anchor) {
   let best = null; let bd = Infinity
   for (const [id, n] of Object.entries(NODES)) {
+    if (n.y !== undefined) continue
     const d = Math.hypot(n.x - anchor.x, n.z - anchor.z)
     if (d < bd) { bd = d; best = id }
   }
@@ -104,17 +134,21 @@ export function stepAgent(a, dt) {
     const cur = samplePolyline(a.poly, a.s, 0, tmp)
     const factor = SURFACE_SPEED[cur.surface] || 1
     const staminaFactor = a.activity === 'RUN' ? 0.75 + 0.25 * a.stamina : 1 // nur Darstellung
-    const sp = a.base * factor * staminaFactor
+    const onEsc = cur.surface === 'escalator'
+    const sp = onEsc ? ESCALATOR_SPEED : a.base * factor * staminaFactor
+    if (onEsc) a.activity = 'IDLE'
+    else if (a.activity === 'IDLE' && a.baseActivity !== 'IDLE') a.activity = a.baseActivity
     a.s += sp * dt
     a.speed = sp
     if (a.s >= a.poly.length) {
       if (a.loop) a.s = a.loopStart
+      else if (a.seat) { placeAtSeat(a, a.seat, a.intent === 'ATTEND_MEETING' ? 'Meeting' : a.seat.team ? `arbeitet · ${a.seat.team}` : 'Arbeitet'); return }
       else if (a.intent === 'RETURN_TO_HQ') { a.mode = 'inside'; a.visible = false; a.activity = 'IDLE'; a.speed = 0; a.label = 'im HQ'; return }
       else { arrive(a); return }
     }
     const p = samplePolyline(a.poly, a.s, a.lane, tmp)
     a.x = p.x; a.y = p.y; a.z = p.z; a.yaw = p.yaw
-    a.stamina = Math.max(0, a.stamina - (a.activity === 'RUN' ? dt * 0.012 : 0)) + (a.activity === 'RUN' ? 0 : dt * 0.03)
+    a.stamina = Math.max(0, a.stamina - (a.baseActivity === 'RUN' ? dt * 0.012 : 0)) + (a.baseActivity === 'RUN' ? 0 : dt * 0.03)
     a.stamina = Math.min(1, a.stamina)
   } else if (a.mode === 'anchor') {
     a.speed = 0

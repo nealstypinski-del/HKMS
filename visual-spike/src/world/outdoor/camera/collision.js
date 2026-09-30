@@ -13,22 +13,24 @@ CASCADE_STAGES.forEach((_, i) => {
 const ellipses = [{ x: POOL.x, z: POOL.z, a: POOL.a + POOL.rimW + 0.2, b: POOL.b + POOL.rimW + 0.2 }]
 
 const H = WORLD.hq
+// HQ Außenhülle (Tür bleibt frei). Innenwände und Möbel liefert das Indoor Modul über setIndoorColliders().
 const rects = [
-  // HQ Außenwände (Tür bleibt frei)
-  { x0: -H.halfW - 0.2, x1: -H.doorHalf, z0: -H.halfD - 0.3, z1: -H.halfD + 0.1 },
-  { x0: H.doorHalf, x1: H.halfW + 0.2, z0: -H.halfD - 0.3, z1: -H.halfD + 0.1 },
-  { x0: -H.halfW - 0.3, x1: -H.halfW + 0.1, z0: -H.halfD - 0.3, z1: H.halfD + 0.3 },
-  { x0: H.halfW - 0.1, x1: H.halfW + 0.3, z0: -H.halfD - 0.3, z1: H.halfD + 0.3 },
-  { x0: -H.halfW - 0.3, x1: H.halfW + 0.3, z0: H.halfD - 0.1, z1: H.halfD + 0.3 },
+  { x0: -H.halfW - 0.3, x1: -H.doorHalf, z0: -H.halfD - 0.3, z1: -H.halfD + 0.1, y0: -1, y1: 99 },
+  { x0: H.doorHalf, x1: H.halfW + 0.3, z0: -H.halfD - 0.3, z1: -H.halfD + 0.1, y0: -1, y1: 99 },
+  { x0: -H.halfW - 0.3, x1: -H.halfW + 0.1, z0: -H.halfD - 0.3, z1: H.halfD + 0.3, y0: -1, y1: 99 },
+  { x0: H.halfW - 0.1, x1: H.halfW + 0.3, z0: -H.halfD - 0.3, z1: H.halfD + 0.3, y0: -1, y1: 99 },
+  { x0: -H.halfW - 0.3, x1: H.halfW + 0.3, z0: H.halfD - 0.1, z1: H.halfD + 0.3, y0: -1, y1: 99 },
   // Wasserkanal der Kaskade (nicht begehbar)
-  { x0: -6.9, x1: 6.9, z0: CASCADE.zTop, z1: CASCADE.zTop + CASCADE.length },
+  { x0: -6.9, x1: 6.9, z0: CASCADE.zTop, z1: CASCADE.zTop + CASCADE.length, y0: -1, y1: 999 },
 ]
+let indoorRects = []
+export function setIndoorColliders(list) { indoorRects = list }
 // Geländer mit Lücken an den Zugängen
 const gz = RAIL_GAPS_V.map((v) => CASCADE.zTop + v).sort((a, b) => a - b)
 const railSpans = [[CASCADE.zTop, gz[0] - 4], [gz[0] + 4, gz[1] - 4], [gz[1] + 4, CASCADE.zTop + CASCADE.length]]
 for (const [a, b] of railSpans) for (const sx of [-1, 1]) {
   const x = sx * CASCADE.railX
-  rects.push({ x0: x - 0.15, x1: x + 0.15, z0: a, z1: b })
+  rects.push({ x0: x - 0.15, x1: x + 0.15, z0: a, z1: b, y0: -1, y1: 999 })
 }
 
 // Baumstämme in einem Raster (nur nahe Bäume werden geprüft)
@@ -43,7 +45,7 @@ export function setTreeColliders(trees) {
   }
 }
 
-export function resolveCollisions(pos, radius = 0.4) {
+export function resolveCollisions(pos, radius = 0.4, y = 0) {
   const { minX, maxX, minZ, maxZ } = WORLD.bounds
   pos.x = Math.min(maxX - 6, Math.max(minX + 6, pos.x))
   pos.z = Math.min(maxZ - 6, Math.max(minZ + 6, pos.z))
@@ -68,7 +70,9 @@ export function resolveCollisions(pos, radius = 0.4) {
       pos.z = e.z + (l > 1e-4 ? qz * k : 0) * (e.b + radius)
     }
   }
-  for (const r of rects) {
+  const all = indoorRects.length ? rects.concat(indoorRects) : rects
+  for (const r of all) {
+    if (r.y0 !== undefined && (y + 1.2 < r.y0 || y > r.y1)) continue
     const x0 = r.x0 - radius
     const x1 = r.x1 + radius
     const z0 = r.z0 - radius
@@ -101,3 +105,6 @@ export function resolveCollisions(pos, radius = 0.4) {
   }
   return pos
 }
+
+// Alle Wandflächen (Außenhülle und Innenwände) für die Kameraführung
+export const getAllRects = () => (indoorRects.length ? rects.concat(indoorRects) : rects)

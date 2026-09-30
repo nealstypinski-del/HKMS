@@ -14,8 +14,8 @@ export const REF = {
 
 export const WORLD = {
   bounds: { minX: -220, maxX: 220, minZ: -520, maxZ: 90 },
-  hq: { x: 0, z: 0, halfW: 9.4, halfD: 6.4, floors: 4, floorHeight: 4, doorZ: -6.4, doorHalf: 1.6 },
-  plaza: { x0: -24, x1: 24, z0: -52, z1: -8 },
+  hq: { x: 0, z: 0, halfW: 22, halfD: 14, floors: 4, floorHeight: 4.5, doorZ: -14, doorHalf: 2.5 },
+  plaza: { x0: -26, x1: 26, z0: -58, z1: -16 },
   // Kaskade: von oben (v = 0, Herkules) nach unten (v = length, Ergebnisbecken)
   eyeHeight: 1.7,
 }

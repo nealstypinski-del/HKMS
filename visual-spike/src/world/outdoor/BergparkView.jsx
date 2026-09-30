@@ -4,6 +4,7 @@ import { QUALITY } from './config/bergpark.config.js'
 import DigitalBergpark from './DigitalBergpark.jsx'
 import CameraController from './camera/CameraController.jsx'
 import PerfProbe from './ui/PerfProbe.jsx'
+import BergparkHUD from './ui/BergparkHUD.jsx'
 import { labelRoot } from '../../labelRoot.js'
 import { setTimeOfDay } from './environment/outdoorEnvironment.js'
 import { startMockWorkflow, stopMockWorkflow } from './cascades/mockWorkflow.js'
@@ -36,10 +37,7 @@ export default function BergparkView({ onBack }) {
         <CameraController mode={mode} settings={settings} api={api.current} />
         <PerfProbe />
       </Canvas>
-      <div style={{ position: 'absolute', top: 12, left: 12, color: '#fff', font: '12px system-ui', display: 'flex', gap: 6, zIndex: 5 }}>
-        <button onClick={onBack}>Etagen</button>
-        {['tp', 'fp', 'tycoon'].map((m) => <button key={m} onClick={() => setMode(m)} style={{ fontWeight: mode === m ? 800 : 400 }}>{m}</button>)}
-      </div>
+      <BergparkHUD mode={mode} setMode={setMode} settings={settings} setSettings={setSettings} api={api.current} agentApi={agentApi.current} onBack={onBack} />
     </>
   )
 }

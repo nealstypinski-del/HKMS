@@ -2,13 +2,18 @@
 // Die Treppen sind eine NAVIGATIONSFLÄCHE (glatte Neigung), keine einzelnen Stufen.
 import { CASCADE } from '../config/bergpark.config.js'
 import { heightAt } from '../terrain/heightField.js'
-import { NODES } from './routeNodes.js'
+import { NODES, EXTRA_LINKS } from './routeNodes.js'
 import { ROUTES, INTENT_ROUTES } from './routeDefs.js'
 
-export const SURFACE_WIDTH = { plaza: 5, path: 2.6, forest: 1.8, stairs: CASCADE.stairOuter - CASCADE.stairInner, lawn: 3 }
-export const SURFACE_SPEED = { plaza: 1, path: 1, forest: 0.9, stairs: 0.72, lawn: 0.9 }
+export const SURFACE_WIDTH = { plaza: 5, path: 2.6, forest: 1.8, stairs: CASCADE.stairOuter - CASCADE.stairInner, lawn: 3, indoor: 1.4, istairs: 1.2, escalator: 0.4 }
+export const SURFACE_SPEED = { plaza: 1, path: 1, forest: 0.9, stairs: 0.72, lawn: 0.9, indoor: 0.9, istairs: 0.75, escalator: 0.3 }
+// Rolltreppe: feste Fördergeschwindigkeit (horizontal, m/s) unabhängig vom Lauftempo des Agenten
+export const ESCALATOR_SPEED = 0.433
 
 const surfaceBetween = (a, b) => {
+  if (a.kind === 'esc' && b.kind === 'esc') return 'escalator'
+  if (a.kind === 'istair' && b.kind === 'istair') return 'istairs'
+  if (a.kind === 'indoor' || b.kind === 'indoor' || a.kind === 'esc' || b.kind === 'esc' || a.kind === 'istair' || b.kind === 'istair') return 'indoor'
   if (a.kind === 'stair' && b.kind === 'stair') return 'stairs'
   if (a.kind === 'forest' || b.kind === 'forest') return 'forest'
   if (a.kind === 'lawn' || b.kind === 'lawn') return 'lawn'
@@ -59,30 +64,34 @@ export function samplePolyline(poly, s, lane = 0, out = {}) {
   const off = lane * Math.max(0.2, half)
   out.x = seg.a.x + (seg.b.x - seg.a.x) * t - dz * off
   out.z = seg.a.z + (seg.b.z - seg.a.z) * t + dx * off
-  out.y = heightAt(out.x, out.z) + (seg.surface === 'stairs' ? 0.09 : 0.03)
+  if (seg.a.y !== undefined && seg.b.y !== undefined) out.y = seg.a.y + (seg.b.y - seg.a.y) * t
+  else out.y = heightAt(out.x, out.z) + (seg.surface === 'stairs' ? 0.09 : 0.03)
   out.yaw = Math.atan2(dx, dz)
   out.surface = seg.surface
   return out
 }
 
-// Wegegraph (ungerichtet) aus allen Routenkanten
+// Wegegraph aus allen Routenkanten plus Innenwelt (Rolltreppen sind gerichtete Kanten)
 const adj = new Map()
-function link(a, b) {
-  const l = Math.hypot(NODES[a].x - NODES[b].x, NODES[a].z - NODES[b].z)
+function link(a, b, oneWay = false) {
+  const l = Math.hypot(NODES[a].x - NODES[b].x, NODES[a].z - NODES[b].z, ((NODES[a].y ?? 0) - (NODES[b].y ?? 0)))
   if (!adj.has(a)) adj.set(a, new Map())
   if (!adj.has(b)) adj.set(b, new Map())
   adj.get(a).set(b, l)
-  adj.get(b).set(a, l)
+  if (!oneWay) adj.get(b).set(a, l)
 }
 for (const r of Object.values(ROUTES)) for (let i = 0; i < r.nodes.length - 1; i++) link(r.nodes[i], r.nodes[i + 1])
-// zusätzliche Querverbindung Waldkante zum Parkweg
+for (const e of EXTRA_LINKS) link(e.a, e.b, e.oneWay)
 link('forest-edge-e', 'pool-east-3')
 link('pool-east-3', 'pool-east-2')
 
-export function nearestNode(x, z) {
+// Ebene eines Punktes: 1 nur im Obergeschoss des HQ, sonst 0
+const nodeLevel = (n) => (n.y === undefined ? 0 : n.y > 2.2 ? 1 : 0)
+export function nearestNode(x, z, level = 0) {
   let best = null
   let bd = Infinity
   for (const [id, n] of Object.entries(NODES)) {
+    if (nodeLevel(n) !== level) continue
     const d = Math.hypot(n.x - x, n.z - z)
     if (d < bd) { bd = d; best = id }
   }
@@ -90,8 +99,8 @@ export function nearestNode(x, z) {
 }
 
 // Kürzester Weg von einer freien Position zu einem Knoten. Ergebnis: Polylinie wie bei Routen.
-export function findPathTo(fromX, fromZ, goalNodeId) {
-  const start = nearestNode(fromX, fromZ)
+export function findPathTo(fromX, fromZ, goalNodeId, fromLevel = 0) {
+  const start = nearestNode(fromX, fromZ, fromLevel)
   const dist = new Map([[start, 0]])
   const prev = new Map()
   const open = new Set([start])
@@ -112,7 +121,7 @@ export function findPathTo(fromX, fromZ, goalNodeId) {
   const poly = buildPolyline(ids)
   // freier Startpunkt vor dem ersten Knoten
   const l0 = Math.hypot(poly.pts[0].x - fromX, poly.pts[0].z - fromZ)
-  if (l0 > 0.5) return polylineFromPts([{ id: 'start', x: fromX, z: fromZ, kind: 'lawn' }, ...poly.pts])
+  if (l0 > 0.5) return polylineFromPts([{ id: 'start', x: fromX, z: fromZ, kind: fromLevel ? 'indoor' : 'lawn', ...(fromLevel ? { y: 4.5 } : {}) }, ...poly.pts])
   return poly
 }
 

@@ -1,15 +1,16 @@
 // Semantische Wegknoten. Alle Routen, Anker und das Wegenetz verweisen auf diese IDs.
 // kind bestimmt die Oberfläche der Kanten: stair (Treppe), plaza, path, forest, lawn.
 import { CASCADE } from '../config/bergpark.config.js'
+import { INDOOR_NODES, INDOOR_LINKS } from '../../indoor/nav/indoorNodes.js'
 
 const zt = (v) => CASCADE.zTop + v
 const xs = (CASCADE.stairInner + CASCADE.stairOuter) / 2 // Treppenmitte
 
 export const NODES = {
-  'hq-door': { x: 0, z: -7.6, kind: 'plaza' },
-  'plaza-center': { x: 0, z: -30, kind: 'plaza' },
-  'plaza-west': { x: -22, z: -46, kind: 'plaza' },
-  'plaza-east': { x: 22, z: -46, kind: 'plaza' },
+  'hq-door': { x: 0, z: -17, kind: 'plaza' },
+  'plaza-center': { x: 0, z: -34, kind: 'plaza' },
+  'plaza-west': { x: -22, z: -50, kind: 'plaza' },
+  'plaza-east': { x: 22, z: -50, kind: 'plaza' },
   'park-w1': { x: -31, z: -74, kind: 'path' },
   'park-w-cross': { x: -31.6, z: -92, kind: 'path' },
   'park-w2': { x: -32, z: -118, kind: 'path' },
@@ -49,6 +50,9 @@ export const NODES = {
   'forest-edge-e': { x: 46, z: -96, kind: 'forest' },
   'forest-edge-e2': { x: 40, z: -68, kind: 'forest' },
 }
+
+Object.assign(NODES, INDOOR_NODES)
+export const EXTRA_LINKS = INDOOR_LINKS
 
 export const isStairNode = (id) => NODES[id]?.kind === 'stair'
 

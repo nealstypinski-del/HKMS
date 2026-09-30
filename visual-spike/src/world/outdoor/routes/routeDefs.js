@@ -33,6 +33,15 @@ export const ROUTES = {
     loop: false,
     nodes: [...HQ_TO_STAIR_L, 'stair-L-bottom', 'stair-L-cp1', 'stair-L-mid', 'stair-L-cp2', 'stair-L-top', 'top-w', 'herk-w', 'herkules-viewpoint'],
   },
+  // Rundgang im Gebäude: aufwärts per Rolltreppe, abwärts per Treppe (und umgekehrt)
+  'indoor-loop-a': {
+    id: 'indoor-loop-a', entityId: 'route-indoor-a', label: 'Rundgang HQ', activity: 'WALK', loop: true,
+    nodes: ['in-hub-n', 'esc-up-app', 'esc-up-in', 'esc-up-out', 'esc-up-exit', 'f1-hub-b', 'st-app-t', 'st-top', 'st-bot', 'st-app-b', 'in-hub-n'],
+  },
+  'indoor-loop-b': {
+    id: 'indoor-loop-b', entityId: 'route-indoor-b', label: 'Rundgang HQ', activity: 'WALK', loop: true,
+    nodes: ['in-hub-n', 'st-app-b', 'st-bot', 'st-top', 'st-app-t', 'f1-hub-b', 'esc-dn-app', 'esc-dn-in', 'esc-dn-out', 'esc-dn-exit', 'in-hub-n'],
+  },
   'park-walk': {
     id: 'park-walk',
     entityId: 'route-park-walk',

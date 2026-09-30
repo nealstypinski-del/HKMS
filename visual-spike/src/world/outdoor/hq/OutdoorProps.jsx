@@ -41,7 +41,7 @@ export default function OutdoorProps({ quality }) {
     const out = []
     const seen = new Set()
     for (const sg of uniquePathSegments) {
-      if (sg.surface === 'forest') continue
+      if (sg.surface !== 'path' && sg.surface !== 'plaza') continue
       const key = [sg.a.id, sg.b.id].sort().join('|')
       if (seen.has(key)) continue
       seen.add(key)
@@ -100,7 +100,7 @@ export default function OutdoorProps({ quality }) {
       </group>
 
       {/* Wegweiser an der Plaza */}
-      <group position={[8, heightAt(8, -24), -24]} rotation={[0, 0.2, 0]} name="signpost-plaza">
+      <group position={[8, heightAt(8, -28), -28]} rotation={[0, 0.2, 0]} name="signpost-plaza">
         <mesh position={[0, 1.6, 0]} material={M.metal}>
           <boxGeometry args={[0.12, 3.2, 0.12]} />
         </mesh>

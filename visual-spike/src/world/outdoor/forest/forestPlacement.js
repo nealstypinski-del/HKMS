@@ -26,7 +26,7 @@ function forestDensity(x, z) {
 
 export function isReserved(x, z, margin = 0) {
   // HQ und Plaza
-  if (x > -34 - margin && x < 34 + margin && z > -60 - margin && z < 16 + margin) return true
+  if (x > -36 - margin && x < 36 + margin && z > -62 - margin && z < 22 + margin) return true
   // Anker (Bänke usw.)
   for (const a of ANCHORS) if (Math.hypot(a.x - x, a.z - z) < 3.5 + margin) return true
   return false
