@@ -1,3 +1,4 @@
+import { angleDiff } from './angles'
 import { getFloor } from './generate'
 import { getNav } from './nav'
 import type { Agent, ComputerState, Vec2 } from './types'
@@ -50,13 +51,6 @@ export interface Runtime {
 
 const SPEED = 1.9
 const TURN = 9
-
-const angleDiff = (a: number, b: number) => {
-  let d = (b - a) % (Math.PI * 2)
-  if (d > Math.PI) d -= Math.PI * 2
-  if (d < -Math.PI) d += Math.PI * 2
-  return d
-}
 
 export class WorldSim {
   time = 0

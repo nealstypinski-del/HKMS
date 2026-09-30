@@ -1,14 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Vector3 } from 'three'
 import { BUILDING } from '../world/buildingConfig'
-import { connectors, SPEEDS, stepRide, tryBoard } from '../world/connectors'
 import { FLOOR_H, HALF_D, HALF_W, floorBaseY } from '../world/constants'
 import { getFloor } from '../world/generate'
 import { getNav } from '../world/nav'
 import { player } from '../world/player'
 import { sim } from '../world/sim'
 import { useWorld, type CameraMode } from '../world/store'
+import { movePlayerStep, type MoveHooks } from '../world/playerMove'
+import { angleDiff } from '../world/angles'
 import { isOutside, walkable } from '../world/walk'
 import { cameraWallClamp, WALL_TOP } from '../world/cameraClamp'
 
@@ -32,15 +33,7 @@ const DEFAULTS: Record<OrbitMode, Orbit> = {
   thirdPerson: { yaw: 0, pitch: 0.3, dist: 5.6 },
 }
 const EYE = 1.62
-const RUN = 5.0, WALK = 2.7
 const _t = new Vector3(), _p = new Vector3(), _look = new Vector3()
-
-const angleDiff = (a: number, b: number) => {
-  let d = (b - a) % (Math.PI * 2)
-  if (d > Math.PI) d -= Math.PI * 2
-  if (d < -Math.PI) d += Math.PI * 2
-  return d
-}
 
 export function CameraRig() {
   const camera = useThree((s) => s.camera)
@@ -77,7 +70,10 @@ export function CameraRig() {
     const down = (e: PointerEvent) => {
       const st = useWorld.getState()
       drag.current = { active: true, button: e.button, x: e.clientX, y: e.clientY, moved: 0, lastUser: performance.now() }
-      if (st.cameraMode === 'firstPerson' && !document.pointerLockElement && el.requestPointerLock) { try { el.requestPointerLock() } catch { /* nicht verfügbar */ } }
+      if (st.cameraMode === 'firstPerson' && !document.pointerLockElement && el.requestPointerLock) {
+        // Kann als Promise abgelehnt werden (z. B. ohne Nutzeraktion oder in einem Rahmen): nie unbehandelt lassen.
+        try { Promise.resolve(el.requestPointerLock()).catch(() => { /* abgelehnt: Ziehen zum Umsehen bleibt möglich */ }) } catch { /* nicht verfügbar */ }
+      }
     }
     const move = (e: PointerEvent) => {
       const st = useWorld.getState()
@@ -112,6 +108,7 @@ export function CameraRig() {
       const st = useWorld.getState()
       if (st.cameraMode === 'firstPerson') return
       e.preventDefault()
+      if (!Number.isFinite(e.deltaY)) return
       const key = st.panel === 'character' ? 'character' : st.cameraMode
       const o = orbits.current[key]
       const lim = LIMITS[st.cameraMode as OrbitMode] ?? LIMITS.follow
@@ -127,7 +124,9 @@ export function CameraRig() {
     window.addEventListener('keydown', kd)
     window.addEventListener('keyup', ku)
     window.addEventListener('blur', blur)
+    document.addEventListener('visibilitychange', blur) // Tab im Hintergrund: keine hängenden Tasten
     return () => {
+      document.removeEventListener('visibilitychange', blur)
       el.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up)
       el.removeEventListener('wheel', wheel); el.removeEventListener('contextmenu', ctx)
       window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); window.removeEventListener('blur', blur)
@@ -137,60 +136,17 @@ export function CameraRig() {
   const mode = useWorld((s) => s.cameraMode)
   useEffect(() => { if (mode !== 'firstPerson' && document.pointerLockElement) document.exitPointerLock() }, [mode])
 
-  /** Gemeinsame Spielerbewegung. dirX/dirZ: gewünschte Bewegungsrichtung in Weltkoordinaten (Betrag 0..1). */
-  const movePlayer = (dt: number, dirX: number, dirZ: number, run: boolean, faceMove: boolean) => {
-    const st = useWorld.getState()
-    const floorId = st.floorId
-    const nav = getNav(floorId)
-    const len = Math.hypot(dirX, dirZ)
-
-    // Fahrt auf Treppe oder Rolltreppe
-    if (player.ride) {
-      const res = stepRide(player, dt, dirX)
-      const c = connectors.find((k) => k.id === player.ride?.id)
-      // Auf der Treppe steigt die Figur mit Beinbewegung, auf der Rolltreppe steht sie
-      const climbing = c?.kind === 'stairs' && Math.abs(dirX) > 0.05
-      player.walking = climbing
-      if (climbing) player.walkClock += Math.abs(dirX) * SPEEDS.stairs * dt * 3.2
-      if (c) {
-        const travel = Math.sign(c.xHigh - c.xLow) * (c.auto === 'down' ? -1 : 1)
-        player.yaw += angleDiff(player.yaw, Math.atan2(travel, 0)) * Math.min(1, 6 * dt)
-      }
-      if (res) {
-        player.floorId = res.floor
-        player.x = res.pos.x; player.z = res.pos.z; player.dy = 0
-        st.switchFloorSilent(res.floor)
-        st.setClimbing(false)
-      }
-      return
-    }
-
-    if (len < 1e-3) { player.walking = false; return }
-    const ux = dirX / len, uz = dirZ / len
-    const speed = (run ? RUN : WALK) * dt * Math.min(1, len)
-    const dx = ux * speed, dz = uz * speed
-
-    // Einstieg auf Treppe oder Rolltreppe
-    const boarded = tryBoard(player, player.x + dx, player.z + dz, ux, uz)
-    if (boarded) {
-      if (player.floorId !== boarded.lower) { player.floorId = boarded.lower; st.switchFloorSilent(boarded.lower) }
-      st.setClimbing(true)
-      player.walking = false
-      const c = boarded
-      player.x = c.xLow + (c.xHigh - c.xLow) * (player.ride!.t)
-      return
-    }
-
-    if (walkable(floorId, player.x + dx, player.z)) player.x += dx
-    if (walkable(floorId, player.x, player.z + dz)) player.z += dz
-    player.walking = true
-    player.walkClock += speed * 3.2
-    if (faceMove) player.yaw += angleDiff(player.yaw, Math.atan2(ux, uz)) * Math.min(1, 12 * dt)
-    void nav
-  }
+  /** Gemeinsame Spielerbewegung (Logik in world/playerMove.ts). dirX/dirZ: Bewegungsrichtung in Weltkoordinaten. */
+  const hooks = useMemo<MoveHooks>(() => ({
+    switchFloor: (id) => useWorld.getState().switchFloorSilent(id),
+    setClimbing: (b) => useWorld.getState().setClimbing(b),
+    isClimbing: () => useWorld.getState().climbing,
+  }), [])
+  const movePlayer = (dt: number, dirX: number, dirZ: number, run: boolean, faceMove: boolean) =>
+    movePlayerStep(player, useWorld.getState().floorId, dt, dirX, dirZ, run, faceMove, hooks)
 
   useFrame((_, dtRaw) => {
-    const dt = Math.min(dtRaw, 0.1)
+    const dt = Number.isFinite(dtRaw) ? Math.min(Math.max(dtRaw, 0), 0.1) : 0
     const st = useWorld.getState()
     const floor = getFloor(st.floorId)
     const base = floorBaseY(floor.config.level)

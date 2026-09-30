@@ -16,14 +16,14 @@ Jede Loop Runde nimmt das nächste offene Paket, setzt nur dieses um, testet, pu
 ## A. Absicherung gegen Fehlbedienung
 - [x] A1 Massenstart und ungültige Eingaben (`src/world/limits.ts`)
 - [x] A2 Beschädigter localStorage (`persist.ts` mit Validierung)
-- [ ] A3 Kein WebGL, Kontextverlust, kleines Fenster (Fehlerseite, Wiederherstellung)
-- [ ] A4 Schnelles Wechseln von Modus, Etage, Wandmodus; Etagenwechsel während der Fahrt; Agent löschen während Auswahl oder Folgen
-- [ ] A5 Spieler außerhalb der Fläche oder in Möbeln, alle Tasten gleichzeitig, Tab im Hintergrund (große Zeitschritte)
+- [x] A3 Kein WebGL, Kontextverlust, kleines Fenster (Fehlerseite, Wiederherstellung)
+- [x] A4 Schnelles Wechseln von Modus, Etage, Wandmodus; Etagenwechsel während der Fahrt; Agent löschen während Auswahl oder Folgen
+- [x] A5 Spieler außerhalb der Fläche oder in Möbeln, alle Tasten gleichzeitig, Tab im Hintergrund (große Zeitschritte)
 - [ ] A6 Benchmark während Stresstest, Doppelklicks, mehrere Panels
 - [ ] A7 Touchgeräte ohne Tastatur: klarer Hinweis
 
 ## B. Dateien mit genau einer Aufgabe
-- [ ] B1 `CameraRig.tsx` trennen (Eingabe, Spielerbewegung, Modi)
+- [x] B1 (Spielerbewegung ausgelagert, Rest folgt) `CameraRig.tsx` trennen (Eingabe, Spielerbewegung, Modi)
 - [ ] B2 `generate.ts` je Zonentyp eine Datei
 - [ ] B3 `kit.ts` je Möbelgruppe
 - [ ] B4 `Panels.tsx` je Panel eine Datei
@@ -37,3 +37,4 @@ Jede Loop Runde nimmt das nächste offene Paket, setzt nur dieses um, testet, pu
 ## Protokoll
 - Runde 1: A1 erledigt. limits.ts begrenzt Massenstart (100 je Start, 300 gesamt), prüft Zahl, Etage, Abteilung. 64 Tests grün (vorher 59).
 - Runde 2: A2 erledigt. persist.ts und graphicsSettings.ts (Grafiktypen aus dem Store gelöst). Prüft jedes Feld, wirft nie, 20 KB Grenze. 72 Tests grün.
+- Runde 3: A3 (WebGL, Kontextverlust, Fehlerseite), A4 (Store Härtung, Fuzzing), A5 (Spielerbewegung in playerMove.ts, unstick, Weltgrenze) erledigt. 96 Tests. Mutationstests bestätigen, dass die Angriffstests beißen.
