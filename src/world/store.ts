@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { BUILDING } from './buildingConfig'
 import { worldEvents } from './events'
 import { allowedLaunch, limitMessage, sanitizeCount, MAX_LAUNCH_AT_ONCE } from './limits'
-import { effectiveGraphics, QUALITY_PRESETS, type Graphics, type Quality, type TimeMode, type WallModeSetting } from './graphicsSettings'
-import { loadPersisted, savePersisted } from './persist'
+import { effectiveGraphics, QUALITIES, QUALITY_PRESETS, TIME_MODES, WALL_MODES, type Graphics, type Quality, type TimeMode, type WallModeSetting } from './graphicsSettings'
+import { loadPersisted, sanitizeAvatar, sanitizeGraphics, savePersisted } from './persist'
+import { isAgentStatus, isCameraMode, isFloorId, isPanel, isSelectionType } from './worldGuards'
 import { player } from './player'
 import { deptsWithDesks, floorOfDepartment, initialAgents, makeAgent } from './mockAgents'
 import type { Agent, AgentStatus, Avatar } from './types'
@@ -100,10 +101,10 @@ export const useWorld = create<WorldStore>((set, get) => ({
   notice: null,
   setNotice: (n) => set({ notice: n }),
   wallMode: 'high',
-  setWallMode: (m) => set({ wallMode: m }),
+  setWallMode: (m) => { if ((WALL_MODES as readonly unknown[]).includes(m)) set({ wallMode: m }) },
   viewRotate: 0,
   viewRotateDir: 1,
-  rotateView: (dir) => set((s) => ({ viewRotate: s.viewRotate + 1, viewRotateDir: dir })),
+  rotateView: (dir) => { if (dir === 1 || dir === -1) set((s) => ({ viewRotate: s.viewRotate + 1, viewRotateDir: dir })) },
 
   panel: null,
   mapOpen: false,
@@ -111,64 +112,98 @@ export const useWorld = create<WorldStore>((set, get) => ({
   showPerf: true,
   transition: 0,
   outside: true,
-  setOutside: (b) => set({ outside: b }),
+  setOutside: (b) => set({ outside: b === true }),
   climbing: false,
-  setClimbing: (b) => set({ climbing: b }),
-  switchFloorSilent: (id) => { player.skipSpawn = true; set({ floorId: id, climbing: false }) },
+  setClimbing: (b) => set({ climbing: b === true }),
+  switchFloorSilent: (id) => { if (!isFloorId(id)) return; player.skipSpawn = true; set({ floorId: id, climbing: false }) },
   // Vor das Gebäude stellen und in Ego Ansicht wechseln: man läuft selbst durch den Eingang hinein.
   walkOutside: () => {
     player.x = 0; player.z = 26; player.yaw = Math.PI; player.floorId = 'floor-lobby'; player.skipSpawn = true; player.dy = 0; player.ride = null
-    set((s) => ({ floorId: 'floor-lobby', cameraMode: 'thirdPerson', outside: true, mapOpen: false, panel: null, transition: s.transition + 1 }))
+    set((s) => ({ floorId: 'floor-lobby', cameraMode: 'thirdPerson', outside: true, climbing: false, followId: null, mapOpen: false, panel: null, transition: s.transition + 1 }))
   },
   enterBuilding: () => {
     player.x = 0; player.z = 12.9; player.yaw = Math.PI; player.floorId = 'floor-lobby'; player.skipSpawn = true; player.dy = 0; player.ride = null
-    set((s) => ({ floorId: 'floor-lobby', cameraMode: 'thirdPerson', outside: false, mapOpen: false, panel: null, transition: s.transition + 1 }))
+    set((s) => ({ floorId: 'floor-lobby', cameraMode: 'thirdPerson', outside: false, climbing: false, followId: null, mapOpen: false, panel: null, transition: s.transition + 1 }))
   },
 
-  setMode: (m) => set({ cameraMode: m, followId: m === 'follow' ? get().followId : null, mapOpen: false }),
+  setMode: (m) => {
+    if (!isCameraMode(m)) return
+    const st = get()
+    // Folgen braucht einen vorhandenen Agenten, sonst bliebe die Ansicht ohne Ziel hängen.
+    if (m === 'follow' && !(st.followId && st.agents[st.followId])) return
+    set({ cameraMode: m, followId: m === 'follow' ? st.followId : null, mapOpen: false })
+  },
   setFloor: (id, keepMode = true) => {
-    if (get().floorId === id) { if (!keepMode) set({ cameraMode: 'tycoon' }); return }
-    set((s) => ({ floorId: id, transition: s.transition + 1, elevatorOpen: false, cameraMode: keepMode ? s.cameraMode : 'tycoon' }))
+    if (!isFloorId(id)) return
+    const st = get()
+    if (st.floorId === id) { if (keepMode === false) set({ cameraMode: 'tycoon', followId: null }); return }
+    // Wechsel der Etage beendet Folgen und Fahrt und verwirft Auswahlen, die zur alten Etage gehören.
+    const keepSel = st.selection?.type === 'agent' ? st.selection : null
+    set((s) => ({
+      floorId: id, transition: s.transition + 1, elevatorOpen: false, climbing: false,
+      cameraMode: keepMode === false || s.cameraMode === 'follow' ? ('tycoon' as CameraMode) : s.cameraMode,
+      followId: null, selection: keepSel, hover: null,
+    }))
   },
   followAgent: (id) => set((s) => {
-    if (!id) return { followId: null, cameraMode: 'tycoon' as CameraMode }
-    const a = s.agents[id]
-    return { followId: id, cameraMode: 'follow' as CameraMode, floorId: a ? a.floorId : s.floorId, selection: { type: 'agent' as const, id }, transition: a && a.floorId !== s.floorId ? s.transition + 1 : s.transition }
+    if (!id) return { followId: null, cameraMode: s.cameraMode === 'follow' ? ('tycoon' as CameraMode) : s.cameraMode }
+    const a = typeof id === 'string' ? s.agents[id] : undefined
+    if (!a) return s // unbekannter oder gelöschter Agent: nichts ändern
+    return { followId: id, cameraMode: 'follow' as CameraMode, floorId: a.floorId, climbing: false, selection: { type: 'agent' as const, id }, transition: a.floorId !== s.floorId ? s.transition + 1 : s.transition }
   }),
   select: (sel) => {
+    if (sel === null) { set({ selection: null }); return }
+    if (typeof sel !== 'object' || !isSelectionType(sel.type) || typeof sel.id !== 'string' || sel.id === '') return
+    if (sel.type === 'agent' && !get().agents[sel.id]) return // gelöschte oder erfundene Agenten nicht auswählbar
     set({ selection: sel })
     const st = get()
-    if (!sel) return
     if (sel.type === 'agent') worldEvents.emit('onAgentSelected', { agentId: sel.id })
     else if (sel.type === 'desk') worldEvents.emit('onDeskSelected', { deskId: sel.id, floorId: st.floorId })
     else if (sel.type === 'computer') worldEvents.emit('onComputerSelected', { computerId: sel.id, floorId: st.floorId })
     else if (sel.type === 'department') worldEvents.emit('onDepartmentSelected', { departmentId: sel.id, floorId: floorOfDepartment(sel.id) ?? st.floorId })
     else worldEvents.emit('onElevatorSelected', { floorId: st.floorId })
   },
-  setHover: (h) => set({ hover: h }),
-  setPanel: (p) => set({ panel: p }),
-  setMap: (o) => set({ mapOpen: o }),
-  setElevator: (o) => set({ elevatorOpen: o }),
-  setTimeMode: (t) => { set({ timeMode: t }); savePersisted({ graphics: get().graphics, player: get().player, timeMode: t }) },
+  setHover: (h) => set((s) => ({ hover: h && typeof h === 'object' && isSelectionType(h.type) && typeof h.id === 'string' && (h.type !== 'agent' || s.agents[h.id]) ? h : null })),
+  setPanel: (p) => { if (p === null || isPanel(p)) set({ panel: p }) },
+  setMap: (o) => set({ mapOpen: o === true }),
+  setElevator: (o) => set({ elevatorOpen: o === true }),
+  setTimeMode: (t) => {
+    if (!(TIME_MODES as readonly unknown[]).includes(t)) return
+    set({ timeMode: t })
+    savePersisted({ graphics: get().graphics, player: get().player, timeMode: t })
+  },
   setGraphics: (patch) => {
-    const g = { ...get().graphics, ...patch }
+    if (typeof patch !== 'object' || patch === null) return
+    const cur = get().graphics
+    const g = sanitizeGraphics({ ...cur, ...patch })
+    // Ungültige Einzelwerte der Anfrage verwerfen, gültige übernehmen, der Rest bleibt wie er war.
+    for (const k of Object.keys(patch)) {
+      if (!(k in cur) || (g as unknown as Record<string, unknown>)[k] !== (patch as Record<string, unknown>)[k]) (g as unknown as Record<string, unknown>)[k] = (cur as unknown as Record<string, unknown>)[k]
+    }
     set({ graphics: g })
     savePersisted({ graphics: g, player: get().player, timeMode: get().timeMode })
   },
   setQuality: (q) => {
+    if (!(QUALITIES as readonly unknown[]).includes(q)) return
     const g = { ...get().graphics, ...QUALITY_PRESETS[q], quality: q }
     set({ graphics: g })
     savePersisted({ graphics: g, player: get().player, timeMode: get().timeMode })
   },
   setPlayer: (patch) => {
-    const p = { ...get().player, ...patch }
+    if (typeof patch !== 'object' || patch === null) return
+    const cur = get().player
+    const p = sanitizeAvatar({ ...cur, ...patch })
+    for (const k of Object.keys(patch)) {
+      if (!(k in cur) || (p as unknown as Record<string, unknown>)[k] !== (patch as Record<string, unknown>)[k]) (p as unknown as Record<string, unknown>)[k] = (cur as unknown as Record<string, unknown>)[k]
+    }
     set({ player: p })
     savePersisted({ graphics: get().graphics, player: p, timeMode: get().timeMode })
   },
-  setSimulate: (b) => set({ simulateActivity: b }),
+  setSimulate: (b) => set({ simulateActivity: b === true }),
   togglePerf: () => set((s) => ({ showPerf: !s.showPerf })),
 
   setAgentStatus: (id, status) => set((s) => {
+    if (!isAgentStatus(status) || typeof id !== 'string') return s
     const a = s.agents[id]
     if (!a || a.status === status) return s
     return { agents: { ...s.agents, [id]: { ...a, status } }, agentsVersion: s.agentsVersion + 1 }
@@ -186,14 +221,24 @@ export const useWorld = create<WorldStore>((set, get) => ({
     const depts = dept ? [dept] : deptsWithDesks(floor).map((d) => d.id)
     const fallback = BUILDING.floors.find((f) => f.id === floor)!.departments[0].id
     const created: Agent[] = []
-    for (let i = 0; i < n; i++) created.push(makeAgent(depts.length ? depts[i % depts.length] : fallback, status))
+    const st = isAgentStatus(status) ? status : 'working'
+    for (let i = 0; i < n; i++) created.push(makeAgent(depts.length ? depts[i % depts.length] : fallback, st))
     set((s) => ({ agents: { ...s.agents, ...Object.fromEntries(created.map((a) => [a.id, a])) }, agentsVersion: s.agentsVersion + 1 }))
     return created.map((a) => a.id)
   },
 
   removeAgents: (filter) => set((s) => {
+    if (typeof filter !== 'function') return s
     const agents = Object.fromEntries(Object.entries(s.agents).filter(([, a]) => !filter(a)))
-    return { agents, agentsVersion: s.agentsVersion + 1, selection: s.selection?.type === 'agent' && !agents[s.selection.id] ? null : s.selection }
+    const followGone = s.followId !== null && !agents[s.followId]
+    return {
+      agents, agentsVersion: s.agentsVersion + 1,
+      selection: s.selection?.type === 'agent' && !agents[s.selection.id] ? null : s.selection,
+      hover: s.hover?.type === 'agent' && !agents[s.hover.id] ? null : s.hover,
+      // Wird der verfolgte Agent gelöscht, endet die Verfolgung sofort.
+      followId: followGone ? null : s.followId,
+      cameraMode: followGone && s.cameraMode === 'follow' ? ('tycoon' as CameraMode) : s.cameraMode,
+    }
   }),
 
   stress: (n) => {
