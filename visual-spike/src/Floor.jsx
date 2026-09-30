@@ -1,6 +1,9 @@
 import { Chair, Desk, Elevator, Kitchen, AgentBench, Partition, Plant, Pod, RingLight, ServerRack, Sofa, Table, WallScreen, ZoneLabel } from './Furniture.jsx'
 import Character from './Character.jsx'
+import { Model } from './Assets.jsx'
+import { Slab } from './Building.jsx'
 
+const FAST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('capture')
 const SHIRTS = ['#ff8a3d', '#2fd6c0', '#5b6ee1', '#e15b7a', '#f2c94c', '#8e6bd8', '#3aa76d', '#e8e8e8']
 const HAIR = ['#2b2118', '#6b4423', '#c9a24a', '#1c1c1c', '#a33b2a', '#5a5a5a']
 
@@ -15,6 +18,7 @@ function Prop({ d, pal }) {
     case 'plant': return <Plant position={d.p} scale={d.s} />
     case 'partition': return <Partition position={d.p} len={d.len} />
     case 'rack': return <ServerRack position={d.p} rotation={d.r} />
+    case 'model': return <Model name={d.m} position={d.p} rotation={typeof d.r === 'number' ? d.r : 0} scale={d.s || 1} />
     case 'ringlight': return <RingLight position={d.p} rotation={d.r} />
     default: return null
   }
@@ -26,10 +30,7 @@ export default function Floor({ floor, stats }) {
   let n = 0
   return (
     <group>
-      <mesh position={[0, -0.1, 0]} receiveShadow>
-        <boxGeometry args={[18, 0.2, 12]} />
-        <meshStandardMaterial color={pal.floor} />
-      </mesh>
+      <Slab color={pal.floor} hole={floor.id !== 'ground'} />
       {floor.zones.map((z, i) => (
         <group key={i}>
           <mesh position={[z.x, 0.005 + i * 0.0015, z.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -94,8 +95,11 @@ export default function Floor({ floor, stats }) {
 
       {floor.desks.map((d) => {
         const i = n++
+        const route = [[d.x, d.z + 0.95], [d.x + 1.2, d.z + 0.95], [d.x + 1.2, floor.aisle],
+          ...(floor.via || [[floor.coffee.x, floor.aisle]]), [floor.coffee.x, floor.coffee.z]]
+        const sim = d.agent[2] === 'error' ? undefined : { route, wait: FAST ? [3, 9] : [20, 60], stay: FAST ? [4, 6] : [5, 9], face: floor.coffee.face }
         return (
-          <Character key={`d${i}`} name={d.agent[0]} role={d.agent[1]} status={d.agent[2]} pose="sit"
+          <Character key={`d${i}`} name={d.agent[0]} role={d.agent[1]} status={d.agent[2]} pose="sit" sim={sim}
             position={[d.x, 0, d.z + 0.95]} rotation={Math.PI}
             shirt={SHIRTS[i % 8]} hair={HAIR[i % 6]} skin={i} phase={i * 0.7} />
         )

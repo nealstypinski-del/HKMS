@@ -242,9 +242,248 @@ def character_sit(col, at=(0, 0, 0)):
         ico(col, at, (ex, -0.26, 1.16), 0.035, mat('eye', '#141414', 0.4), 1, (1, 0.5, 1.2), True, 'eye')
 
 
+
+# ----------------------------------------------------------------- Figur mit Skelett und Animationen
+def rig_character(col):
+    """Figur mit Skelett (Rigid Skinning) und den Animationen Idle, Walk, Run, SitIdle, SitType.
+    Bones: hips, spine, head, thigh.L/R, shin.L/R, upper_arm.L/R, lower_arm.L/R (Blickrichtung Blender -Y)."""
+    from mathutils import Matrix, Vector
+    skin, hair, shirt = mat('skin', '#f1c9a5', 0.8), mat('hair', '#2b2118', 0.9), mat('shirt', '#ff8a3d', 0.8)
+    pants, shoe, eye = mat('pants', '#2c3350', 0.8), mat('shoe', '#f2f2f2', 0.6), mat('eye', '#141414', 0.4)
+    A = (0, 0, 0)
+    parts = []
+
+    def P(o, bone):
+        parts.append((o, bone))
+
+    P(box(col, A, (0, 0, 0.66), (0.36, 0.22, 0.14), pants, 'pelvis'), 'hips')
+    P(ico(col, A, (0, 0, 0.88), 0.25, shirt, 2, (1, 0.8, 1.2), True, 'torso'), 'spine')
+    P(ico(col, A, (0, 0, 1.3), 0.3, skin, 2, (1, 1, 1), True, 'head'), 'head')
+    P(ico(col, A, (0, 0.03, 1.44), 0.315, hair, 2, (1, 1, 0.75), True, 'hair'), 'head')
+    for sx, sfx in ((1, '.L'), (-1, '.R')):
+        P(ico(col, A, (sx * 0.09, -0.26, 1.32), 0.035, eye, 1, (1, 0.5, 1.2), True, 'eye'), 'head')
+        P(box(col, A, (sx * 0.12, 0, 0.50), (0.16, 0.17, 0.26), pants, 'thigh'), 'thigh' + sfx)
+        P(box(col, A, (sx * 0.12, 0, 0.20), (0.14, 0.15, 0.30), pants, 'shin'), 'shin' + sfx)
+        P(box(col, A, (sx * 0.12, -0.04, 0.035), (0.17, 0.28, 0.07), shoe, 'shoe'), 'shin' + sfx)
+        P(box(col, A, (sx * 0.29, 0, 0.90), (0.11, 0.11, 0.24), shirt, 'arm'), 'upper_arm' + sfx)
+        P(box(col, A, (sx * 0.29, 0, 0.66), (0.09, 0.09, 0.22), skin, 'forearm'), 'lower_arm' + sfx)
+        P(ico(col, A, (sx * 0.29, 0, 0.53), 0.055, skin, 1, (1, 1, 1), True, 'hand'), 'lower_arm' + sfx)
+
+    # Skelett
+    bpy.ops.object.armature_add(location=(0, 0, 0))
+    arm = bpy.context.active_object
+    arm.name = 'Armature'
+    link(arm, col)
+    bpy.ops.object.mode_set(mode='EDIT')
+    eb = arm.data.edit_bones
+    for b in list(eb):
+        eb.remove(b)
+
+    def bone(name, head, tail, parent=None):
+        b = eb.new(name)
+        b.head, b.tail = head, tail
+        if parent:
+            b.parent = eb[parent]
+        return b
+
+    bone('hips', (0, 0, 0.64), (0, 0, 0.74))
+    bone('spine', (0, 0, 0.74), (0, 0, 1.10), 'hips')
+    bone('head', (0, 0, 1.10), (0, 0, 1.70), 'spine')
+    for sx, sfx in ((1, '.L'), (-1, '.R')):
+        bone('thigh' + sfx, (sx * 0.12, 0, 0.64), (sx * 0.12, 0, 0.36), 'hips')
+        bone('shin' + sfx, (sx * 0.12, 0, 0.36), (sx * 0.12, 0, 0.04), 'thigh' + sfx)
+        bone('upper_arm' + sfx, (sx * 0.29, 0, 1.02), (sx * 0.29, 0, 0.78), 'spine')
+        bone('lower_arm' + sfx, (sx * 0.29, 0, 0.78), (sx * 0.29, 0, 0.54), 'upper_arm' + sfx)
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    # Teile den Bones zuweisen und zu einem Mesh verbinden
+    for o, bname in parts:
+        vg = o.vertex_groups.new(name=bname)
+        vg.add(list(range(len(o.data.vertices))), 1.0, 'REPLACE')
+    bpy.ops.object.select_all(action='DESELECT')
+    for o, _ in parts:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0][0]
+    bpy.ops.object.join()
+    body = bpy.context.active_object
+    body.name = 'character_body'
+    body.parent = arm
+    mod = body.modifiers.new('Armature', 'ARMATURE')
+    mod.object = arm
+
+    # Animationen
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode='POSE')
+    pb = arm.pose.bones
+    for b in pb:
+        b.rotation_mode = 'XYZ'
+    arm.animation_data_create()
+
+    def rot(name, axis, ang):
+        rest = pb[name].bone.matrix_local.to_3x3()
+        R = Matrix.Rotation(ang, 3, axis)
+        pb[name].rotation_euler = (rest.inverted() @ R @ rest).to_euler('XYZ')
+
+    def move(name, v):
+        pb[name].location = pb[name].bone.matrix_local.to_3x3().inverted() @ Vector(v)
+
+    def reset():
+        for b in pb:
+            b.rotation_euler = (0, 0, 0)
+            b.location = (0, 0, 0)
+
+    def walk(t, amp, knee, arms, elbow, lean, bob):
+        ph = 2 * math.pi * t
+        reset()
+        rot('thigh.L', 'X', -amp * math.sin(ph))
+        rot('thigh.R', 'X', amp * math.sin(ph))
+        rot('shin.L', 'X', knee * max(0.0, math.sin(ph + 1.3)))
+        rot('shin.R', 'X', knee * max(0.0, math.sin(ph + math.pi + 1.3)))
+        rot('upper_arm.L', 'X', arms * math.sin(ph))
+        rot('upper_arm.R', 'X', -arms * math.sin(ph))
+        rot('lower_arm.L', 'X', -elbow)
+        rot('lower_arm.R', 'X', -elbow)
+        rot('spine', 'X', lean)
+        rot('spine', 'Z', 0.08 * math.sin(ph))
+        move('hips', (0, 0, bob * math.cos(2 * ph)))
+
+    def idle(t):
+        ph = 2 * math.pi * t
+        reset()
+        rot('spine', 'X', 0.02 * math.sin(ph))
+        rot('upper_arm.L', 'X', 0.05 * math.sin(ph))
+        rot('upper_arm.R', 'X', -0.05 * math.sin(ph))
+        rot('lower_arm.L', 'X', -0.12)
+        rot('lower_arm.R', 'X', -0.12)
+        rot('head', 'Z', 0.12 * math.sin(ph))
+
+    def sit(t, typing):
+        ph = 2 * math.pi * t
+        reset()
+        move('hips', (0, 0, -0.12))
+        for sfx in ('.L', '.R'):
+            rot('thigh' + sfx, 'X', -1.25)
+            rot('shin' + sfx, 'X', 1.15)
+            rot('upper_arm' + sfx, 'X', -0.9)
+        tap = 0.10 * math.sin(4 * ph) if typing else 0.0
+        rot('lower_arm.L', 'X', -0.6 + tap)
+        rot('lower_arm.R', 'X', -0.6 - tap)
+        rot('spine', 'X', 0.06 + 0.015 * math.sin(ph))
+        rot('head', 'X', 0.10 if typing else 0.0)
+        if typing:
+            rot('head', 'Z', 0.10 * math.sin(ph))
+
+    clips = [
+        ('Idle', 48, idle),
+        ('Walk', 24, lambda t: walk(t, 0.55, 0.7, 0.5, 0.3, 0.03, 0.025)),
+        ('Run', 16, lambda t: walk(t, 0.95, 1.3, 0.95, 1.1, 0.22, 0.05)),
+        ('SitIdle', 48, lambda t: sit(t, False)),
+        ('SitType', 24, lambda t: sit(t, True)),
+    ]
+    for name, n, fn in clips:
+        action = bpy.data.actions.new(name)
+        arm.animation_data.action = action
+        for f in range(n + 1):
+            fn((f % n) / n)
+            for b in pb:
+                b.keyframe_insert('rotation_euler', frame=f + 1)
+                b.keyframe_insert('location', frame=f + 1)
+        track = arm.animation_data.nla_tracks.new()
+        track.name = name
+        track.strips.new(name, 1, action)
+        arm.animation_data.action = None
+    reset()
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+
+# ----------------------------------------------------------------- Zusätzliche Requisiten
+def coffee_machine(col, at=(0, 0, 0)):
+    dark, steel, red = mat('cm_dark', '#1e2129', 0.4, 0.3), mat('steel', '#c9ced8', 0.3, 0.8), mat('cm_led', '#ff5c3d', 0.4, 0, 3.0)
+    box(col, at, (0, 0, 0.45), (0.9, 0.7, 0.9), mat('cm_body', '#e6e0d4', 0.7), 'unit')
+    box(col, at, (0, 0, 1.1), (0.5, 0.42, 0.5), dark, 'machine')
+    box(col, at, (0, -0.22, 1.2), (0.3, 0.02, 0.18), steel, 'panel')
+    box(col, at, (0.14, -0.23, 1.28), (0.05, 0.02, 0.04), red, 'led')
+    cyl(col, at, (0, -0.15, 0.98), 0.05, 0.12, mat('cup', '#ffffff', 0.5), 10, 'cup')
+
+
+def water_cooler(col, at=(0, 0, 0)):
+    box(col, at, (0, 0, 0.5), (0.36, 0.36, 1.0), mat('wc_body', '#e8edf5', 0.5), 'body')
+    cyl(col, at, (0, 0, 1.22), 0.15, 0.42, mat('wc_water', '#7fc8ff', 0.05, 0, 0.6, 0.55), 12, 'bottle')
+    box(col, at, (0, -0.19, 0.85), (0.1, 0.03, 0.06), mat('wc_tap', '#3a86ff', 0.4), 'tap')
+
+
+def fridge(col, at=(0, 0, 0)):
+    steel = mat('fr_steel', '#d8dde6', 0.3, 0.7)
+    box(col, at, (0, 0, 0.9), (0.8, 0.75, 1.8), steel, 'fridge')
+    box(col, at, (0.3, -0.39, 1.3), (0.04, 0.03, 0.5), mat('fr_handle', '#4a4f5c', 0.4, 0.6), 'h1')
+    box(col, at, (0.3, -0.39, 0.6), (0.04, 0.03, 0.5), mat('fr_handle', '#4a4f5c', 0.4, 0.6), 'h2')
+    box(col, at, (0, -0.38, 1.05), (0.78, 0.01, 0.02), mat('fr_gap', '#5a5f6c', 0.6), 'gap')
+
+
+def printer(col, at=(0, 0, 0)):
+    box(col, at, (0, 0, 0.4), (0.7, 0.6, 0.8), mat('pr_stand', '#3a4256', 0.6), 'stand')
+    box(col, at, (0, 0, 0.98), (0.75, 0.6, 0.36), mat('pr_body', '#e9e6dd', 0.6), 'printer')
+    box(col, at, (0, -0.31, 1.02), (0.3, 0.02, 0.08), mat('pr_screen', '#38e1c6', 0.4, 0, 2.0), 'screen')
+    box(col, at, (0, -0.35, 0.9), (0.5, 0.15, 0.03), mat('pr_tray', '#f4f4f4', 0.7), 'tray')
+
+
+def whiteboard(col, at=(0, 0, 0)):
+    frame = mat('wb_frame', '#9aa3b5', 0.4, 0.6)
+    box(col, at, (0, 0, 1.4), (1.9, 0.05, 1.1), frame, 'frame')
+    box(col, at, (0, -0.03, 1.4), (1.8, 0.02, 1.0), mat('wb_board', '#f6f8fb', 0.3), 'board')
+    for sx in (-0.85, 0.85):
+        box(col, at, (sx, 0.1, 0.45), (0.05, 0.05, 0.9), frame, 'leg')
+        box(col, at, (sx, 0.1, 0.03), (0.05, 0.5, 0.05), frame, 'foot')
+    for i, c in enumerate(('#e15b5b', '#4a90d9', '#3aa76d')):
+        box(col, at, (-0.6 + i * 0.5, -0.04, 1.55 - i * 0.2), (0.4, 0.01, 0.03), mat('wb_ink%d' % i, c, 0.6), 'ink')
+
+
+def painting(col, at=(0, 0, 0)):
+    box(col, at, (0, 0, 1.6), (1.2, 0.06, 0.9), mat('pt_frame', '#2b2118', 0.6), 'frame')
+    box(col, at, (0, -0.035, 1.6), (1.08, 0.01, 0.78), mat('pt_sky', '#2f6fa8', 0.6), 'sky')
+    box(col, at, (0, -0.045, 1.42), (1.08, 0.01, 0.34), mat('pt_hill', '#3f8654', 0.7), 'hill')
+    ico(col, at, (0.3, -0.06, 1.8), 0.1, mat('pt_sun', '#ffd35c', 0.5, 0, 1.5), 1, (1, 0.2, 1), True, 'sun')
+
+
+def rug(col, at=(0, 0, 0)):
+    box(col, at, (0, 0, 0.015), (3.0, 2.0, 0.03), mat('rg_edge', '#a34a3a', 0.95), 'edge')
+    box(col, at, (0, 0, 0.032), (2.6, 1.6, 0.02), mat('rg_mid', '#d8b46a', 0.95), 'mid')
+    box(col, at, (0, 0, 0.045), (1.9, 1.0, 0.02), mat('rg_core', '#a34a3a', 0.95), 'core')
+
+
+def ceiling_light(col, at=(0, 0, 0)):
+    box(col, at, (0, 0, 0), (1.6, 0.5, 0.06), mat('cl_frame', '#c9ced8', 0.4, 0.5), 'frame')
+    box(col, at, (0, 0, -0.035), (1.5, 0.4, 0.02), mat('cl_panel', '#fff4dc', 0.4, 0, 6.0), 'panel')
+
+
+def meeting_table(col, at=(0, 0, 0)):
+    box(col, at, (0, 0, 0.72), (2.6, 1.1, 0.07), mat('mt_top', '#8a5d38', 0.6), 'top')
+    for sx in (-1.0, 1.0):
+        box(col, at, (sx, 0, 0.36), (0.1, 0.7, 0.72), mat('mt_leg', '#2f3648', 0.5, 0.3), 'leg')
+    box(col, at, (0, 0, 0.77), (0.5, 0.35, 0.02), mat('mt_pad', '#f6f6f6', 0.6), 'notepad')
+
+
+def trash_bin(col, at=(0, 0, 0)):
+    cyl(col, at, (0, 0, 0.2), 0.16, 0.4, mat('tb_body', '#4a4f5c', 0.5, 0.4), 10, 'bin')
+
+
+def reception_desk(col, at=(0, 0, 0)):
+    wood, top = mat('rd_wood', '#6b4a32', 0.6), mat('rd_top', '#f2ece0', 0.5)
+    box(col, at, (0, 0, 0.55), (3.6, 0.8, 1.1), wood, 'front')
+    box(col, at, (0, 0.1, 1.12), (3.7, 1.0, 0.06), top, 'top')
+    box(col, at, (-1.85, 0.45, 0.55), (0.2, 1.5, 1.1), wood, 'wing')
+    box(col, at, (0, 0.1, 1.5), (0.5, 0.05, 0.3), mat('rd_screen', '#16233f', 0.3, 0, 0.2), 'screen')
+    box(col, at, (0, 0.1, 1.5), (0.44, 0.06, 0.24), mat('rd_glow', '#7dffe8', 0.4, 0, 3.0), 'glow')
+
+
+def plant_small(col, at=(0, 0, 0)):
+    cyl(col, at, (0, 0, 0.15), 0.16, 0.3, mat('ps_pot', '#c9ccd6', 0.8), 8, 'pot')
+    for i, (dx, dy, dz, r) in enumerate([(0, 0, 0.5, 0.22), (0.1, 0.05, 0.42, 0.16), (-0.1, -0.04, 0.44, 0.17)]):
+        ico(col, at, (dx, dy, dz), r, mat('ps_leaf%d' % (i % 2), ['#4f9a63', '#3f8654'][i % 2], 0.9), 1, (1, 1, 1), False, 'leaf')
+
+
 ASSETS = {
     'desk1': lambda c: desk(c, monitors=1),
-    'character_sit': character_sit,
     'desk': lambda c: desk(c, monitors=2),
     'desk_triple': lambda c: desk(c, monitors=3),
     'chair': chair,
@@ -256,7 +495,19 @@ ASSETS = {
     'lamp': lamp,
     'bollard': bollard,
     'bench': bench,
-    'character': character,
+    'character': rig_character,
+    'coffee_machine': coffee_machine,
+    'water_cooler': water_cooler,
+    'fridge': fridge,
+    'printer': printer,
+    'whiteboard': whiteboard,
+    'painting': painting,
+    'rug': rug,
+    'ceiling_light': ceiling_light,
+    'meeting_table': meeting_table,
+    'trash_bin': trash_bin,
+    'reception_desk': reception_desk,
+    'plant_small': plant_small,
 }
 
 
@@ -266,7 +517,11 @@ def export_all():
         col = new_col(name)
         fn(col)
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[name]
-        bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, name + '.glb'), export_format='GLB', use_active_collection=True, export_apply=True)
+        if name == 'character':
+            bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, name + '.glb'), export_format='GLB', use_active_collection=True,
+                                      export_apply=False, export_animations=True, export_animation_mode='NLA_TRACKS', export_skins=True)
+        else:
+            bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, name + '.glb'), export_format='GLB', use_active_collection=True, export_apply=True)
         print('exportiert', name)
         bpy.context.view_layer.active_layer_collection.exclude = True
 

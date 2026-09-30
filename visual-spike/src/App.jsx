@@ -8,7 +8,9 @@ import { Facade, LiteFloor, Signs } from './Building.jsx'
 import { FLOORS, floorStats } from './data/floors.js'
 import { STATUS } from './theme.js'
 import { labelRoot } from './labelRoot.js'
-import { DOOR_HALF, ELEVATOR_EXIT, FLOOR_H, HALF_X, HALF_Z, OUTDOOR } from './world.js'
+import { DOOR_HALF, ELEVATOR_EXIT, ESC, FLOOR_H, HALF_X, HALF_Z, OUTDOOR } from './world.js'
+import { EscalatorPair } from './Escalator.jsx'
+import Effects from './Effects.jsx'
 
 // Kollisionsboxen [xmin, xmax, zmin, zmax] für Haus, Etage und Außenwelt
 function buildColliders(floor, idx) {
@@ -31,7 +33,9 @@ function buildColliders(floor, idx) {
     if (d.t === 'kitchen') b.push([x - 2.2, x + 2.2, z - 0.5, z + 0.5], [x - 1.4, x + 1.4, z + 1.6, z + 2.8])
     if (d.t === 'rack') b.push([x - 0.5, x + 0.5, z - 0.5, z + 0.5])
     if (d.t === 'plant') b.push([x - 0.4, x + 0.4, z - 0.4, z + 0.4])
+    if (d.t === 'model' && d.c) { const sw = Math.abs(Math.sin(d.r || 0)) > 0.5; const [hx, hz] = sw ? [d.c[1], d.c[0]] : d.c; b.push([x - hx, x + hx, z - hz, z + hz]) }
   })
+  if (idx < 3) b.push([ESC.xUp - 0.55, ESC.xDown + 0.55, ESC.z0 + 0.05, ESC.z1 - 0.05]) // Rolltreppe nach oben
   OUTDOOR.trees.forEach(([x, z, s]) => b.push([x - 0.4 * s, x + 0.4 * s, z - 0.4 * s, z + 0.4 * s]))
   OUTDOOR.bollards.forEach(([x, z]) => b.push([x - 0.1, x + 0.1, z - 0.1, z + 0.1]))
   b.push([OUTDOOR.sofa[0] - 1.1, OUTDOOR.sofa[0] + 1.1, OUTDOOR.sofa[1] - 0.5, OUTDOOR.sofa[1] + 0.5])
@@ -50,24 +54,47 @@ export default function App() {
   const [idx, setIdx] = useState(0)
   const [inside, setInside] = useState(false)
   const [spawn, setSpawn] = useState({ x: 0, z: 17, face: Math.PI, key: 0 })
+  const [rideTo, setRideTo] = useState(null)
   const controls = useRef()
+  const controlsRef = controls
+  const keysRef = useRef({})
+  const autoRef = useRef({ target: null, run: false })
+  const posRef = useRef(null)
+  const capture = typeof location !== 'undefined' && new URLSearchParams(location.search).has('capture')
   const floor = FLOORS[idx]
   const pal = floor.palette
   const stats = useMemo(() => floorStats(floor), [floor])
   const colliders = useMemo(() => buildColliders(floor, idx), [floor, idx])
-  const shown = inside ? idx + 1 : FLOORS.length
+  const shown = inside ? Math.max(idx, rideTo ?? idx) + 1 : FLOORS.length
   const topY = FLOORS.length * FLOOR_H
 
+  const goFloorRef = useRef(() => {})
   const goFloor = (i) => {
     setIdx(i)
     setSpawn({ x: ELEVATOR_EXIT[0], z: ELEVATOR_EXIT[1], face: Math.PI / 2, key: spawn.key + 1 })
     setInside(true)
   }
+  goFloorRef.current = goFloor
+  const overview = () => {
+    const c = controls.current
+    if (!c) return
+    c.object.position.set(inside ? 16 : 26, (inside ? idx * FLOOR_H : 0) + (inside ? 17 : 22), inside ? 20 : 34)
+    c.target.set(0, (inside ? idx * FLOOR_H : 4), 0)
+  }
 
   return (
     <>
       <div ref={(el) => { labelRoot.current = el }} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }} />
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [12, 9, 40], fov: 42, near: 0.1, far: 600 }}>
+      <Canvas shadows dpr={[1, 2]} frameloop={capture ? 'never' : 'always'} gl={{ antialias: false, powerPreference: 'high-performance' }}
+        onCreated={({ advance, scene }) => { window.__hkms = {
+          scene,
+          advance,
+          floor: (i) => goFloorRef.current(i),
+          go: (x, z, run = false) => { autoRef.current.target = [x, z]; autoRef.current.run = run },
+          arrived: () => !autoRef.current.target,
+          pos: () => posRef.current && [posRef.current.x, posRef.current.y, posRef.current.z],
+          cam: (px, py, pz, tx, ty, tz) => { const c = controlsRef.current; c.object.position.set(px, py, pz); c.target.set(tx, ty, tz); c.update() },
+        } }} camera={{ position: [12, 9, 40], fov: 42, near: 0.1, far: 600 }}>
         <color attach="background" args={['#070b1c']} />
         <fog attach="fog" args={['#070b1c', 90, 260]} />
         <Stars radius={220} depth={60} count={3000} factor={5} fade />
@@ -78,7 +105,7 @@ export default function App() {
           shadow-camera-top={34} shadow-camera-bottom={-34} shadow-camera-near={1} shadow-camera-far={120} shadow-bias={-0.0004}
         />
         <Environment />
-        <Facade top={inside ? (idx + 1) * FLOOR_H : topY} hideFront={inside} />
+        <Facade top={inside ? shown * FLOOR_H : topY} hideFront={inside} />
         <Signs showRoof={!inside} showDoor={!inside} topY={topY} />
         {!inside && (
           <mesh position={[0, topY + 0.15, 0]}>
@@ -89,9 +116,16 @@ export default function App() {
         {FLOORS.slice(0, shown).map((f, i) => (
           <group key={f.id} position={[0, i * FLOOR_H, 0]}>
             {i === idx ? <Floor floor={f} stats={stats} /> : <LiteFloor floor={f} />}
+            {i < FLOORS.length - 1 && <EscalatorPair />}
           </group>
         ))}
-        <Player y={idx * FLOOR_H} colliders={colliders} controlsRef={controls} spawn={spawn} onInside={setInside} />
+        <Player
+          y={idx * FLOOR_H} floorIdx={idx} colliders={colliders} controlsRef={controls} spawn={spawn} onInside={setInside}
+          keysRef={keysRef} autoRef={autoRef} posRef={posRef}
+          onRide={(from, to) => setRideTo(to)}
+          onRideDone={(to) => { setIdx(to); setRideTo(null) }}
+        />
+        <Effects ssao={!capture} />
         <OrbitControls
           ref={controls} target={[0, 3, 12]} enablePan={false} minDistance={3.5} maxDistance={45}
           minPolarAngle={0.25} maxPolarAngle={1.45}
@@ -101,7 +135,7 @@ export default function App() {
       <div style={{ position: 'absolute', top: 16, left: 16, color: '#fff', pointerEvents: 'none' }}>
         <div style={{ fontWeight: 800, letterSpacing: 3, color: pal.trim, fontSize: 18 }}>HERKULES KI-ZENTRALE</div>
         <div style={{ opacity: 0.75, fontSize: 12, marginTop: 2 }}>
-          {inside ? floor.title : 'Vor dem Haus'} · Visual Spike 0.4
+          {inside ? floor.title : 'Vor dem Haus'} · Visual Spike 0.5
         </div>
         {inside && (
           <div style={{ marginTop: 12, display: 'grid', gap: 5 }}>
@@ -117,6 +151,7 @@ export default function App() {
 
       <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ color: '#fff', fontSize: 12, opacity: 0.8, textAlign: 'right' }}>Aufzug · Etage wählen</div>
+        <Btn on={false} color="#9fb0d4" onClick={overview}>Übersicht</Btn>
         {[...FLOORS].reverse().map((f) => {
           const i = FLOORS.indexOf(f)
           return <Btn key={f.id} on={inside && i === idx} color={f.palette.trim} onClick={() => goFloor(i)}>{f.tab}</Btn>
@@ -124,7 +159,7 @@ export default function App() {
       </div>
 
       <div style={{ position: 'absolute', bottom: 14, left: 16, color: '#9fb0d4', fontSize: 12, pointerEvents: 'none' }}>
-        W A S D oder Pfeiltasten: laufen · Umschalt: rennen · Maus ziehen: Kamera drehen · Mausrad: zoomen · Eingang an der Vorderseite des Hauses
+        W A S D oder Pfeiltasten: laufen · Umschalt: rennen · Maus ziehen: Kamera drehen · Mausrad: zoomen · Rolltreppe rechts im Haus betreten (Aufzug: Etagenwahl)
       </div>
     </>
   )

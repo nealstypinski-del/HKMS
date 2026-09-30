@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { FLOOR_H, HALF_X, HALF_Z, DOOR_HALF } from './world.js'
+import { FLOOR_H, HALF_X, HALF_Z, DOOR_HALF, ESC } from './world.js'
 import { Pod } from './Furniture.jsx'
 
 const glassMat = new THREE.MeshPhysicalMaterial({
@@ -23,6 +23,26 @@ function textTexture(text, color = '#fff', bg = null) {
   const t = new THREE.CanvasTexture(cv)
   t.colorSpace = THREE.SRGBColorSpace
   return t
+}
+
+// Deckenplatte einer Etage mit optionalem Ausschnitt für die Rolltreppe
+export function Slab({ color, hole = false }) {
+  const [x0, x1, z0, z1] = ESC.hole
+  const mat = <meshStandardMaterial color={color} roughness={0.8} />
+  if (!hole) return <mesh position={[0, -0.1, 0]} receiveShadow><boxGeometry args={[HALF_X * 2, 0.2, HALF_Z * 2]} />{mat}</mesh>
+  const parts = [
+    [-HALF_X, x0, -HALF_Z, HALF_Z], [x1, HALF_X, -HALF_Z, HALF_Z], [x0, x1, -HALF_Z, z0], [x0, x1, z1, HALF_Z],
+  ]
+  return (
+    <group>
+      {parts.map(([a, b, c, d], i) => (
+        <mesh key={i} position={[(a + b) / 2, -0.1, (c + d) / 2]} receiveShadow>
+          <boxGeometry args={[b - a, 0.2, d - c]} />
+          {mat}
+        </mesh>
+      ))}
+    </group>
+  )
 }
 
 // Glasfassade eines Hochhauses. `top` = sichtbare Höhe, `door` = Eingang an der Vorderseite im Erdgeschoss.
@@ -111,10 +131,7 @@ export function LiteFloor({ floor }) {
   const pal = floor.palette
   return (
     <group>
-      <mesh position={[0, -0.1, 0]}>
-        <boxGeometry args={[HALF_X * 2, 0.2, HALF_Z * 2]} />
-        <meshStandardMaterial color={pal.floor} />
-      </mesh>
+      <Slab color={pal.floor} hole={floor.id !== 'ground'} />
       {(floor.pods || []).filter((p) => p.type === 'wall').map((p, i) => <Pod key={i} {...p} />)}
       {floor.desks.map((d, i) => (
         <group key={i} position={[d.x, 0, d.z]}>
