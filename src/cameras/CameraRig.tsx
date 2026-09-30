@@ -10,6 +10,7 @@ import { player } from '../world/player'
 import { sim } from '../world/sim'
 import { useWorld, type CameraMode } from '../world/store'
 import { isOutside, walkable } from '../world/walk'
+import { cameraWallClamp, WALL_TOP } from '../world/cameraClamp'
 
 /**
  * Ein Rig für alle Kameramodi. Jeder Modus liefert nur eine Zielpose (Ziel, Abstand, Winkel),
@@ -54,6 +55,7 @@ export function CameraRig() {
   const keys = useRef(new Set<string>())
   const drag = useRef({ active: false, button: 0, x: 0, y: 0, moved: 0, lastUser: 0 })
   const lastFloor = useRef('')
+  const lastRotate = useRef(0)
 
   // Eingaben ---------------------------------------------------------------------------------
   useEffect(() => {
@@ -212,6 +214,11 @@ export function CameraRig() {
       lastFloor.current = st.floorId
     }
 
+    if (st.viewRotate !== lastRotate.current) {
+      lastRotate.current = st.viewRotate
+      orbits.current.tycoon.yaw += (Math.PI / 2) * st.viewRotateDir
+    }
+
     let mode = st.cameraMode
     if (mode === 'follow') {
       const r = st.followId ? sim.get(st.followId) : null
@@ -298,6 +305,16 @@ export function CameraRig() {
     const cp = Math.cos(o.pitch)
     _p.set(target.x + Math.sin(o.yaw) * cp * o.dist, target.y + Math.sin(o.pitch) * o.dist, target.z + Math.cos(o.yaw) * cp * o.dist)
     if (mode !== 'building') _p.y = Math.max(_p.y, (mode === 'thirdPerson' ? pBase() : base) + 0.35)
+    // Kamerakollision: nicht durch Trennwände fliegen (Third Person und Folgen)
+    if ((mode === 'thirdPerson' || mode === 'follow') && st.panel !== 'character') {
+      const fid = mode === 'thirdPerson' ? player.floorId : st.floorId
+      const fb = floorBaseY(getFloor(fid).config.level)
+      const t = cameraWallClamp(fid, target, _p, fb, WALL_TOP[st.wallMode])
+      if (t < 1) {
+        const tt = Math.max(0.12, t - 0.05)
+        _p.set(target.x + (_p.x - target.x) * tt, target.y + (_p.y - target.y) * tt, target.z + (_p.z - target.z) * tt)
+      }
+    }
     if (!c.init) { c.pos.copy(_p); c.look.copy(target); c.init = true }
     const k = K(key === 'follow' || key === 'thirdPerson' ? 10 : 5.5)
     c.pos.lerp(_p, k)

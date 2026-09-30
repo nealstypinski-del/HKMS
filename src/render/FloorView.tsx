@@ -7,7 +7,7 @@ import { lastSpawn, sim } from '../world/sim'
 import { useWorld } from '../world/store'
 import { PROVIDER_COLOR, PROVIDER_LABEL } from '../world/mockAgents'
 import type { ComputerState, Provider } from '../world/types'
-import { collectSources, PAL, partMatrix, type BatchSource } from './kit'
+import { collectSources, collectWallSources, PAL, partMatrix, type BatchSource, type WallMode } from './kit'
 import { GEO, MATS, initScreenMaterial, labelMaterial } from './materials'
 
 export type FloorLod = 'full' | 'low'
@@ -42,6 +42,15 @@ interface Built {
 
 const invisible = new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
 const built = new Map<string, Built>()
+const wallCache = new Map<string, InstancedMesh[]>()
+
+/** Wandmeshes je Etage und Modus, gemerkt. */
+export function getWalls(floorId: string, mode: WallMode): InstancedMesh[] {
+  const key = `${floorId}|${mode}`
+  let w = wallCache.get(key)
+  if (!w) { w = makeMeshes(collectWallSources(getFloor(floorId), mode), false).map((m) => m.mesh); wallCache.set(key, w) }
+  return w
+}
 
 const SCREEN_COLORS: Record<ComputerState, string> = {
   offline: '#10141b', idle: '#3d4e66', working: '#38d6b4', waiting: '#f0b23d', error: '#ee4b4b', done: '#5f9bff',
@@ -65,7 +74,7 @@ function makeMeshes(sources: BatchSource[], shadow: boolean) {
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     mesh.castShadow = shadow && (mat === 'matte' || mat === 'metal')
-    mesh.receiveShadow = mat === 'matte' || mat === 'metal'
+    mesh.receiveShadow = mat !== 'screen' && mat !== 'glass'
     mesh.computeBoundingSphere()
     mesh.computeBoundingBox()
     mesh.matrixAutoUpdate = false
@@ -242,6 +251,8 @@ export const FloorView = memo(function FloorView({ floorId, lod, ceiling }: Prop
   const select = useWorld((s) => s.select)
   const setHover = useWorld((s) => s.setHover)
   const shadows = useWorld((s) => s.graphics.shadows && !s.graphics.performanceMode)
+  const wallMode = useWorld((s) => s.wallMode)
+  const walls = getWalls(floorId, wallMode)
   const acc = useRef(0)
 
   // Bildschirmzustände alle 0,2 s aus dem Sim-Zustand ableiten.
@@ -291,6 +302,7 @@ export const FloorView = memo(function FloorView({ floorId, lod, ceiling }: Prop
   return (
     <group position={[0, floorBaseY(f.config.level), 0]}>
       {b.structure.map((m, i) => <primitive key={`s${i}`} object={m} />)}
+      {walls.map((m, i) => <primitive key={`w${wallMode}${i}`} object={m} />)}
       {lod === 'full' && (
         <>
           {b.furniture.map((m, i) => <primitive key={`f${i}`} object={m} />)}

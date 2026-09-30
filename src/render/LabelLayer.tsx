@@ -8,6 +8,7 @@ import { sim } from '../world/sim'
 import { effectiveGraphics, useWorld } from '../world/store'
 
 const STATUS_TEXT: Record<string, string> = { working: 'Arbeitet', meeting: 'Besprechung', idle: 'Bereit', break: 'Pause', waiting: 'Wartet', offline: 'Offline' }
+const ICON: Record<string, string> = { working: '⌨', meeting: '💬', idle: '🪑', break: '☕', waiting: '⏳', offline: '' }
 const POOL = 40
 const _v = new Vector3(), _f = new Vector3()
 
@@ -72,7 +73,7 @@ export function LabelLayer() {
           slot.key = key
           const prov = PROVIDER_LABEL[a.provider]
           slot.el.className = `lbl s-${a.status}${sel ? ' sel' : ''}`
-          slot.el.innerHTML = `<b>${a.role}</b><span>${prov ? `<i>${prov}</i>` : ''}<u></u>${STATUS_TEXT[a.status]}${a.simulated ? '<em>SIM</em>' : ''}</span>${showDraft ? `<span class="dr">Entwurf: ${a.draft}</span>` : ''}`
+          slot.el.innerHTML = `<b>${a.role}</b><span>${prov ? `<i>${prov}</i>` : ''}<u></u>${ICON[a.status] ?? ''} ${STATUS_TEXT[a.status]}${a.simulated ? '<em>SIM</em>' : ''}</span>${showDraft ? `<span class="dr">Entwurf: ${a.draft}</span>` : ''}`
         }
         const fade = c.d > maxD * 0.7 ? Math.max(0, (maxD - c.d) / (maxD * 0.3)) : 1
         const sc = Math.max(0.7, Math.min(1.05, 16 / (c.d + 6)))

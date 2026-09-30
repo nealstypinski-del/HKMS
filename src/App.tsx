@@ -5,6 +5,7 @@ import { Effects } from './render/Effects'
 import { SceneEnvironment } from './render/Environment'
 import { LabelLayer } from './render/LabelLayer'
 import { SimDriver } from './render/SimDriver'
+import { StatusGems } from './render/StatusGems'
 import { Tower } from './render/Tower'
 import { Hud } from './ui/Hud'
 import { PerfOverlay, PerfProbe } from './ui/PerfOverlay'
@@ -26,6 +27,7 @@ export default function App() {
         <Tower />
         <AgentsLayer />
         <PlayerCharacter />
+        <StatusGems />
         <SimDriver />
         <CameraRig />
         <LabelLayer />

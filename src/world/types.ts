@@ -51,6 +51,8 @@ export type FurnitureKind =
   | 'plant' | 'tree' | 'bookshelf' | 'sofa' | 'bench' | 'coffeeTable' | 'meetingTable'
   | 'kitchenCounter' | 'coffeeMachine' | 'fridge' | 'stool' | 'divider' | 'whiteboard'
   | 'wallDisplay' | 'bin' | 'serverRack' | 'reception' | 'booth' | 'roundTable' | 'bigScreen'
+  | 'cabinet' | 'printer' | 'waterCooler' | 'vending' | 'coatRack' | 'wallClock' | 'painting' | 'rug' | 'pendant'
+  | 'floorLamp' | 'noticeBoard' | 'planterTall'
 
 export interface FurniturePlacement {
   id: string

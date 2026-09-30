@@ -139,3 +139,10 @@ select { background: #141b27; border: 1px solid var(--line); border-radius: 8px;
 }
 
 .lbl .dr { color: var(--amber); font-size: 9.5px; margin-top: 1px; }
+
+.notice { position: absolute; left: 50%; top: 72px; transform: translateX(-50%); z-index: 12; max-width: min(560px, calc(100vw - 32px)); background: var(--panel); border: 1px solid rgba(232, 163, 61, .5); color: var(--text); padding: 10px 16px; border-radius: 12px; font-size: 12px; cursor: pointer; }
+
+.need { display: grid; grid-template-columns: 82px 1fr 36px; gap: 8px; align-items: center; font-size: 11px; color: var(--dim); }
+.need i { display: block; height: 7px; border-radius: 4px; background: #1b2331; overflow: hidden; }
+.need u { display: block; height: 100%; border-radius: 4px; }
+.need b { color: var(--text); text-align: right; font-weight: 600; }

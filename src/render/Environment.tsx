@@ -87,13 +87,11 @@ function Lights() {
 
   // Reflexionen: prozedurale Raumumgebung, keine Netzwerk Assets.
   useEffect(() => {
-    if (!g.reflections) { scene.environment = null; setReflections(false); return }
+    if (!g.reflections) { setReflections(false); return }
     const pm = new PMREMGenerator(gl)
     const tex = pm.fromScene(new RoomEnvironment(), 0.04).texture
-    scene.environment = tex
-    scene.environmentIntensity = 0.5
-    setReflections(true, 0.9)
-    return () => { scene.environment = null; tex.dispose(); pm.dispose() }
+    setReflections(true, tex)
+    return () => { setReflections(false); tex.dispose(); pm.dispose() }
   }, [gl, scene, g.reflections])
 
   const level = getFloor(floorId).config.level

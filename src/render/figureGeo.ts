@@ -41,6 +41,7 @@ function bake(pieces: Piece[], parent?: Matrix4): BufferGeometry {
 
 const B = (pos: [number, number, number], scale: [number, number, number], color: string, rot?: [number, number, number]): Piece => ({ shape: 'box', pos, scale, color, rot })
 const S = (pos: [number, number, number], scale: [number, number, number], color: string): Piece => ({ shape: 'sphere', pos, scale, color })
+const C = (pos: [number, number, number], dia: number, h: number, color: string, rot?: [number, number, number]): Piece => ({ shape: 'cyl', pos, scale: [dia, h, dia], color, rot })
 
 const GOLD = '#f2c14e'
 
@@ -101,17 +102,35 @@ export function getFigureGeos(a: Avatar): FigureGeos {
   const trousers = TROUSERS[a.trousersVariant % TROUSERS.length]
   const shoe = SHOES[a.shoesVariant % SHOES.length]
 
+  const skinDark = new Color(skin).multiplyScalar(0.86).getStyle()
   const head: Piece[] = [
-    S([0, 0, 0], [0.5, 0.5, 0.5], skin),
-    S([-0.1, 0, 0.215], [0.06, 0.07, 0.04], '#15171d'), S([0.1, 0, 0.215], [0.06, 0.07, 0.04], '#15171d'),
+    S([0, 0, 0], [0.5, 0.54, 0.5], skin),
+    // Gesicht: Augäpfel, Pupillen, Brauen, Nase, Mund, Ohren
+    S([-0.1, 0.03, 0.2], [0.095, 0.095, 0.06], '#f7f7f4'), S([0.1, 0.03, 0.2], [0.095, 0.095, 0.06], '#f7f7f4'),
+    S([-0.1, 0.03, 0.232], [0.05, 0.055, 0.03], '#1a1c22'), S([0.1, 0.03, 0.232], [0.05, 0.055, 0.03], '#1a1c22'),
+    B([-0.1, 0.115, 0.225], [0.1, 0.022, 0.02], hair, [0, 0, 0.12]), B([0.1, 0.115, 0.225], [0.1, 0.022, 0.02], hair, [0, 0, -0.12]),
+    S([0, -0.03, 0.248], [0.06, 0.06, 0.06], skinDark),
+    B([0, -0.115, 0.225], [0.11, 0.02, 0.02], '#8a3b3b'),
+    S([-0.255, -0.01, 0], [0.06, 0.1, 0.07], skinDark), S([0.255, -0.01, 0], [0.06, 0.1, 0.07], skinDark),
     ...hairPieces(a.hairStyle, hair), ...headwearPieces(a.headwear, shirt), ...accessoryPieces(a.accessory),
   ]
   const headM = new Matrix4().makeTranslation(0, 0.74, 0)
-  const torso = [B([0, 0.27, 0], [0.38, 0.5, 0.22], shirt)]
-  const upperArm = [B([0, -0.13, 0], [0.11, 0.28, 0.11], shirt)]
-  const fore = [B([0, -0.12, 0], [0.09, 0.26, 0.09], skin)]
-  const thigh = [B([0, -0.15, 0], [0.15, 0.3, 0.16], trousers)]
-  const shinP = [B([0, -0.15, 0], [0.14, 0.3, 0.15], trousers), B([0, -0.32, 0.04], [0.15, 0.07, 0.24], shoe)]
+  const torso = [
+    B([0, 0.27, 0], [0.38, 0.5, 0.22], shirt),
+    S([-0.2, 0.46, 0], [0.16, 0.16, 0.16], shirt), S([0.2, 0.46, 0], [0.16, 0.16, 0.16], shirt), // Schultern
+    C([0, 0.55, 0], 0.15, 0.1, skin), // Hals
+    B([0, 0.5, 0.06], [0.16, 0.03, 0.1], '#f1efe8'), // Kragen
+    B([0, 0.04, 0], [0.395, 0.05, 0.225], '#23252b'), // Gürtel
+    B([0, 0.04, 0.115], [0.06, 0.04, 0.01], '#c9a24a'), // Schnalle
+  ]
+  const upperArm = [C([0, -0.13, 0], 0.115, 0.28, shirt)]
+  const fore = [C([0, -0.12, 0], 0.09, 0.24, skin), S([0, -0.26, 0], [0.11, 0.12, 0.09], skin)] // Hand
+  const thigh = [C([0, -0.15, 0], 0.165, 0.3, trousers)]
+  const shinP = [
+    C([0, -0.15, 0], 0.14, 0.3, trousers),
+    B([0, -0.325, 0.03], [0.15, 0.06, 0.21], shoe), S([0, -0.315, 0.12], [0.145, 0.085, 0.13], shoe), // Schuh mit Kappe
+    B([0, -0.352, 0.03], [0.155, 0.014, 0.25], '#f2f2f0'), // Sohle
+  ]
 
   const upper = mergeGeometries([bake(torso), bake(head, headM)], false)!
   // Arm: Oberarm und leicht gebeugter Unterarm, Ursprung an der Schulter

@@ -208,6 +208,9 @@ export function ViewPanel({ onClose }: { onClose: () => void }) {
   const follow = useWorld((s) => s.followAgent)
   const walkOutside = useWorld((s) => s.walkOutside)
   const enterBuilding = useWorld((s) => s.enterBuilding)
+  const wallMode = useWorld((s) => s.wallMode)
+  const setWallMode = useWorld((s) => s.setWallMode)
+  const rotateView = useWorld((s) => s.rotateView)
   return (
     <Panel title="ANSICHT" onClose={onClose}>
       <div className="chips col">
@@ -217,6 +220,9 @@ export function ViewPanel({ onClose }: { onClose: () => void }) {
         <button className={mode === 'building' ? 'on' : ''} onClick={() => setMode('building')}>Gebäude<small>Ganzer Turm, Etage anklicken</small></button>
         <button className={mode === 'follow' ? 'on' : ''} disabled={sel?.type !== 'agent'} onClick={() => sel?.type === 'agent' && follow(sel.id)}>Agent folgen<small>{sel?.type === 'agent' ? 'Ausgewählten Agenten begleiten' : 'Erst einen Agenten anklicken'}</small></button>
       </div>
+      <h4>Wände (wie bei den Sims)</h4>
+      <Seg<'high' | 'half' | 'none'> value={wallMode} onChange={setWallMode} options={[{ v: 'high', label: 'HOCH' }, { v: 'half', label: 'HALB' }, { v: 'none', label: 'WEG' }]} />
+      <div className="chips"><button onClick={() => rotateView(-1)}>↺ Drehen</button><button onClick={() => rotateView(1)}>Drehen ↻</button></div>
       <h4>Orte</h4>
       <div className="chips">
         <button onClick={() => { walkOutside(); onClose() }}>Vor das Gebäude</button>

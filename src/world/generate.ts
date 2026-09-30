@@ -28,6 +28,8 @@ export const FOOTPRINT: Partial<Record<FurnitureKind, [number, number]>> = {
   meetingTable: [3, 1.4], kitchenCounter: [3, 0.7], fridge: [0.8, 0.8], stool: [0.4, 0.4], bookshelf: [1.6, 0.4],
   plant: [0.5, 0.5], tree: [0.8, 0.8], serverRack: [0.8, 0.9], reception: [4, 1], booth: [2.2, 2.2], roundTable: [1.6, 1.6],
   bin: [0.35, 0.35], coffeeMachine: [0.5, 0.5], divider: [1.6, 0.12],
+  cabinet: [1.0, 0.5], printer: [0.7, 0.5], waterCooler: [0.4, 0.4], vending: [0.9, 0.8], coatRack: [0.4, 0.4],
+  floorLamp: [0.3, 0.3], planterTall: [0.6, 0.6],
 }
 
 const rot = (dx: number, dz: number, yaw: number) => ({
@@ -133,6 +135,15 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
     cornerPlants(zc)
     place(zc.id, 'bin', x0 + 0.5, farSouth ? z0 + 0.5 : z1 - 0.5)
     wallScreens(zc)
+    // Ausstattung: Aktenschränke an der Westwand, Drucker und Wasserspender an der Ostwand, Garderobe an der Tür
+    const step = farSouth ? -1 : 1
+    const farWall = farSouth ? z1 : z0
+    place(zc.id, 'cabinet', x0 + 0.32, farWall + step * 1.7, Math.PI / 2)
+    place(zc.id, 'cabinet', x0 + 0.32, farWall + step * 2.85, Math.PI / 2)
+    place(zc.id, 'printer', x1 - 0.32, farWall + step * 2.2, -Math.PI / 2)
+    place(zc.id, 'waterCooler', x1 - 0.4, farWall + step * 5.6, -Math.PI / 2)
+    place(zc.id, 'coatRack', x0 + 0.55, (farSouth ? z0 : z1) + (farSouth ? 0.7 : -0.7))
+    place(zc.id, 'wallClock', x0 + 1.4, farWall + step * -0.06, farSouth ? Math.PI : 0, { blocks: false })
     // Große Abteilungstafel oben an der Fernwand, deutsch beschriftet
     const farZ = zc.door === 'S' ? z0 + 0.1 : z1 - 0.1
     place(zc.id, 'bigScreen', (x0 + x1) / 2, farZ, zc.door === 'S' ? 0 : Math.PI, { w: Math.min(11, x1 - x0 - 3), h: 1.05, y: 3.95, label: zc.title.toUpperCase(), blocks: false })
@@ -178,6 +189,11 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
       place(zc.id, 'bookshelf', x0 + 1, cz, Math.PI / 2)
       cornerPlants(zc)
       place(zc.id, 'tree', x1 - 1, cz)
+      for (const rz of rowsZ) {
+        place(zc.id, 'rug', cx, rz + sgn * 1.2, 0, { w: w - 3.5, d: 3.2, color: '#8a4f4a', blocks: false })
+        place(zc.id, 'floorLamp', x0 + 1.3, rz - sgn * 0.2)
+        place(zc.id, 'floorLamp', x1 - 1.6, rz - sgn * 0.2)
+      }
     } else {
       // Nische am Korridorende: Sofas zur Außenwand, Blick zum Korridor
       const west = x0 <= -HALF_W + 0.1
@@ -188,6 +204,8 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
       place(zc.id, 'coffeeTable', wallX + (west ? 2.9 : -2.9), cz, Math.PI / 2)
       place(zc.id, 'plant', wallX + (west ? 2.9 : -2.9), z0 + 0.5)
       place(zc.id, 'plant', wallX + (west ? 2.9 : -2.9), z1 - 0.5)
+      place(zc.id, 'rug', wallX + (west ? 1.6 : -1.6), cz, Math.PI / 2, { w: 3.6, d: 3.0, color: '#4a5a72', blocks: false })
+      place(zc.id, 'floorLamp', wallX - (west ? -0.2 : 0.2), cz)
     }
     void d
   }
@@ -211,6 +229,10 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
           stoolSeat(zc.id, tx + Math.cos(a) * 1.25, tz + Math.sin(a) * 1.25, Math.atan2(-Math.cos(a), -Math.sin(a)))
         }
       }
+      place(zc.id, 'vending', x1 - 1.8, far - sg * 0.15, yaw)
+      place(zc.id, 'waterCooler', x1 - 3.2, far - sg * 0.1, yaw)
+      for (let t = 0; t < 2; t++) place(zc.id, 'pendant', cx + 2 + t * 4.2, cz + sg * 1.6, 0, { blocks: false, color: '#c9564a' })
+      place(zc.id, 'rug', cx + 4, cz + sg * 1.6, 0, { w: 9.4, d: 4.2, color: '#5a6a80', blocks: false })
       for (let i = 0; i < 3; i++) spots.push({ id: `${zc.id}-spot-${i}`, zoneId: zc.id, kind: 'kitchen', pos: { x: x0 + 3 + i * 1.3, z: far + sg * 2.9 }, yaw: zc.door === 'S' ? 0 : Math.PI })
       cornerPlants(zc)
       place(zc.id, 'bin', x1 - 0.5, far)
@@ -240,6 +262,11 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
       seats.push({ id: south, kind: 'chair', zoneId: zc.id, seat: { x: px, z: cz + 1.5 }, yaw: Math.PI, approach: { x: px, z: cz + 2.45 } })
     }
     place(zc.id, 'whiteboard', x0 + 0.15, cz, Math.PI / 2, { blocks: false })
+    place(zc.id, 'rug', cx, cz, 0, { w: w + 1.6, d: 4.6, color: '#3b4a63', blocks: false })
+    for (let i = -1; i <= 1; i++) place(zc.id, 'pendant', cx + i * (w / 3), cz, 0, { blocks: false, color: '#e8a33d' })
+    place(zc.id, 'waterCooler', x1 - 0.5, zc.door === 'S' ? z1 - 0.6 : z0 + 0.6, 0)
+    place(zc.id, 'cabinet', x1 - 0.32, cz - 3.2, -Math.PI / 2)
+    place(zc.id, 'wallClock', x1 - 1.6, zc.door === 'S' ? z0 + 0.06 : z1 - 0.06, zc.door === 'S' ? 0 : Math.PI, { blocks: false })
     wallScreens(zc)
     cornerPlants(zc)
     const sp = zc.door === 'S' ? z1 - 1.4 : z0 + 1.4
@@ -257,6 +284,8 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
       const cols = Math.floor((w - 2) / 3.2)
       for (let c = 0; c < cols; c++) benchSeat(zc.id, x0 + 1.8 + c * 3.2 + 0.4, z, yaw, 3)
     }
+    place(zc.id, 'vending', x1 - 1.0, z1 - 0.5, Math.PI)
+    place(zc.id, 'waterCooler', x1 - 2.2, z1 - 0.4, Math.PI)
     wallScreens(zc)
     cornerPlants(zc)
   }
@@ -269,6 +298,11 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
     sofaSeat(zc.id, x1 - 2, z1 - 1.2, Math.PI)
     place(zc.id, 'tree', x0 + 0.8, z0 + 1.4)
     place(zc.id, 'tree', x1 - 0.8, z0 + 1.4)
+    place(zc.id, 'rug', cx, z1 - 6.6, 0, { w: 6, d: 2.8, color: '#3b4a63', blocks: false })
+    place(zc.id, 'planterTall', cx - 3.2, z1 - 6.6)
+    place(zc.id, 'planterTall', cx + 3.2, z1 - 6.6)
+    place(zc.id, 'floorLamp', x0 + 0.8, z1 - 3.0)
+    place(zc.id, 'floorLamp', x1 - 0.8, z1 - 3.0)
     place(zc.id, 'coffeeTable', x0 + 2, z1 - 4.4, 0)
     place(zc.id, 'coffeeTable', x1 - 2, z1 - 4.4, 0)
   }
@@ -296,6 +330,9 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
     place(zc.id, 'bookshelf', x0 + 0.5, z0 + 3, Math.PI / 2)
     place(zc.id, 'bookshelf', x1 - 0.5, z0 + 3, -Math.PI / 2)
     place(zc.id, 'bigScreen', cx, z0 + 0.14, 0, { w: 6, h: 2.2, label: 'UNTERNEHMENSÜBERSICHT', blocks: false })
+    place(zc.id, 'rug', cx, z0 + 3.2, 0, { w: 6.4, d: 3.6, color: '#5a3f46', blocks: false })
+    place(zc.id, 'floorLamp', x0 + 1.4, z1 - 1.2)
+    place(zc.id, 'cabinet', x1 - 0.32, z1 - 3.6, -Math.PI / 2)
     cornerPlants(zc)
     for (let i = 0; i < 3; i++) spots.push({ id: `${zc.id}-spot-${i}`, zoneId: zc.id, kind: 'meeting', pos: { x: cx - 3 + i * 3, z: z1 - 1.4 }, yaw: Math.PI })
   }
@@ -310,6 +347,9 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
     }
     place(zc.id, 'whiteboard', x0 + 0.15, cz - 2.5, Math.PI / 2, { blocks: false })
     place(zc.id, 'whiteboard', x0 + 0.15, cz + 2.5, Math.PI / 2, { blocks: false })
+    place(zc.id, 'rug', cx, cz, 0, { w: 5.6, d: 5.6, color: '#3b4a63', blocks: false })
+    place(zc.id, 'pendant', cx, cz, 0, { blocks: false, color: '#8b7bd8' })
+    place(zc.id, 'cabinet', x1 - 0.32, cz, -Math.PI / 2)
     wallScreens(zc)
     cornerPlants(zc)
     for (let i = 0; i < 3; i++) spots.push({ id: `${zc.id}-spot-${i}`, zoneId: zc.id, kind: 'meeting', pos: { x: cx - 2 + i * 2, z: z0 + 2 }, yaw: 0 })
@@ -333,6 +373,10 @@ export function generateFloor(config: FloorConfig): GeneratedFloor {
     const { x0, x1, z1 } = zc.rect
     // Aufzugstüren an der Südwand der Kernzelle
     place(zc.id, 'wallDisplay', (x0 + x1) / 2, z1 - 0.12, Math.PI, { w: 1.4, h: 0.5, label: config.short, blocks: false })
+    // Bilder links und rechts der Aufzugstüren (zur Foyerseite gewandt)
+    place(zc.id, 'painting', x0 + 0.85, z1 + 0.12, 0, { w: 1.0, h: 0.8, blocks: false })
+    place(zc.id, 'painting', x1 - 0.85, z1 + 0.12, 0, { w: 1.0, h: 0.8, blocks: false })
+    place(zc.id, 'wallClock', (x0 + x1) / 2, z1 + 0.1, 0, { blocks: false })
   }
 
   const elevatorLobby = (zc: ZoneConfig) => {

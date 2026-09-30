@@ -1,13 +1,16 @@
 import { useThree, useFrame } from '@react-three/fiber'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getFloor } from '../world/generate'
 import { sim } from '../world/sim'
 import { useWorld } from '../world/store'
-import { perf, sample } from './perf'
+import { bench, perf, sample } from './perf'
 
 /** Läuft im Canvas: liest Renderer Statistik und Sim Zähler. */
 export function PerfProbe() {
   const gl = useThree((s) => s.gl)
+  const three = useThree((s) => s.get)
+  // Diagnosezugriff auf die Szene für Tests
+  useEffect(() => { (window as unknown as { __three?: unknown }).__three = three }, [three])
   useEffect(() => { gl.info.autoReset = false }, [gl])
   useFrame(() => {
     // Beginn eines neuen Frames: Zähler des letzten Frames sichern und zurücksetzen
@@ -19,6 +22,28 @@ export function PerfProbe() {
     const dbg = gl.getContext().getExtension('WEBGL_debug_renderer_info')
     perf.gpu = dbg ? String(gl.getContext().getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unbekannt'
   }, [gl])
+  // Automatische Qualitätsanpassung: bricht die Bildrate dauerhaft ein, wird die Grafik schrittweise gesenkt.
+  const auto = useRef({ age: 0, t: 0, n: 0, bad: 0 })
+  useFrame((_, dt) => {
+    if (dt > 0.5 || document.hidden || navigator.webdriver) return
+    const a = auto.current
+    a.age += dt
+    if (a.age < 8 || bench.running) return
+    a.t += dt; a.n++
+    if (a.t < 4) return
+    const fps = a.n / a.t
+    a.t = 0; a.n = 0
+    a.bad = fps < 26 ? a.bad + 1 : 0
+    if (a.bad < 2) return
+    a.bad = 0
+    const st = useWorld.getState()
+    const g = st.graphics
+    if (g.performanceMode) return
+    const msg = (to: string) => `Bildrate war nur ${fps.toFixed(0)} FPS. Grafik automatisch auf ${to} gesenkt. Einstellung unter GRAFIK änderbar.`
+    if (g.quality === 'high') { st.setQuality('medium'); st.setNotice(msg('MITTEL')) }
+    else if (g.quality === 'medium') { st.setQuality('low'); st.setNotice(msg('NIEDRIG')) }
+    else { st.setGraphics({ performanceMode: true }); st.setNotice(msg('PERFORMANCE MODUS')) }
+  })
   return null
 }
 

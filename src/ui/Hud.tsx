@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BUILDING } from '../world/buildingConfig'
 import { getFloor } from '../world/generate'
 import { PROVIDER_LABEL } from '../world/mockAgents'
@@ -43,6 +44,21 @@ function TopBar() {
   )
 }
 
+/** Mock Bedürfnisse (Sims Prinzip), rein aus Status und Kennung abgeleitet. Keine echte Messung. */
+function needs(a: { id: string; status: AgentStatus }) {
+  let h = 0
+  for (let i = 0; i < a.id.length; i++) h = (h * 31 + a.id.charCodeAt(i)) % 1000
+  const j = (h % 20) / 100
+  const table: Record<AgentStatus, [number, number]> = {
+    working: [0.82, 0.62], meeting: [0.6, 0.66], idle: [0.2, 0.9], break: [0.12, 0.95], waiting: [0.4, 0.75], offline: [0, 0.5],
+  }
+  const [load, energy] = table[a.status]
+  return { load: Math.min(1, load + j), energy: Math.max(0.05, energy - j / 2) }
+}
+const Bar = ({ label, v, c }: { label: string; v: number; c: string }) => (
+  <div className="need"><span>{label}</span><i><u style={{ width: `${Math.round(v * 100)}%`, background: c }} /></i><b>{Math.round(v * 100)}%</b></div>
+)
+
 const STATUSES: AgentStatus[] = ['working', 'meeting', 'idle', 'break', 'waiting', 'offline']
 const ST_DE: Record<AgentStatus, string> = { working: 'Arbeitet', meeting: 'Besprechung', idle: 'Bereit', break: 'Pause', waiting: 'Wartet', offline: 'Offline' }
 
@@ -69,6 +85,9 @@ function InfoPanel() {
           <div className="kv"><span>Abteilung</span><b>{dept(a.departmentId)?.title}</b></div>
           <div className="kv"><span>Provider</span><b>{PROVIDER_LABEL[a.provider] || 'keiner'} <em className="mock">MOCK</em></b></div>
           <div className="kv"><span>Bewegung</span><b>{r ? r.state : '-'}</b></div>
+          <Bar label="Auslastung" v={needs(a).load} c="#38d6b4" />
+          <Bar label="Energie" v={needs(a).energy} c="#f0b23d" />
+          <p className="note small">Balken sind Platzhalterwerte (Mock), keine echte Messung.</p>
           {a.simulated && <p className="note small">SIMULIERT: rein visuelle Figur, keine echte Agentenaktivität.</p>}
           <div className="chips">{STATUSES.map((s) => <button key={s} className={a.status === s ? 'on' : ''} onClick={() => setStatus(a.id, s)}>{ST_DE[s]}</button>)}</div>
           <div className="chips"><button className="hot" onClick={() => follow(a.id)}>Folgen</button></div>
@@ -154,6 +173,14 @@ function MapOverlay() {
   )
 }
 
+function Notice() {
+  const n = useWorld((s) => s.notice)
+  const set = useWorld((s) => s.setNotice)
+  useEffect(() => { if (!n) return; const id = setTimeout(() => set(null), 9000); return () => clearTimeout(id) }, [n, set])
+  if (!n) return null
+  return <div className="notice" role="status" onClick={() => set(null)}>{n}</div>
+}
+
 export function Hud() {
   const panel = useWorld((s) => s.panel)
   const setPanel = useWorld((s) => s.setPanel)
@@ -175,6 +202,7 @@ export function Hud() {
       {mode === 'firstPerson' && <div className="cross" />}
       <div className="hint">{HINTS[mode]}</div>
       {sim_ && <div className="simbadge" title="Visuelle Simulation: Statuswechsel sind zufällig, keine echte Agentenaktivität">● SIMULIERTE AKTIVITÄT</div>}
+      <Notice />
       <div className="fade" key={transition} />
     </>
   )

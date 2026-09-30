@@ -9,6 +9,7 @@ import type { Agent, AgentStatus, Avatar } from './types'
 export type CameraMode = 'tycoon' | 'firstPerson' | 'thirdPerson' | 'building' | 'follow'
 export type TimeMode = 'auto' | 'day' | 'evening' | 'night'
 export type Quality = 'low' | 'medium' | 'high'
+export type WallModeSetting = 'high' | 'half' | 'none'
 
 export interface Graphics {
   quality: Quality
@@ -51,7 +52,7 @@ const load = (): Persisted => {
 const persist = (p: Persisted) => { try { localStorage.setItem(LS, JSON.stringify(p)) } catch { /* Speicher nicht verfügbar */ } }
 
 const saved = load()
-const defaultGraphics: Graphics = { quality: 'medium', labels: true, performanceMode: false, ...QUALITY_PRESETS.medium }
+const defaultGraphics: Graphics = { quality: 'high', labels: true, performanceMode: false, ...QUALITY_PRESETS.high }
 
 export const DEFAULT_FLOOR = 'floor-herkulesjobs'
 
@@ -70,6 +71,15 @@ interface WorldStore {
   graphics: Graphics
   player: Avatar
   simulateActivity: boolean
+  /** Sims Wandmodus: hoch (Glas), halb (Brüstung), weg. */
+  notice: string | null
+  setNotice: (n: string | null) => void
+  wallMode: WallModeSetting
+  setWallMode: (m: WallModeSetting) => void
+  /** Zähler: jede Erhöhung dreht die Übersichtskamera um 90 Grad (Vorzeichen in viewRotateDir). */
+  viewRotate: number
+  viewRotateDir: 1 | -1
+  rotateView: (dir: 1 | -1) => void
 
   // UI
   panel: null | 'floors' | 'graphics' | 'character' | 'launch' | 'view'
@@ -123,6 +133,13 @@ export const useWorld = create<WorldStore>((set, get) => ({
   graphics: saved.graphics ?? defaultGraphics,
   player: saved.player ?? DEFAULT_PLAYER,
   simulateActivity: true,
+  notice: null,
+  setNotice: (n) => set({ notice: n }),
+  wallMode: 'high',
+  setWallMode: (m) => set({ wallMode: m }),
+  viewRotate: 0,
+  viewRotateDir: 1,
+  rotateView: (dir) => set((s) => ({ viewRotate: s.viewRotate + 1, viewRotateDir: dir })),
 
   panel: null,
   mapOpen: false,
