@@ -11,3 +11,6 @@ export function resetPlayer(): void {
   walkCamera.pitch = 0.3
   walkCamera.dist = 5.5
 }
+
+/** Messwerte der Gelenke für Tests im Browser. */
+export const poseProbe = { hipL: 0, hipR: 0, kneeL: 0, kneeR: 0, armL: 0, armR: 0, phase: 0 }

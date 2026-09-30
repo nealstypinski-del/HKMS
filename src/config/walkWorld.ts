@@ -43,7 +43,7 @@ export const ESCALATOR = {
   up: { z0: 5.5, z1: 6.5 },
   down: { z0: 6.7, z1: 7.7 },
   outer: { z0: 5.35, z1: 7.85 },
-  speed: 0.6,
+  speed: 0.75,
 } as const
 
 export const ESCALATOR_SLOPE = ESCALATOR.rise / (ESCALATOR.x1 - ESCALATOR.x0)

@@ -8,6 +8,7 @@ import { useOfficeStore } from '../store/office.store'
 import { Ball, Box, Cyl, GEO, mat } from '../world/primitives'
 import { LIFT_DISTANCE, characterRegistry, floorLift } from '../world/runtime'
 import { HAIR_COLORS, PANTS_COLORS, SHIRT_COLORS, SKIN_COLORS, pick } from './character.types'
+import { advancePhase, gaitPose } from './gait'
 import { spawnRuntime, stepCharacter, type CharacterRuntime } from './CharacterController'
 
 const STAND_HIP = 0.62
@@ -138,7 +139,7 @@ function CharacterInner({ agentId }: { agentId: string }) {
   const icon = useRef<THREE.Group>(null)
   const ring = useRef<THREE.Mesh>(null)
   const selRing = useRef<THREE.Mesh>(null)
-  const clock = useRef({ walk: 0, seed: (agentId.charCodeAt(agentId.length - 1) % 7) * 0.9 })
+  const clock = useRef({ walk: 0, lastX: 0, lastZ: 0, amount: 0, init: false, seed: (agentId.charCodeAt(agentId.length - 1) % 7) * 0.9 })
 
   if (rtRef.current === null) {
     const s = useAgentStore.getState()
@@ -171,31 +172,44 @@ function CharacterInner({ agentId }: { agentId: string }) {
 
     const t = state.clock.elapsedTime + clock.current.seed
     const sit = rt.sit
-    const walkK = rt.moving ? 1 : 0
-    clock.current.walk += dt * 7.5 * walkK
-    const swing = Math.sin(clock.current.walk)
+    const c = clock.current
+    if (!c.init) {
+      c.init = true
+      c.lastX = rt.x
+      c.lastZ = rt.z
+    }
+    const dist = rt.riding ? 0 : Math.hypot(rt.x - c.lastX, rt.z - c.lastZ)
+    c.lastX = rt.x
+    c.lastZ = rt.z
+    c.walk = advancePhase(c.walk, dist)
+    // weiches Ein und Ausblenden des Gehens, Geschwindigkeit in m/s bestimmt die Stärke
+    c.amount += ((rt.moving ? 1 : 0) - c.amount) * Math.min(1, 10 * dt)
+    const walkK = c.amount
+    const gait = gaitPose(c.walk, c.amount)
     const phase = rt.phase
 
     // Körperhöhe: stehend auf Hüfthöhe, sitzend auf Sitzhöhe
-    const bob = walkK ? Math.abs(Math.sin(clock.current.walk)) * 0.035 : Math.sin(t * 1.8) * 0.006
+    const bob = gait.bob * (1 - sit) + Math.sin(t * 1.8) * 0.006 * (1 - walkK)
     b.position.y = STAND_HIP + (rt.seatY + 0.05 - STAND_HIP) * sit + bob
+    b.rotation.y = gait.pelvisYaw
+    b.rotation.x = gait.lean * (1 - sit)
 
     const setX = (o: THREE.Object3D | null, v: number) => {
       if (o) o.rotation.x = v
     }
     // Beine
-    setX(legL.current, -Math.PI / 2 * sit + swing * 0.7 * walkK)
-    setX(legR.current, -Math.PI / 2 * sit - swing * 0.7 * walkK)
-    setX(shinL.current, (Math.PI / 2) * sit + Math.max(0, -swing) * 0.5 * walkK)
-    setX(shinR.current, (Math.PI / 2) * sit + Math.max(0, swing) * 0.5 * walkK)
+    setX(legL.current, (-Math.PI / 2) * sit + gait.hipL * (1 - sit))
+    setX(legR.current, (-Math.PI / 2) * sit + gait.hipR * (1 - sit))
+    setX(shinL.current, (Math.PI / 2) * sit + gait.kneeL * (1 - sit))
+    setX(shinR.current, (Math.PI / 2) * sit + gait.kneeR * (1 - sit))
 
     // Arme je nach Phase
     let aL = 0
     let aR = 0
     let zR = 0
-    if (walkK) {
-      aL = -swing * 0.7
-      aR = swing * 0.7
+    if (walkK > 0.3) {
+      aL = gait.armL
+      aR = gait.armR
     } else if (phase === 'WORKING') {
       aL = -1.15 + Math.sin(t * 13) * 0.07
       aR = -1.15 + Math.sin(t * 11 + 1) * 0.07

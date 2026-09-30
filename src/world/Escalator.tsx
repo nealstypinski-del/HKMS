@@ -11,29 +11,73 @@ const SPACING = 0.4
 const COUNT = Math.ceil(LEN / SPACING)
 const STEP_W = SPACING * Math.cos(ANGLE)
 
-/** Fahrende Stufen einer Spur. Nach oben (+1) oder unten (-1). */
+const CYCLE_SPEED = ESCALATOR.speed
+const MARKS = 26
+
+/** Fahrende Stufen einer Spur: dunkler Körper, geriffelte helle Trittfläche, gelbe Vorderkante. */
 function Lane({ z0, z1, direction }: { z0: number; z1: number; direction: 1 | -1 }) {
-  const mesh = useRef<THREE.InstancedMesh>(null)
+  const body = useRef<THREE.InstancedMesh>(null)
+  const tread = useRef<THREE.InstancedMesh>(null)
+  const edge = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const width = z1 - z0 - 0.08
   useFrame(({ clock }) => {
-    const m = mesh.current
-    if (!m) return
-    const t = clock.elapsedTime * ESCALATOR.speed
+    const m = body.current
+    const tr = tread.current
+    const ed = edge.current
+    if (!m || !tr || !ed) return
+    const t = clock.elapsedTime * CYCLE_SPEED
+    escalatorProbe.offset = (direction * t) % LEN
+    const put = (mesh: THREE.InstancedMesh, i: number, dx: number, dy: number, sx: number, sy: number) => {
+      const s2 = (((i * SPACING + direction * t) % LEN) + LEN) % LEN
+      const f = s2 / LEN
+      dummy.position.set(ESCALATOR.x0 + RUN * f + dx, ESCALATOR.rise * f + dy, (z0 + z1) / 2)
+      dummy.scale.set(sx, sy, width)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+    }
     for (let i = 0; i < COUNT; i++) {
-      // Position entlang der Schräge, danach zurück an den Anfang (Umlauf)
-      const s = (((i * SPACING + direction * t) % LEN) + LEN) % LEN
-      const f = s / LEN
-      dummy.position.set(ESCALATOR.x0 + RUN * f, ESCALATOR.rise * f - 0.1, (z0 + z1) / 2)
-      dummy.scale.set(STEP_W, 0.2, width)
+      put(m, i, 0, -0.1, STEP_W, 0.2)
+      put(tr, i, -0.02, 0.005, STEP_W * 0.72, 0.03)
+      put(ed, i, STEP_W / 2 - 0.02, 0.012, 0.035, 0.034)
+    }
+    m.instanceMatrix.needsUpdate = true
+    tr.instanceMatrix.needsUpdate = true
+    ed.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <>
+      <instancedMesh ref={body} args={[GEO.box, mat('#3f465c'), COUNT]} frustumCulled={false} castShadow receiveShadow />
+      <instancedMesh ref={tread} args={[GEO.box, mat('#c9d1e4'), COUNT]} frustumCulled={false} receiveShadow />
+      <instancedMesh ref={edge} args={[GEO.box, mat('#ffd23f', '#ffb800', 0.6), COUNT]} frustumCulled={false} />
+    </>
+  )
+}
+
+/** Bewegte Markierungen auf dem Handlauf (der Handlauf fährt mit den Stufen). */
+function HandrailMarks({ z, direction }: { z: number; direction: 1 | -1 }) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  useFrame(({ clock }) => {
+    const m = ref.current
+    if (!m) return
+    const t = clock.elapsedTime * CYCLE_SPEED
+    for (let i = 0; i < MARKS; i++) {
+      const s2 = (((i * (LEN / MARKS) + direction * t) % LEN) + LEN) % LEN
+      const f = s2 / LEN
+      dummy.position.set(ESCALATOR.x0 + RUN * f, ESCALATOR.rise * f + 1.06, z)
+      dummy.rotation.set(0, 0, ANGLE)
+      dummy.scale.set(0.12, 0.02, 0.09)
       dummy.updateMatrix()
       m.setMatrixAt(i, dummy.matrix)
     }
     m.instanceMatrix.needsUpdate = true
   })
-  return <instancedMesh ref={mesh} args={[GEO.box, mat('#b8c2d8'), COUNT]} frustumCulled={false} castShadow receiveShadow />
+  return <instancedMesh ref={ref} args={[GEO.box, mat('#ff8a3d', '#ff8a3d', 0.5), MARKS]} frustumCulled={false} />
 }
 
+/** Messwert für Tests im Browser: aktuelle Verschiebung der Stufen in Metern entlang der Schräge. */
+export const escalatorProbe = { offset: 0 }
 
 /** Rolltreppe zwischen Lobby und Etage 1: eine Spur fährt hinauf, eine hinunter. */
 export function Escalator() {
@@ -47,6 +91,9 @@ export function Escalator() {
   ]
   return (
     <group>
+      <HandrailMarks z={(E.outer.z0 + E.up.z0) / 2} direction={1} />
+      <HandrailMarks z={(E.up.z1 + E.down.z0) / 2} direction={1} />
+      <HandrailMarks z={(E.down.z1 + E.outer.z1) / 2} direction={-1} />
       <Lane z0={E.up.z0} z1={E.up.z1} direction={1} />
       <Lane z0={E.down.z0} z1={E.down.z1} direction={-1} />
       {/* Tragwerk unter den Stufen */}
