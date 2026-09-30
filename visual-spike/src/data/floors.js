@@ -84,6 +84,15 @@ export const FLOORS = [
       { x: 3.7, z: 0.65, w: 4.6, d: 3, color: '#ffd0c7', label: 'RECRUITING CONTENT' },
       { type: 'circle', x: 7.2, z: 4.5, r: 1.9, color: '#ffb347' },
     ],
+    walls: false,
+    pods: [
+      { type: 'wall', x: -6.3, z: -4.85, w: 4.6, title: 'LEAD RESEARCH' },
+      { type: 'wall', x: -1.3, z: -4.85, w: 4.6, title: 'SALES' },
+      { type: 'wall', x: 3.7, z: -4.85, w: 4.6, title: 'CUSTOMER SUCCESS' },
+      { type: 'glass', x: -6.3, z: -1.1, w: 4.6 },
+      { type: 'glass', x: -1.3, z: -1.1, w: 4.6 },
+      { type: 'glass', x: 3.7, z: -1.1, w: 4.6 },
+    ],
     windows: [],
     screens: [
       {
@@ -101,8 +110,6 @@ export const FLOORS = [
     ],
     props: [
       { t: 'elevator', p: [-8.8, 0, 4], r: Math.PI / 2 },
-      { t: 'partition', p: [-3.8, 0, -1.6], len: 7.8, color: '#ff8a3d' },
-      { t: 'partition', p: [1.2, 0, -1.6], len: 7.8, color: '#ff8a3d' },
       { t: 'table', p: [-1.3, 0, 4.6], size: [3, 0.06, 1.2], h: 0.75 },
       { t: 'chair', p: [-2.1, 0, 3.65], r: Math.PI },
       { t: 'chair', p: [-0.5, 0, 3.65], r: Math.PI },
@@ -149,6 +156,14 @@ export const FLOORS = [
       { x: 2.2, z: 0.35, w: 2.4, d: 3.1, color: '#ffd9c7', label: 'COMMUNITY' },
       { x: 7, z: -2, w: 3.6, d: 6, color: '#ffc4e6', label: 'VIDEO / REELS' },
     ],
+    walls: false,
+    pods: [
+      { type: 'wall', x: -5.85, z: -4.85, w: 4.4, title: 'TREND RESEARCH' },
+      { type: 'wall', x: -0.1, z: -4.85, w: 6.9, title: 'REDAKTION' },
+      { type: 'glass', x: -5.85, z: -1.15, w: 4.4 },
+      { type: 'glass', x: -1.25, z: -1.15, w: 4.4 },
+      { type: 'glass', x: 2.2, z: -1.15, w: 2.4 },
+    ],
     windows: [],
     screens: [
       { x: -7.2, y: 2.6, w: 3.0, h: 1.7, title: 'LOCAL TRENDS', accent: '#2fd6c0', lines: [{ t: '#Kassel Weihnachtsmarkt', c: '#e8fff9', s: 34 }, { t: '+340 % heute', c: '#3ddc84', s: 34 }] },
@@ -159,7 +174,6 @@ export const FLOORS = [
     ],
     props: [
       { t: 'elevator', p: [-8.8, 0, 4], r: Math.PI / 2 },
-      { t: 'partition', p: [-3.55, 0, -1.55], len: 7.9, color: '#e15b9a' },
       { t: 'ringlight', p: [7, 0, -0.8], r: Math.PI },
       { t: 'sofa', p: [6.5, 0, 5.4], r: Math.PI, color: '#e15b9a' },
       { t: 'table', p: [6.5, 0, 3.6], size: [1.4, 0.06, 0.8] },
@@ -197,6 +211,11 @@ export const FLOORS = [
     zones: [
       { x: -2.9, z: -1.5, w: 11.6, d: 7.9, color: '#3d4868' },
       { x: 7.4, z: -2.2, w: 3.2, d: 6, color: '#262e4a', label: 'SERVER' },
+    ],
+    walls: false,
+    pods: [
+      { type: 'wall', x: -2.4, z: -4.75, w: 11.6, title: 'ENGINEERING' },
+      { type: 'glass', x: -2.4, z: -1.1, w: 11.6 },
     ],
     windows: [],
     screens: [

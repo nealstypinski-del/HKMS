@@ -55,12 +55,14 @@ def link(o, col):
     return o
 
 
-def box(col, at, loc, size, m, name='box'):
+def box(col, at, loc, size, m, name='box', rot=None):
     bpy.ops.mesh.primitive_cube_add(size=1, location=(at[0] + loc[0], at[1] + loc[1], at[2] + loc[2]))
     o = bpy.context.active_object
     o.name = name
     o.scale = size
-    bpy.ops.object.transform_apply(scale=True)
+    if rot:
+        o.rotation_euler = rot
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     o.data.materials.append(m)
     return link(o, col)
 
@@ -162,6 +164,8 @@ def sign(col, at, text, width=4.0, z=1.9):
     board = mat('signboard', '#0b0d12', 0.6)
     white = mat('signtext', '#ffffff', 0.5, 0, 2.5)
     box(col, at, (0, 0, z), (width, 0.1, 0.9), board, 'sign_board')
+    if not text:
+        return
     bpy.ops.object.text_add(location=(at[0], at[1] - 0.08, at[2] + z - 0.17), rotation=(math.pi / 2, 0, 0))
     t = bpy.context.active_object
     t.data.body = text
@@ -174,7 +178,7 @@ def sign(col, at, text, width=4.0, z=1.9):
     link(t, col)
 
 
-def pod_wall(col, at=(0, 0, 0), title='HERKULES', width=6.0, height=2.6):
+def pod_wall(col, at=(0, 0, 0), title=None, width=6.0, height=2.6):
     slat = [mat('slatA', '#3a2519', 0.8), mat('slatB', '#452c1e', 0.8), mat('slatC', '#2f1e14', 0.8)]
     n = int(width / 0.18)
     for i in range(n):
@@ -223,14 +227,31 @@ def character(col, at=(0, 0, 0), sit=False):
         ico(col, at, (ex, -0.26, 1.15), 0.035, mat('eye', '#141414', 0.4), 1, (1, 0.5, 1.2), True, 'eye')
 
 
+def character_sit(col, at=(0, 0, 0)):
+    skin, hair, shirt = mat('skin', '#f1c9a5', 0.8), mat('hair', '#2b2118', 0.9), mat('shirt', '#ff8a3d', 0.8)
+    pants, shoe = mat('pants', '#2c3350', 0.8), mat('shoe', '#f2f2f2', 0.6)
+    for sx in (-0.11, 0.11):
+        box(col, at, (sx, -0.16, 0.47), (0.15, 0.4, 0.15), pants, 'thigh')
+        box(col, at, (sx, -0.34, 0.24), (0.15, 0.15, 0.4), pants, 'shin')
+        box(col, at, (sx, -0.38, 0.03), (0.16, 0.24, 0.07), shoe, 'shoe')
+        box(col, at, (sx * 2.6, -0.16, 0.6), (0.1, 0.1, 0.36), shirt, 'arm', rot=(math.radians(-60), 0, 0))
+    ico(col, at, (0, 0, 0.72), 0.24, shirt, 2, (1, 0.8, 1.1), True, 'torso')
+    ico(col, at, (0, 0, 1.14), 0.3, skin, 2, (1, 1, 1), True, 'head')
+    ico(col, at, (0, 0.03, 1.28), 0.315, hair, 2, (1, 1, 0.75), True, 'hair')
+    for ex in (-0.09, 0.09):
+        ico(col, at, (ex, -0.26, 1.16), 0.035, mat('eye', '#141414', 0.4), 1, (1, 0.5, 1.2), True, 'eye')
+
+
 ASSETS = {
+    'desk1': lambda c: desk(c, monitors=1),
+    'character_sit': character_sit,
     'desk': lambda c: desk(c, monitors=2),
     'desk_triple': lambda c: desk(c, monitors=3),
     'chair': chair,
     'tree': tree,
     'glass_partition': glass_partition,
     'bookshelf': bookshelf,
-    'pod_wall': lambda c: pod_wall(c, title='HERKULESJOBS'),
+    'pod_wall': lambda c: pod_wall(c, title=None),
     'sofa': sofa,
     'lamp': lamp,
     'bollard': bollard,

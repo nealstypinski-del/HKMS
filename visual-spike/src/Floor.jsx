@@ -1,4 +1,4 @@
-import { Chair, Desk, Elevator, Kitchen, AgentBench, Partition, Plant, RingLight, ServerRack, Sofa, Table, WallScreen, ZoneLabel } from './Furniture.jsx'
+import { Chair, Desk, Elevator, Kitchen, AgentBench, Partition, Plant, Pod, RingLight, ServerRack, Sofa, Table, WallScreen, ZoneLabel } from './Furniture.jsx'
 import Character from './Character.jsx'
 
 const SHIRTS = ['#ff8a3d', '#2fd6c0', '#5b6ee1', '#e15b7a', '#f2c94c', '#8e6bd8', '#3aa76d', '#e8e8e8']
@@ -9,11 +9,11 @@ function Prop({ d, pal }) {
     case 'elevator': return <Elevator position={d.p} rotation={d.r} />
     case 'kitchen': return <Kitchen position={d.p} />
     case 'bench': return <AgentBench position={d.p} />
-    case 'sofa': return <Sofa position={d.p} rotation={d.r} color={d.color} width={d.width} />
+    case 'sofa': return <Sofa position={d.p} rotation={d.r} width={d.width} />
     case 'table': return <Table position={d.p} size={d.size} h={d.h} color={pal.wood} />
-    case 'chair': return <Chair position={d.p} rotation={d.r} color={pal.chair} />
+    case 'chair': return <Chair position={d.p} rotation={d.r} />
     case 'plant': return <Plant position={d.p} scale={d.s} />
-    case 'partition': return <Partition position={d.p} len={d.len} color={d.color} />
+    case 'partition': return <Partition position={d.p} len={d.len} />
     case 'rack': return <ServerRack position={d.p} rotation={d.r} />
     case 'ringlight': return <RingLight position={d.p} rotation={d.r} />
     default: return null
@@ -40,6 +40,8 @@ export default function Floor({ floor, stats }) {
         </group>
       ))}
 
+      {floor.walls !== false && (
+        <>
       <mesh position={[0, 2, -6.1]} castShadow receiveShadow>
         <boxGeometry args={[18.4, 4, 0.2]} />
         <meshStandardMaterial color={pal.wall} />
@@ -56,6 +58,8 @@ export default function Floor({ floor, stats }) {
         <boxGeometry args={[0.1, 0.3, 12]} />
         <meshStandardMaterial color={pal.trim} />
       </mesh>
+        </>
+      )}
       {floor.windows.map((w, i) => (
         <mesh key={i} position={[w.x, 2.6, -5.98]}>
           <boxGeometry args={[w.w, 1.3, 0.05]} />
@@ -63,15 +67,29 @@ export default function Floor({ floor, stats }) {
         </mesh>
       ))}
 
-      {floor.screens.map((s, i) => (
-        <WallScreen key={i} position={[s.x, s.y, -5.9]} w={s.w} h={s.h} title={s.title} accent={s.accent} bg={s.bg}
-          lines={typeof s.lines === 'function' ? s.lines(stats) : s.lines} />
-      ))}
+      {floor.screens.map((s, i) => {
+        const lines = typeof s.lines === 'function' ? s.lines(stats) : s.lines
+        if (floor.walls !== false) {
+          return <WallScreen key={i} position={[s.x, s.y, -5.9]} w={s.w} h={s.h} title={s.title} accent={s.accent} bg={s.bg} lines={lines} />
+        }
+        // Freistehendes Display auf zwei Pfosten (ohne Rückwand)
+        const y = s.y + 1.0
+        return (
+          <group key={i} position={[s.x, 0, -6.4]}>
+            <WallScreen position={[0, y, 0]} w={s.w} h={s.h} title={s.title} accent={s.accent} bg={s.bg} lines={lines} />
+            {[-1, 1].map((k) => (
+              <mesh key={k} position={[k * (s.w / 2 - 0.15), (y - s.h / 2) / 2, -0.05]}>
+                <boxGeometry args={[0.1, y - s.h / 2, 0.1]} />
+                <meshStandardMaterial color="#20263a" />
+              </mesh>
+            ))}
+          </group>
+        )
+      })}
+      {(floor.pods || []).map((p, i) => <Pod key={i} {...p} />)}
       {floor.props.map((d, i) => <Prop key={i} d={d} pal={pal} />)}
       {floor.desks.map((d, i) => (
-        <Desk key={i} position={[d.x, 0, d.z]} monitors={d.monitors} terminal={d.terminal}
-          active={d.agent[2] !== 'error'} accent={d.agent[2] === 'waiting' ? '#ffc94d' : pal.screen}
-          wood={pal.wood} woodDark={pal.woodDark} chair={pal.chair} />
+        <Desk key={i} position={[d.x, 0, d.z]} monitors={d.monitors} terminal={d.terminal} status={d.agent[2]} />
       ))}
 
       {floor.desks.map((d) => {
