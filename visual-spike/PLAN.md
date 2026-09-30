@@ -30,6 +30,7 @@ Lebendes Dokument. Jeder Zyklus (alle 15 Minuten) nimmt sich den obersten offene
 | Sims Ansicht, Etagenschnitt, Auswahlpanel | `outdoor/ui/SimUI.jsx`, `runtime/viewState.js` | fertig |
 | Prüfskripte | `tools/` | fertig |
 | Absicherung gegen Fehlbedienung | siehe Missbrauchsfälle | in Arbeit |
+| Engine Umstieg (WebGPU Renderer, TSL, siehe unten) | `src/world/engine/` | E1 fertig, E2 offen |
 | Profiling auf echter GPU | offen | offen |
 | Echte Räume nach Plänen | offen | wartet auf Material |
 
@@ -54,7 +55,29 @@ Status: **offen**, **erledigt** oder **bewusst akzeptiert**.
 | M13 | Schaltet Wasserton ein, ohne dass der Browser Ton erlaubt | Stille oder Fehler | Fehler abfangen, Hinweis anzeigen | offen |
 | M14 | Gibt sehr viele Klicks auf „Aufgabe trifft ein“ | Übervolle Meldungsliste, viele Pulse | Meldungsliste begrenzen (vorhanden), Pulse bündeln (vorhanden) | erledigt |
 
+## Engine Umstieg (Recherche und Plan)
+
+**Recherche zu BridgeMind (Stand Sitzung):** BridgeMind nutzt keine eigene Engine. Die öffentlichen Projekte (`turbo-kart-rush`, `apex-formula`, `leonida`, `bridge-horror-house`, `voxelcraft`) sind Three.js Spiele mit rein prozeduralen Assets, teils mit Rapier Physik. Die Benchmark Prompts verlangen laut Suchergebnis Three.js mit „WebGPU Techniken (2026)“. Die Webseiten selbst waren für mich gesperrt, Details stammen aus Suchtreffern und der GitHub Übersicht. Alle Projekte sind MIT lizenziert; es werden keine Assets kopiert.
+
+**Schluss für uns:** Die „neue Engine“ ist der WebGPU Renderer von Three.js (Version 0.186 liegt schon vor) mit TSL Materialien und TSL Nachbearbeitung (Bausteine `GTAONode`, `BloomNode`, `SMAANode`, `GodraysNode`, `DepthOfFieldNode`, `MotionBlur` sind vorhanden). React Three Fiber 9.8 kann den Renderer asynchron erzeugen.
+
+**Befund E1 (`webgpuProbe.js`):** Ohne WebGPU startet der Renderer sauber mit WebGL 2 Rückfall und rendert TSL Materialien (5 von 5 Bildern). Mit WebGPU scheitert das alte Test Chromium an einer Texturansicht (`swizzle`), aktuelle Chrome Versionen unterstützen sie. Folge: **jeder Start muss bei Fehler automatisch auf `forceWebGL` zurückfallen** (Missbrauchsfall M15).
+
+| Schritt | Inhalt | Datei | Status |
+| --- | --- | --- | --- |
+| E1 | Machbarkeit prüfen | `engine/webgpuProbe.js` | erledigt |
+| E2 | Renderer Fabrik: WebGPU versuchen, Testbild rendern, bei Fehler WebGL erzwingen, hinter Schalter `?engine=webgpu` | `engine/createRenderer.js` | offen |
+| E3 | Rohe GLSL Shader portieren: Kaskadenwasser, Beckenwasser, Himmel | `engine/tsl/waterNode.js`, `engine/tsl/skyNode.js` | offen |
+| E4 | Nachbearbeitung neu: GTAO, Bloom, SMAA, Vignette, Filmton als TSL Kette statt `@react-three/postprocessing` | `engine/tsl/postChain.js` | offen |
+| E5 | Ungeprüfte Funktionen absichern: Schnittebenen (Wandmodus), Nebel, Instanzfarben, Sprites | `engine/compat.md` und Tests | offen |
+| E6 | Optional: Wald und Crowd per Compute Shader, Godrays, Tiefenunschärfe | eigene Dateien je Effekt | offen |
+| E7 | Messung auf echter GPU, WebGPU gegen WebGL | braucht deinen Rechner | offen |
+
+Weitere Missbrauchsfälle dazu: **M15** Browser meldet WebGPU, Gerät scheitert (Rückfall, siehe E2), **M16** Nutzer schaltet den Motor mitten in der Sitzung um (Neustart des Canvas mit Sicherung des Zustands), **M17** Safari und ältere Browser ohne WebGPU (WebGL 2 Rückfall ist geprüft).
+
 ## Zyklusplan (je 15 Minuten ein Paket)
+
+0. E2: `engine/createRenderer.js` mit Rückfall und Schalter.
 
 1. M5 und M6: `sim/selectionGuard.js` löscht ungültige Auswahl.
 2. M7: `camera/positionGuard.js` fängt NaN und Ausreißer der Spielerposition ab.
