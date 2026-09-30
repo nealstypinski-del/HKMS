@@ -28,7 +28,7 @@ Regel: Jede Datei hat genau eine Aufgabe. Nach jedem bestätigten Schritt wird n
 | --- | --- | --- | --- | --- |
 | P1 (erledigt) | Robustheit der Simulation | Falsche Eingaben stürzen nichts ab, liefern klare Fehler | `tests/misuse.test.ts`, Validierung in `src/engine.ts` | Alle Missbrauchsfälle aus Abschnitt 4 (Simulation) grün |
 | P2 | Viewer aufteilen | Große Dateien in kleine mit einer Aufgabe | `viewer/src/build/floors.js`, `walls.js`, `furniture/*.js`, `escalator.js`, `environment.js`, `agents/character.js`, `agents/motion.js`, `agents/pose.js`, `ui/*.js` | Ansicht sieht identisch aus, Build grün |
-| P3 | Robustheit des Viewers | Kein weißer Bildschirm bei Fehlern | `viewer/src/guard/webgl.js`, `viewer/src/guard/dispose.js` | Abschnitt 4 (Viewer) grün |
+| P3 (erledigt) | Robustheit des Viewers | Kein weißer Bildschirm bei Fehlern | `viewer/src/guard/webgl.js`, `viewer/src/guard/dispose.js` | Abschnitt 4 (Viewer) grün |
 | P4 | Wegfinden | Agenten laufen nicht durch Möbel | `src/nav/grid.ts`, `src/nav/astar.ts` (Simulation) oder `viewer/src/agents/nav.js` | Kein Agent schneidet Möbel in 20 Minuten Testlauf |
 | P5 | Treppenhaus Etage 0 bis 1 | Feste Treppe zusätzlich zur Rolltreppe | `viewer/src/build/stairs.js`, Routenart in `src/movement.ts` | Agent nutzt Treppe und Rolltreppe |
 | P6 | Aufzugskapazität | Warteschlange am Aufzug | `src/systems/elevator.ts` | Test: nie mehr als Kapazität gleichzeitig |
@@ -75,4 +75,5 @@ Reihenfolge: P1, P3, P2, P4, P5, P6, P7, P8, P9. Pro Wecker Durchlauf (15 Minute
 | Datum | Änderung |
 | --- | --- |
 | 30.09.2026 | Plan angelegt. P1 begonnen. |
+| 30.09.2026 | P3 erledigt: `viewer/src/guard/webgl.js` (WebGL Prüfung mit Meldung), `guard/dispose.js` (Speicher freigeben), Kontextverlust, Fenstergröße 0, Schleifenfehler abgefangen, Folgen endet bei Offline. Neuer Browsertest `viewer/test/smoke.mjs` mit 16 Prüfungen, alle bestanden. Offen: Pinch Zoom auf Touch. Nächstes Paket: P2 Viewer aufteilen. |
 | 30.09.2026 | P1 erledigt: 13 Missbrauchstests, Eingabevalidierung für Aufgaben und Meetings, Konfigurationsprüfung (`src/configValidation.ts`), Warteschlangengrenze (`maxQueuedTasks`), robustes Laden, `advance` ignoriert ungültige Zeitwerte. 125 Tests grün. Nächstes Paket: P3 Robustheit des Viewers. |

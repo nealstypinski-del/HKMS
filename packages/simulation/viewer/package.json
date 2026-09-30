@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "description": "3D Demo Ansicht (Sims Stil) der Simulation. Nur Entwicklung, gehört fachlich zu Terminal 3.",
-  "scripts": { "build": "node build.mjs" },
+  "scripts": { "build": "node build.mjs",
+    "test": "node build.mjs dist/hochhaus3d.html && node test/smoke.mjs dist/hochhaus3d.html" },
   "dependencies": { "three": "^0.170.0" },
   "devDependencies": { "esbuild": "^0.24.0" }
 }

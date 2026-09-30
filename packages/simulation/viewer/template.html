@@ -53,5 +53,5 @@ select { max-width: 100%; }
 <div id="info" class="panel" hidden><b id="iname"></b><span class="m" id="idept"></span><span class="m" id="istatus" style="margin-top:6px"></span><span class="m" id="itask" style="margin-top:6px"></span><span class="m" id="icaps" style="font-family:var(--font-mono);font-size:11px;margin-top:6px"></span><button id="follow" style="margin-top:10px;width:100%">Kamera folgt diesem Agenten</button></div>
 <div id="logbox" class="panel"><h2>Protokoll</h2><ol id="log"></ol></div>
 <div id="loading">Herkules Hochhaus wird aufgebaut ...</div>
-<script>window.addEventListener("error",function(e){var l=document.getElementById("loading");if(l){l.hidden=false;l.textContent="Fehler beim Aufbau: "+e.message+" (Zeile "+(e.lineno||"?")+")";}});</script>
+<script>window.addEventListener("error",function(e){var l=document.getElementById("loading");if(l){l.hidden=false;var m=String(e.message||"");if(m.indexOf("HK:")>=0){return;}l.textContent="Fehler beim Aufbau: "+m+" (Zeile "+(e.lineno||"?")+")";}});</script>
 <script>/*BUNDLE*/</script>

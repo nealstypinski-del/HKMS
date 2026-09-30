@@ -7,6 +7,8 @@ export const ESC = { xUp: 1.6, xDown: 3.6, zBase: 17.8, zTop: 10.9, holeX0: 0.4,
 export const DEPT_COLOR = { HERKULESJOBS: 0xff8a3d, KASSELMEMES: 0x2fd6c0, SHARED: 0x8b9cff };
 
 const mats = new Map();
+/** Leert den Materialspeicher (beim Neuaufbau, sonst wächst er mit jeder neuen Textur). */
+export function resetMaterialCache() { mats.clear(); }
 export function M(color, o = {}) {
   const key = JSON.stringify([color, o.r, o.m, o.e, o.ei, o.t, o.o, o.map && o.map.uuid]);
   let m = mats.get(key); if (m) return m;

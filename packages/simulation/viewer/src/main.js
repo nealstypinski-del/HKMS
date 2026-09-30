@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createScenarioEngine, listScenarios, formatClock } from '../../src/index';
-import { buildWorld, FH } from './world.js';
+import { buildWorld, FH, resetMaterialCache } from './world.js';
+import { webglAvailable, showMessage, hideMessage } from './guard/webgl.js';
+import { disposeObject } from './guard/dispose.js';
 import { Crowd } from './agents.js';
 import * as T from './textures.js';
 
@@ -14,6 +16,7 @@ const VIEWS = [['Turm', 99], ['Erdgeschoss', 0], ['HerkulesJobs', 1], ['KasselMe
 const $ = (id) => document.getElementById(id);
 
 const canvas = $('gl');
+if (!webglAvailable()) { showMessage('Dein Browser oder Gerät unterstützt kein WebGL. Bitte einen aktuellen Browser mit eingeschalteter Hardwarebeschleunigung verwenden.'); throw new Error('HK:kein WebGL'); }
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -35,8 +38,9 @@ listScenarios().forEach((s) => { const o = document.createElement('option'); o.v
 sel.value = 'C_KASSELMEMES_TREND_SPIKE';
 
 function boot() {
-  if (world) { scene.remove(world.world); world.world.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
-  if (crowd) crowd.list.forEach((r) => scene.remove(r.ch.root));
+  if (world) { scene.remove(world.world); disposeObject(world.world); }
+  if (crowd) crowd.list.forEach((r) => { scene.remove(r.ch.root); disposeObject(r.ch.root); });
+  resetMaterialCache();
   engine = createScenarioEngine(sel.value); engine.runFor(150000); engine.setSpeed(speed);
   world = buildWorld(engine, scene); crowd = new Crowd(engine, world, scene);
   follow = null; const b = world.bounds; cam.goalTarget.set((b.X0 + b.X1) / 2, 2 * FH, (b.Z0 + b.Z1) / 2);
@@ -60,8 +64,10 @@ function placeCamera() {
   camera.position.set(cam.target.x + Math.sin(cam.az) * ce * d, cam.target.y + Math.sin(cam.el) * d, cam.target.z + Math.cos(cam.az) * ce * d); camera.lookAt(cam.target);
   sun.position.set(cam.target.x - 40, cam.target.y + 100, cam.target.z + 50); sun.target.position.copy(cam.target); sun.target.updateMatrixWorld();
 }
-function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); placeCamera(); }
+function resize() { const w = window.innerWidth, h = window.innerHeight; if (!(w > 0 && h > 0)) return; renderer.setSize(w, h, false); placeCamera(); }
 window.addEventListener('resize', resize);
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showMessage('Die Grafik wurde vom Browser unterbrochen. Sie wird wiederhergestellt ...'); });
+canvas.addEventListener('webglcontextrestored', () => { hideMessage(); });
 
 // Steuerung: ziehen = drehen, Umschalt oder rechte Taste = verschieben, Rad = zoomen
 let drag = null, moved = 0;
@@ -106,6 +112,7 @@ function ui(force) {
 
 let last = performance.now();
 function frame(ts) {
+  try {
   const dt = Math.min(0.1, (ts - last) / 1000); last = ts; simTime += dt;
   engine.advance(dt * 1000);
   const st = engine.getState(); const now = st.clock.nowMs + st.accumulatorMs;
@@ -113,12 +120,14 @@ function frame(ts) {
   crowd.update(dt, now, simTime);
   world.escalators.forEach((e) => e.update(escTime));
   if (simTime - lastTv > 0.2) { lastTv = simTime; world.tvCanvases.forEach((t) => { if (t.floor <= focusView) t.tc.draw(simTime, t.v); }); }
+  if (follow && follow.a.status === 'OFFLINE') { follow = null; if (selected) showInfo(selected); }
   if (follow) { const fl = Math.max(0, Math.min(4, Math.round(follow.y / FH))); if (fl !== focusView) { setView.fromFollow = true; setView(fl); setView.fromFollow = false; } cam.goalTarget.set(follow.x, follow.y + 1.0, follow.z); cam.goalSize = Math.min(cam.goalSize, 22); }
   const k = Math.min(1, dt * 5); cam.target.lerp(cam.goalTarget, k); cam.size += (cam.goalSize - cam.size) * k; if (!drag) { cam.az += (cam.goalAz - cam.az) * k; cam.el += (cam.goalEl - cam.el) * k; }
   placeCamera(); renderer.render(scene, camera);
   if (simTime - lastUi > 0.3) { lastUi = simTime; ui(false); }
   window.__frames = (window.__frames || 0) + 1;
   requestAnimationFrame(frame);
+  } catch (err) { console.error(err); showMessage('Fehler in der Darstellung: ' + (err && err.message ? err.message : err) + '. Bitte die Seite neu laden.'); }
 }
 
 document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => { speed = Number(b.dataset.speed); engine.setSpeed(speed); document.querySelectorAll('[data-speed]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }));
@@ -131,4 +140,4 @@ const vb = $('views'); VIEWS.forEach(([label, f]) => { const b = document.create
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { follow = null; if (selected) showInfo(selected); } if (e.key >= '0' && e.key <= '4') setView(Number(e.key)); if (e.key === 't' || e.key === 'T') setView(99); });
 
 const hash = location.hash.replace('#', ''); if (/^etage[0-4]$/.test(hash)) focusView = Number(hash.slice(5));
-resize(); boot(); window.__hk = { cam, follow: (id) => { follow = crowd.list.find((r) => r.a.id === id) || null; selected = follow; crowd.select(follow); showInfo(follow); }, get crowd() { return crowd; }, get engine() { return engine; }, setView, get world() { return world; } }; ui(true); $('loading').hidden = true; requestAnimationFrame(frame);
+resize(); boot(); window.__hk = { renderer, cam, follow: (id) => { follow = crowd.list.find((r) => r.a.id === id) || null; selected = follow; crowd.select(follow); showInfo(follow); }, get crowd() { return crowd; }, get engine() { return engine; }, setView, get world() { return world; } }; ui(true); $('loading').hidden = true; requestAnimationFrame(frame);
