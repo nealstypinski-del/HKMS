@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, Stars } from '@react-three/drei'
 import Floor from './Floor.jsx'
 import { FLOORS, floorStats } from './data/floors.js'
 import { STATUS } from './theme.js'
 import { labelRoot } from './labelRoot.js'
+
+const BergparkView = lazy(() => import('./world/outdoor/BergparkView.jsx'))
 
 function Platform({ pal }) {
   return (
@@ -26,10 +28,12 @@ function Platform({ pal }) {
 }
 
 export default function App() {
+  const [view, setView] = useState(() => (new URLSearchParams(window.location.search).get('view') === 'bergpark' ? 'bergpark' : 'floors'))
   const [idx, setIdx] = useState(0)
   const floor = FLOORS[idx]
   const pal = floor.palette
   const stats = useMemo(() => floorStats(floor), [floor])
+  if (view === 'bergpark') return <Suspense fallback={null}><BergparkView onBack={() => setView('floors')} /></Suspense>
   return (
     <>
       <div ref={(el) => { labelRoot.current = el }} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }} />
@@ -64,6 +68,7 @@ export default function App() {
         </div>
       </div>
       <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <button onClick={() => setView('bergpark')} style={{ background: '#2fd6c0', color: '#111', border: 0, padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>Bergpark (Außenwelt)</button>
         {[...FLOORS].reverse().map((f) => {
           const i = FLOORS.indexOf(f)
           const on = i === idx
