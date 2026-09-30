@@ -1,10 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useGLTF } from '@react-three/drei'
+import { useGlb, preloadGlb } from '../../outdoor/common/glbLoader.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { registerNightMaterial } from '../../outdoor/environment/outdoorEnvironment.js'
-
-export const modelUrl = (n) => `${import.meta.env.BASE_URL}models/${n}.glb`
 
 const _m = new THREE.Matrix4()
 const _q = new THREE.Quaternion()
@@ -15,8 +13,8 @@ const _c = new THREE.Color()
 
 // Zerlegt ein Blender GLB in Geometrien je Material (Knotentransformationen eingebacken). So braucht jedes Modell nur so viele Drawcalls wie Materialien,
 // egal wie oft es platziert wird (Instancing). tint: Materialname, dessen Farbe pro Instanz gesetzt wird.
-function useFlat(url, tint) {
-  const gltf = useGLTF(url)
+function useFlat(name, tint) {
+  const gltf = useGlb(name)
   return useMemo(() => {
     gltf.scene.updateMatrixWorld(true)
     const by = {}
@@ -63,9 +61,9 @@ function Part({ part, items, shadows }) {
 }
 
 export default function GlbInstanced({ name, items, tint, shadows = false }) {
-  const parts = useFlat(modelUrl(name), tint)
+  const parts = useFlat(name, tint)
   if (!items.length) return null
   return <group name={`glb-${name}`}>{parts.map((p) => <Part key={p.name} part={p} items={items} shadows={shadows} />)}</group>
 }
 
-export function preloadModels(list) { list.forEach((n) => useGLTF.preload(modelUrl(n))) }
+export function preloadModels(list) { list.forEach((n) => preloadGlb(n)) }

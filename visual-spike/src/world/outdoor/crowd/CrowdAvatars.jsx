@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF } from '@react-three/drei'
+import { useGlb, preloadGlb } from '../common/glbLoader.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { STATUS } from '../../../theme.js'
 import { computePose } from './pose.js'
 
-export const CHARACTER_URL = `${import.meta.env.BASE_URL}models/character.glb`
 const SCALE = 1.19 // Blender Figur 1,51 m hoch, Zielgröße etwa 1,8 m
 
 // Gelenkpunkte der Blender Figur (Modellraum). Die Figur hat starre Glieder ohne Knie, daher sind Sitz und Lauf stilisiert (wie in den Sims).
@@ -38,7 +37,7 @@ function jointMatrix(out, px, py, pz, rx, ry, rz, s = _one) {
 
 // Ein Drawcall pro Teil und Material für ALLE Figuren (Spieler und Agenten). Farben je Figur als Instanzfarbe.
 export default function CrowdAvatars({ list, capacity = 160, shadows = true }) {
-  const gltf = useGLTF(CHARACTER_URL)
+  const gltf = useGlb('character')
   const meshes = useRef({})
   const pose = useRef({})
   const time = useRef(0)
@@ -141,7 +140,7 @@ export default function CrowdAvatars({ list, capacity = 160, shadows = true }) {
   )
 }
 
-useGLTF.preload(CHARACTER_URL)
+preloadGlb('character')
 
 // Stimmungsfarbe aus dem Status der Etagendaten (theme.js)
 export const statusColor = (s) => (STATUS[s] ? STATUS[s].color : '#dfe6f2')
