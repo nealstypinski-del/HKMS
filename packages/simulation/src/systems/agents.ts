@@ -1,7 +1,7 @@
 import type { Ctx } from '../context';
-import { DAY_MS } from '../clock';
-import { DEPARTMENT_SLUG, elevatorLobbyId, GROUND_FLOOR } from '../layout';
-import { RoutePlanner, SEAT_TYPES } from '../movement';
+import { DAY_MS, localDayStartMs } from '../clock';
+import { elevatorLobbyId, GROUND_BENCH_ZONE, GROUND_FLOOR, homeBenchZone } from '../layout';
+import { SEAT_TYPES } from '../movement';
 import type {
   ActivityKind,
   Agent,
@@ -320,10 +320,22 @@ export class AgentSystem {
   // Bank, Idle
   // -------------------------------------------------------------------------
 
+  /** Bank auf der eigenen Etage bevorzugt (Ausruhen), danach Erdgeschoss, danach irgendeine. */
   findBench(a: Agent): AnchorId | null {
     const c = this.c;
     if (a.preferredBenchId && c.anchors.has(a.preferredBenchId) && c.anchors.isFree(a.preferredBenchId, a.id)) return a.preferredBenchId;
-    return c.anchors.findFree('BENCH', a.id)?.id ?? null;
+    return (
+      c.anchors.findFree('BENCH', a.id, { zoneId: homeBenchZone(a.departmentId) }) ??
+      c.anchors.findFree('BENCH', a.id, { zoneId: GROUND_BENCH_ZONE }) ??
+      c.anchors.findFree('BENCH', a.id)
+    )?.id ?? null;
+  }
+
+  /** Stehplatz in der Bankzone der eigenen Etage, wenn keine Bank frei ist. */
+  private standbyLocation(a: Agent): Location {
+    const zoneId = homeBenchZone(a.departmentId);
+    const z = this.c.state.layout.zones.find((x) => x.id === zoneId);
+    return { floorId: z?.floorId ?? GROUND_FLOOR, zoneId: z ? zoneId : GROUND_BENCH_ZONE, anchorId: null };
   }
 
   sendToBench(a: Agent): void {
@@ -331,7 +343,7 @@ export class AgentSystem {
     this.setState(a, 'AVAILABLE', 'GO_TO_AGENT_BENCH', null);
     if (!bench) {
       this.switchHold(a, null);
-      this.startRoute(a, { floorId: GROUND_FLOOR, zoneId: 'agent-bench', anchorId: null }, 'IDLE', 'STAND', 'AVAILABLE');
+      this.startRoute(a, this.standbyLocation(a), 'IDLE', 'STAND', 'AVAILABLE');
       return;
     }
     this.switchHold(a, bench);
@@ -344,7 +356,7 @@ export class AgentSystem {
     const bench = this.findBench(a);
     this.setState(a, 'AVAILABLE', 'IDLE', 'STAND');
     if (!bench) {
-      a.location = { floorId: GROUND_FLOOR, zoneId: 'agent-bench', anchorId: null };
+      a.location = this.standbyLocation(a);
       this.scheduleIdleDecision(a);
       return;
     }
@@ -504,7 +516,7 @@ export class AgentSystem {
     const c = this.c;
     const wd = c.state.config.workday;
     const now = c.now();
-    const dayStart = Math.floor(now / DAY_MS) * DAY_MS;
+    const dayStart = localDayStartMs(now, c.state.config.timeZone);
     let start = dayStart + wd.startMinute * 60_000;
     if (nextDay && start <= now) start += DAY_MS;
     const at = Math.max(now, start) + c.rng.int(0, wd.arrivalWindowMs);
@@ -595,4 +607,3 @@ export class AgentSystem {
   }
 }
 
-export { DEPARTMENT_SLUG, RoutePlanner };

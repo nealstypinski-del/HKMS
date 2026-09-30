@@ -87,7 +87,7 @@ describe('Betriebsmodi', () => {
   });
 
   it('WORKDAY: Agenten kommen an, gehen nach Feierabend offline und kehren am nächsten Morgen zurück', () => {
-    const e = new SimulationEngine({ startMs: Date.UTC(2026, 0, 5, 7, 55), config: { tickIntervalMs: 1000, mockAutoApproveAfterMs: 20 * S, workday: { arrivalWindowMs: 4 * MIN } } });
+    const e = new SimulationEngine({ startMs: Date.UTC(2026, 0, 5, 6, 55), config: { tickIntervalMs: 1000, mockAutoApproveAfterMs: 20 * S, workday: { arrivalWindowMs: 4 * MIN } } });
     e.startCompany({ operations: 'WORKDAY', present: false, generator: { enabled: true, targetUtilization: 0.4 } });
     expect(e.getMetrics().offlineAgents).toBe(22);
     e.runFor(10 * MIN);

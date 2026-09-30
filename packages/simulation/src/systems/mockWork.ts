@@ -1,5 +1,5 @@
 import type { Ctx } from '../context';
-import { DAY_MS } from '../clock';
+import { localMinuteOfDay } from '../clock';
 import { TASK_TEMPLATES } from '../workflows';
 import type { GeneratorState, ScheduledAction, ScheduledCommand, WorkProfile } from '../state';
 import type { DepartmentId } from '../types';
@@ -18,9 +18,9 @@ export class MockWorkSystem {
   constructor(private c: Ctx) {}
 
   isWorkHours(now: number): boolean {
-    const wd = this.c.state.config.workday;
-    const minute = Math.floor((((now % DAY_MS) + DAY_MS) % DAY_MS) / 60_000);
-    return minute >= wd.startMinute && minute < wd.endMinute;
+    const cfg = this.c.state.config;
+    const minute = localMinuteOfDay(now, cfg.timeZone);
+    return minute >= cfg.workday.startMinute && minute < cfg.workday.endMinute;
   }
 
   schedule(afterMs: number, action: ScheduledAction): ScheduledCommand {

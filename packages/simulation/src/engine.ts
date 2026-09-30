@@ -4,6 +4,7 @@ import type { Ctx, ExternalHooks } from './context';
 import { DeskAssignmentService } from './desks';
 import { EventBus, type AnyEventHandler, type EventHandler, type SimEventMap, type SimEventType, type Unsubscribe } from './events';
 import { inspectAgent, type AgentInspectorData } from './inspector';
+import { buildMinimap, type MinimapFloor } from './minimap';
 import { checkInvariants } from './invariants';
 import { ActivityLog, type LogEntry } from './log';
 import { computeMetrics, type SimulationMetrics } from './metrics';
@@ -102,7 +103,7 @@ export class SimulationEngine {
     c.state = state;
     c.bus = this.bus;
     c.clock = clock;
-    c.log = new ActivityLog(state.log, state.config.logCapacity);
+    c.log = new ActivityLog(state.log, state.config.logCapacity, state.config.timeZone);
     c.rng = new Rng(state);
     c.anchors = anchors;
     c.router = new TaskRouter();
@@ -213,7 +214,7 @@ export class SimulationEngine {
   setConfig(patch: DeepPartial<SimConfig>): void {
     const c = this.ctx;
     c.state.config = mergeConfig(c.state.config, patch);
-    c.log = new ActivityLog(c.state.log, c.state.config.logCapacity);
+    c.log = new ActivityLog(c.state.log, c.state.config.logCapacity, c.state.config.timeZone);
   }
 
   // -------------------------------------------------------------------------
@@ -546,6 +547,10 @@ export class SimulationEngine {
   }
   getMetrics(): SimulationMetrics {
     return computeMetrics(this.ctx.state, this.ctx.agentList, this.ctx.statusCounts);
+  }
+  /** Daten für die Minimap: Etagen, Zonen, Agentenzahlen je Zone und Status. */
+  getMinimap(): MinimapFloor[] {
+    return buildMinimap(this.ctx.state);
   }
   getLog(limit = 50): readonly LogEntry[] {
     return this.ctx.log.recent(limit);

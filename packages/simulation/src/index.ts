@@ -12,6 +12,7 @@ export * from './movement';
 export * from './invariants';
 export * from './metrics';
 export * from './inspector';
+export * from './minimap';
 export * from './providers';
 export * from './workflows';
 export * from './state';

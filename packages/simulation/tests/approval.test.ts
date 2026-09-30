@@ -54,14 +54,22 @@ describe('Menschliche Freigabe', () => {
     const id = t.ok ? t.value.id : '';
     e.runFor(2 * MIN);
     e.grantApproval(id);
-    e.runFor(2 * S);
-    expect(e.getAgent('hj-lead-research')!.status).toBe('WORKING');
+    // Vom Warteplatz zurück an den Schreibtisch, dann Nacharbeit.
+    let worked = false;
+    for (let i = 0; i < 4 * 60; i++) { e.tick(); if (e.getAgent("hj-lead-research")!.status === "WORKING") worked = true; }
+    expect(worked).toBe(true);
     e.runFor(MIN);
     expect(e.getTask(id)).toBeUndefined();
   });
 
-  it('konfigurierbar: Warteplatz statt Schreibtisch', () => {
-    const e = makeEngine({ config: { approvalBehavior: 'GO_TO_WAITING_AREA' } });
+  it('Standard ist der Warteplatz, konfigurierbar bleibt der Schreibtisch', () => {
+    const stay = makeEngine({ config: { approvalBehavior: 'STAY_AT_DESK' } });
+    approvalTask(stay);
+    stay.runFor(2 * MIN);
+    expect(stay.getAgent('hj-lead-research')!.status).toBe('WAITING');
+    expect(stay.getAgent('hj-lead-research')!.location.anchorId).toBe(stay.getAgent('hj-lead-research')!.deskAnchorId);
+    expect(makeEngine().getState().config.approvalBehavior).toBe('GO_TO_WAITING_AREA');
+    const e = makeEngine();
     const t = approvalTask(e);
     const id = t.ok ? t.value.id : '';
     e.runFor(2 * MIN);

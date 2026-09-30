@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "bench": "tsx bench/perf.ts",
-    "scenarios": "tsx bench/scenarios.ts"
+    "scenarios": "tsx bench/scenarios.ts",
+    "demo": "tsx bench/demo.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

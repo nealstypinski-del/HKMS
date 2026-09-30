@@ -6,11 +6,12 @@ Terminal 3 entscheidet, WIE es aussieht. Keine Abhängigkeit zu Three.js, React 
 ```
 cd packages/simulation
 npm install
-npm test          # 92 Tests
+npm test          # 99 Tests
 npm run typecheck
 npm run build
 npm run bench     # 10, 25, 50, 100, 250 Agenten
 npm run scenarios # alle Demo Szenarien mit Invariantenprüfung bei jedem Tick
+npm run demo      # Textdemo: KasselMemes Trend Spike in Berliner Zeit
 ```
 
 Alle Agenten, Aufgaben und Workflows sind DEMO / MOCK. Es werden keine echten Nachrichten, E Mails, Posts oder CRM Updates erzeugt.

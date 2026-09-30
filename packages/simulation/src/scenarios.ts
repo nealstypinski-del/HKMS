@@ -23,7 +23,9 @@ export interface ScenarioDef {
   description: string;
   operations: OperationsMode;
   rosterCopies: number;
-  /** Simulationsstart (UTC). Standard ist Montag 08:00. */
+  /** Alternative zu rosterCopies: genau n Agenten. */
+  rosterSize?: number;
+  /** Simulationsstart (UTC Zeitstempel). Standard ist Montag 08:00 Berliner Zeit. */
   startMs?: number;
   present: boolean;
   speed?: SimSpeed;
@@ -75,7 +77,7 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
     description: 'Agenten treffen kurz vor 08:00 gestaffelt ein, setzen sich auf die Bank, erste Aufgaben laufen an.',
     operations: 'WORKDAY',
     rosterCopies: 1,
-    startMs: Date.UTC(2026, 0, 5, 7, 55),
+    startMs: Date.UTC(2026, 0, 5, 6, 55), // 07:55 Berliner Zeit
     present: false,
     config: { workday: { arrivalWindowMs: 4 * 60_000 } },
     generator: { profile: 'BALANCED', targetUtilization: 0.35, workflowShare: 0.15 },
@@ -128,9 +130,10 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
   F_FULL_HQ: {
     id: 'F_FULL_HQ',
     title: 'Full HQ',
-    description: '66 Agenten auf allen Etagen unter hoher Last, mit Meetings, Pausen und Freigaben.',
+    description: '60 Agenten auf allen Etagen unter hoher Last, mit Meetings, Pausen und Freigaben.',
     operations: 'CONTINUOUS_OPERATIONS',
-    rosterCopies: 3,
+    rosterCopies: 1,
+    rosterSize: 60,
     present: true,
     config: { mockAutoApproveAfterMs: 60_000 },
     generator: { profile: 'BALANCED', targetUtilization: 0.9, workflowShare: 0.2 },
@@ -157,6 +160,7 @@ export function createScenarioEngine(id: ScenarioId, opts: { seed?: string; conf
   const engine = new SimulationEngine({
     seed: opts.seed ?? 'HERKULES-001',
     rosterCopies: def.rosterCopies,
+    ...(def.rosterSize !== undefined ? { rosterSize: def.rosterSize } : {}),
     ...(def.startMs !== undefined ? { startMs: def.startMs } : {}),
     config: { operations: def.operations, ...(opts.config ?? {}) },
   });

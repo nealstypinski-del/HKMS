@@ -36,17 +36,22 @@ describe('Aufgabenlebenszyklus ohne Teleport', () => {
     expect(e.getAnchors().find((a) => a.id === 'desk-hj-01')!.occupants).toEqual([]);
   });
 
-  it('plant Etagenwechsel als Aufzugskette', () => {
+  it('Shared Agent arbeitet an einem Gastschreibtisch einer anderen Etage und fährt mit dem Aufzug', () => {
     const e = makeEngine();
     const ev = recordEvents(e);
-    e.createTask({ title: 'Lead', departmentId: 'HERKULESJOBS', requiredCapabilities: ['lead_research'], workDurationMs: 5 * S });
+    // Nur der Shared Operations Agent kann das. Er ruht auf Etage 3 und arbeitet für HerkulesJobs auf Etage 1.
+    e.createTask({ title: 'Ops', departmentId: 'HERKULESJOBS', requiredCapabilities: ['operations'], workDurationMs: 5 * S });
     e.runFor(500);
     const req = ev.find((x) => x.type === 'AGENT_MOVEMENT_REQUESTED')!;
     if (req.type !== 'AGENT_MOVEMENT_REQUESTED') throw new Error();
+    expect(req.payload.agentId).toBe('sh-operations');
     expect(req.payload.stages.map((s) => s.kind)).toEqual([
       'STAND_UP', 'WALK_TO_ELEVATOR', 'WAIT_FOR_ELEVATOR', 'ENTER_ELEVATOR', 'CHANGE_FLOOR', 'EXIT_ELEVATOR', 'WALK_TO_DESTINATION',
     ]);
+    expect(req.payload.destinationAnchorId).toMatch(/^desk-hj-/);
     expect(req.payload.destination.floorId).toBe('floor-1');
+    // Zwei Etagen Unterschied dauern länger als eine.
+    expect(req.payload.stages.find((s) => s.kind === 'CHANGE_FLOOR')!.durationMs).toBe(2 * e.getState().config.timings.elevatorFloorMs);
     const stageIntents = new Set<string>();
     e.onAny((x) => { if (x.type === 'AGENT_INTENT_CHANGED') stageIntents.add(x.payload.to); });
     e.runFor(MIN);
@@ -54,15 +59,24 @@ describe('Aufgabenlebenszyklus ohne Teleport', () => {
     expect(stageIntents.has('CHANGE_FLOOR')).toBe(true);
   });
 
-  it('läuft ohne Aufzug, wenn Start und Ziel auf derselben Etage liegen', () => {
+  it('läuft ohne Aufzug, wenn Bank und Schreibtisch auf derselben Etage liegen', () => {
     const e = makeEngine();
-    e.createTask({ title: 'Lead', departmentId: 'HERKULESJOBS', requiredCapabilities: ['lead_research'], workDurationMs: 5 * S });
-    e.runFor(MIN);
     const ev = recordEvents(e);
-    e.setAgentWorking('hj-sales', { requiredCapabilities: ['sales'] });
-    e.runFor(30 * S);
-    const first = ev.find((x) => x.type === 'AGENT_MOVEMENT_REQUESTED');
-    expect(first).toBeDefined();
+    e.createTask({ title: 'Lead', departmentId: 'HERKULESJOBS', requiredCapabilities: ['lead_research'], workDurationMs: 5 * S });
+    e.runFor(500);
+    const req = ev.find((x) => x.type === 'AGENT_MOVEMENT_REQUESTED')!;
+    if (req.type !== 'AGENT_MOVEMENT_REQUESTED') throw new Error();
+    expect(req.payload.stages.map((s) => s.kind)).toEqual(['STAND_UP', 'WALK_TO_DESTINATION']);
+  });
+
+  it('Shared Agent bevorzugt Gastschreibtisch, eigener Schreibtisch nur bei eigener Aufgabe', () => {
+    const e = makeEngine();
+    e.createTask({ title: 'Ops fuer HJ', departmentId: 'HERKULESJOBS', requiredCapabilities: ['operations'], workDurationMs: 30 * S });
+    e.runFor(500);
+    expect(e.getAgent('sh-operations')!.deskAnchorId).toMatch(/^desk-hj-/);
+    e.createTask({ title: 'Ops eigene', departmentId: 'SHARED', requiredCapabilities: ['automation'], workDurationMs: 30 * S });
+    e.runFor(500);
+    expect(e.getAgent('sh-automation')!.deskAnchorId).toMatch(/^desk-dev-/);
   });
 
   it('Aufgabe ohne passenden Agenten bleibt in der Warteschlange und wird in Queue Daten sichtbar', () => {
@@ -88,8 +102,21 @@ describe('Bank, Küche, Lounge', () => {
     const a = e.getAgent('hj-sales')!;
     expect(a.status).toBe('AVAILABLE');
     expect(a.intent).toBe('SIT_ON_AGENT_BENCH');
-    expect(a.location.zoneId).toBe('agent-bench');
+    // Jede Abteilung ruht auf der Bank ihrer eigenen Etage.
+    expect(a.location.zoneId).toBe('agent-bench-hj');
+    expect(a.location.floorId).toBe('floor-1');
     expect(e.getAnchors().find((x) => x.id === a.occupiedAnchorId)!.type).toBe('BENCH');
+    expect(e.getAgent('km-creative')!.location).toMatchObject({ floorId: 'floor-2', zoneId: 'agent-bench-km' });
+    expect(e.getAgent('sh-qa')!.location).toMatchObject({ floorId: 'floor-3', zoneId: 'agent-bench-dev' });
+  });
+
+  it('Bank Überlauf: ohne freie Bank auf der eigenen Etage geht der Agent ins Erdgeschoss', () => {
+    const e = makeEngine({ layout: { desks: { HERKULESJOBS: 12, KASSELMEMES: 12, SHARED: 10 }, benchSeats: 6, floorBenchSeats: { HERKULESJOBS: 8, KASSELMEMES: 2, SHARED: 6 }, coffeeMachines: 1, kitchenSeats: 2, loungeSeats: 2, meetingSeats: 6, waitingPointsPerFloor: 2, lobbyPoints: 2 } });
+    const km = e.getAgents().filter((a) => a.departmentId === 'KASSELMEMES');
+    const onKm = km.filter((a) => a.location.zoneId === 'agent-bench-km').length;
+    const onGround = km.filter((a) => a.location.zoneId === 'agent-bench').length;
+    expect(onKm).toBe(2);
+    expect(onGround).toBe(6);
   });
 
   it('Küchenpause: Kaffeemaschine, Sitz, zurück zur Bank', () => {
@@ -149,6 +176,7 @@ describe('Bank, Küche, Lounge', () => {
     const e = makeEngine();
     const benches = e.getAnchors().filter((a) => a.type === 'BENCH' && a.occupants.length > 0);
     expect(benches.length).toBe(22);
+    expect(new Set(benches.map((b) => b.floorId))).toEqual(new Set(['floor-1', 'floor-2', 'floor-3']));
     expect(new Set(benches.flatMap((b) => b.occupants)).size).toBe(22);
   });
 });

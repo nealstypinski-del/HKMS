@@ -34,13 +34,21 @@ export const DEPARTMENT_SLUG: Record<DepartmentId, string> = {
   SHARED: 'dev',
 };
 
+/** Zone der Agentenbank auf der Etage der Abteilung (dort ruhen sich die Agenten aus). */
+export const homeBenchZone = (dept: DepartmentId): ZoneId => `agent-bench-${DEPARTMENT_SLUG[dept]}`;
+/** Zone der Bank im Erdgeschoss (Ankunft, Überlauf). */
+export const GROUND_BENCH_ZONE: ZoneId = 'agent-bench';
+
 export const elevatorLobbyId = (floorId: FloorId): AnchorId => `elevator-lobby-f${floorIndex(floorId)}`;
 export const elevatorCarId = (floorId: FloorId): AnchorId => `elevator-f${floorIndex(floorId)}`;
 export const floorIndex = (floorId: FloorId): number => Number(floorId.replace('floor-', ''));
 
 export interface LayoutOptions {
   desks: Record<DepartmentId, number>;
+  /** Bankplätze im Erdgeschoss (Ankunft, Überlauf). */
   benchSeats: number;
+  /** Bankplätze je Abteilungsetage. */
+  floorBenchSeats: Record<DepartmentId, number>;
   coffeeMachines: number;
   kitchenSeats: number;
   loungeSeats: number;
@@ -51,7 +59,8 @@ export interface LayoutOptions {
 
 export const DEFAULT_LAYOUT_OPTIONS: LayoutOptions = {
   desks: { HERKULESJOBS: 12, KASSELMEMES: 12, SHARED: 10 },
-  benchSeats: 24,
+  benchSeats: 8,
+  floorBenchSeats: { HERKULESJOBS: 12, KASSELMEMES: 12, SHARED: 10 },
   coffeeMachines: 2,
   kitchenSeats: 6,
   loungeSeats: 8,
@@ -72,7 +81,12 @@ export function layoutOptionsForRoster(seeds: readonly AgentSeed[]): LayoutOptio
       KASSELMEMES: desks(count.KASSELMEMES, DEFAULT_LAYOUT_OPTIONS.desks.KASSELMEMES),
       SHARED: desks(count.SHARED, DEFAULT_LAYOUT_OPTIONS.desks.SHARED),
     },
-    benchSeats: Math.max(DEFAULT_LAYOUT_OPTIONS.benchSeats, n + 2),
+    benchSeats: Math.max(DEFAULT_LAYOUT_OPTIONS.benchSeats, Math.ceil(n / 6)),
+    floorBenchSeats: {
+      HERKULESJOBS: Math.max(DEFAULT_LAYOUT_OPTIONS.floorBenchSeats.HERKULESJOBS, count.HERKULESJOBS + 2),
+      KASSELMEMES: Math.max(DEFAULT_LAYOUT_OPTIONS.floorBenchSeats.KASSELMEMES, count.KASSELMEMES + 2),
+      SHARED: Math.max(DEFAULT_LAYOUT_OPTIONS.floorBenchSeats.SHARED, count.SHARED + 2),
+    },
     coffeeMachines: Math.max(2, Math.ceil(n / 25)),
     kitchenSeats: Math.max(6, Math.ceil(n / 8)),
     loungeSeats: Math.max(8, Math.ceil(n / 6)),
@@ -134,10 +148,10 @@ export function buildLayout(opts: LayoutOptions = DEFAULT_LAYOUT_OPTIONS): {
 
   // Erdgeschoss
   const g = GROUND_FLOOR;
-  zone('agent-bench', g, 'AGENT_BENCH', 'Agent Bench', { x: 14, y: 24 });
+  zone(GROUND_BENCH_ZONE, g, 'AGENT_BENCH', 'Agent Bench Erdgeschoss', { x: 14, y: 24 });
   const bw = String(opts.benchSeats).length < 2 ? 2 : String(opts.benchSeats).length;
   for (let i = 0; i < opts.benchSeats; i++) {
-    anchor(`bench-${pad(i + 1, bw)}`, 'BENCH', g, 'agent-bench', 1, ['SIT', 'WAIT'], { x: 4 + (i % 12) * 1.2, y: 23 + Math.floor(i / 12) * 1.5 });
+    anchor(`bench-${pad(i + 1, bw)}`, 'BENCH', g, GROUND_BENCH_ZONE, 1, ['SIT', 'WAIT'], { x: 4 + (i % 12) * 1.2, y: 23 + Math.floor(i / 12) * 1.5 });
   }
   zone('kitchen', g, 'KITCHEN', 'Küche', { x: 34, y: 4 });
   for (let i = 0; i < opts.coffeeMachines; i++) {
@@ -177,6 +191,12 @@ export function buildLayout(opts: LayoutOptions = DEFAULT_LAYOUT_OPTIONS): {
     zone(`${slug}-desks`, f, 'DESKS', `Arbeitsplätze ${slug}`, { x: 20, y: 12 }, dept);
     for (let i = 0; i < n; i++) {
       anchor(`desk-${slug}-${pad(i + 1, dw)}`, 'DESK', f, `${slug}-desks`, 1, ['WORK'], { x: 8 + (i % 6) * 4, y: 6 + Math.floor(i / 6) * 4 }, dept);
+    }
+    const fbn = opts.floorBenchSeats[dept];
+    const fbw = String(fbn).length < 2 ? 2 : String(fbn).length;
+    zone(homeBenchZone(dept), f, 'AGENT_BENCH', `Agent Bench ${slug}`, { x: 14, y: 24 }, dept);
+    for (let i = 0; i < fbn; i++) {
+      anchor(`bench-${slug}-${pad(i + 1, fbw)}`, 'BENCH', f, homeBenchZone(dept), 1, ['SIT', 'WAIT'], { x: 4 + (i % 12) * 1.2, y: 23 + Math.floor(i / 12) * 1.5 }, dept);
     }
     room(`meeting-room-${slug}`, f, `Meetingraum ${slug}`, { x: 34, y: 4 });
     zone(`waiting-${slug}`, f, 'WAITING_AREA', `Warteplatz ${slug}`, { x: 34, y: 22 }, dept);

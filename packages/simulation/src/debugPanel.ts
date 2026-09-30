@@ -1,4 +1,4 @@
-import type { SimSpeed } from './clock';
+import { formatClock, type SimSpeed } from './clock';
 import type { SimulationEngine } from './engine';
 import { DebugController } from './debug';
 import type { DepartmentId } from './types';
@@ -63,7 +63,7 @@ export function mountDebugPanel(doc: PanelDocument, root: PanelElement, engine: 
     const id = agentSelect.value ?? '';
     const insp = id ? engine.inspectAgent(id) : null;
     out.textContent = [
-      `Zeit ${new Date(engine.getClock().nowMs).toISOString()}  Modus ${engine.getClock().mode}  ${engine.getClock().speed}x`,
+      `Zeit ${formatClock(engine.getClock().nowMs, engine.getState().config.timeZone)} (${engine.getState().config.timeZone})  Modus ${engine.getClock().mode}  ${engine.getClock().speed}x`,
       `Agenten ${m.totalAgents}  verfügbar ${m.availableAgents}  arbeiten ${m.workingAgents}  wartend ${m.waitingAgents}  Meeting ${m.meetingAgents}  Pause ${m.breakAgents}  offline ${m.offlineAgents}`,
       `Warteschlange ${m.queuedTasks}  Freigaben ${m.waitingApprovalTasks}  Aktivität ${m.activityLevel}`,
       '',

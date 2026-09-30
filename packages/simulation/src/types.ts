@@ -456,6 +456,8 @@ export interface SimConfig {
   movementMode: MovementMode;
   confirmTimeoutFactor: number;
   approvalBehavior: ApprovalBehavior;
+  /** IANA Zeitzone der Simulationszeit (Arbeitstag, Log). Standard Europe/Berlin. */
+  timeZone: string;
   /** Nur für MOCK Aufgaben. null = nie automatisch freigeben. Echte Aufgaben werden NIE automatisch freigegeben. */
   mockAutoApproveAfterMs: number | null;
   operations: OperationsMode;

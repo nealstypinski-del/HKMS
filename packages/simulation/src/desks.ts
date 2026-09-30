@@ -8,18 +8,20 @@ import type { Agent, AnchorId, DepartmentId, Task } from './types';
 export class DeskAssignmentService {
   constructor(private anchors: AnchorBook) {}
 
-  /** Bevorzugt den letzten Schreibtisch, dann Abteilung des Agenten, dann Abteilung der Aufgabe. */
+  /** Bevorzugt den letzten Schreibtisch, dann Abteilung des Agenten, dann Abteilung der Aufgabe. Shared Agenten mit fremder Aufgabe nehmen zuerst einen Gastschreibtisch der Aufgabenabteilung. */
   findDesk(agent: Agent, task: Pick<Task, 'departmentId'>): AnchorId | null {
     const pref = agent.preferredDeskId;
     if (pref && this.anchors.has(pref) && this.anchors.isFree(pref, agent.id)) {
       const d = this.anchors.get(pref).departmentId;
-      if (d === agent.departmentId || d === task.departmentId) return pref;
+      const guest = agent.departmentId === 'SHARED' && task.departmentId !== 'ANY' && task.departmentId !== 'SHARED';
+      if (!guest ? d === agent.departmentId || d === task.departmentId : d === task.departmentId) return pref;
     }
-    const own = this.anchors.findFree('DESK', agent.id, { departmentId: agent.departmentId });
-    if (own) return own.id;
-    if (task.departmentId !== 'ANY' && task.departmentId !== agent.departmentId) {
-      const other = this.anchors.findFree('DESK', agent.id, { departmentId: task.departmentId as DepartmentId });
-      if (other) return other.id;
+    const taskDept = task.departmentId !== 'ANY' && task.departmentId !== agent.departmentId ? (task.departmentId as DepartmentId) : null;
+    // Shared Agenten arbeiten bevorzugt an einem Gastschreibtisch der Abteilung, für die sie die Aufgabe erledigen.
+    const order: DepartmentId[] = taskDept && agent.departmentId === 'SHARED' ? [taskDept, agent.departmentId] : taskDept ? [agent.departmentId, taskDept] : [agent.departmentId];
+    for (const departmentId of order) {
+      const desk = this.anchors.findFree('DESK', agent.id, { departmentId });
+      if (desk) return desk.id;
     }
     return null;
   }

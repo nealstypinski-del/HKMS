@@ -75,7 +75,7 @@ describe('Schreibtischvergabe', () => {
   });
 
   it('Aufgabe bleibt in der Warteschlange, wenn kein Schreibtisch frei ist', () => {
-    const e = makeEngine({ roster: makeRoster(1).slice(0, 8), layout: { desks: { HERKULESJOBS: 1, KASSELMEMES: 1, SHARED: 1 }, benchSeats: 12, coffeeMachines: 1, kitchenSeats: 2, loungeSeats: 2, meetingSeats: 6, waitingPointsPerFloor: 2, lobbyPoints: 2 } });
+    const e = makeEngine({ roster: makeRoster(1).slice(0, 8), layout: { desks: { HERKULESJOBS: 1, KASSELMEMES: 1, SHARED: 1 }, benchSeats: 12, floorBenchSeats: { HERKULESJOBS: 8, KASSELMEMES: 2, SHARED: 2 }, coffeeMachines: 1, kitchenSeats: 2, loungeSeats: 2, meetingSeats: 6, waitingPointsPerFloor: 2, lobbyPoints: 2 } });
     const t1 = e.createTask({ title: 'a', departmentId: 'HERKULESJOBS', requiredCapabilities: ['lead_research'], workDurationMs: 20_000 });
     const t2 = e.createTask({ title: 'b', departmentId: 'HERKULESJOBS', requiredCapabilities: ['company_analysis'], workDurationMs: 20_000 });
     e.runFor(2_000);

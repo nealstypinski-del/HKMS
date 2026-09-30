@@ -11,6 +11,19 @@ echtes oder Mock Ereignis  ->  Simulation  ->  Agent Intent  ->  Weltzustand  ->
 Die Simulation kennt keine Koordinaten, keine Meshes und keine Animationen. Sie liefert Status, Intent,
 semantische Orte und Ereignisse. Der Renderer löst Anker in Weltpositionen auf, findet Wege und animiert.
 
+## Festlegungen (Stand Abstimmung)
+
+* **Typen:** Terminal 1 liefert langfristig die führenden Typen (Agent, Task, Department). Bis dahin liegen sie in `src/types.ts` und sind isoliert austauschbar.
+* **Bänke:** Jede Abteilungsetage hat eine eigene Agentenbank (`agent-bench-hj`, `agent-bench-km`, `agent-bench-dev`), dort ruhen sich die Agenten aus. Das Erdgeschoss hat eine kleine Bank für Ankunft und Überlauf (`agent-bench`). Küche und Lounge liegen im Erdgeschoss, Pausen erzeugen also Aufzugsfahrten.
+* **Gastschreibtische:** Shared Agenten arbeiten bevorzugt an einem Schreibtisch der Abteilung, für die sie die Aufgabe erledigen (Aufzug inklusive). Nur bei eigenen Aufgaben nutzen sie die Schreibtische auf Etage 3.
+* **Freigabe:** Standard ist der Warteplatz (`approvalBehavior: 'GO_TO_WAITING_AREA'`, Zonen `waiting-hj`, `waiting-km`, `waiting-dev`). Alternativ `STAY_AT_DESK`.
+* **Demo Freigabe:** In Demos ist `mockAutoApproveAfterMs` erlaubt (Szenarien B, D, F). Szenarien C und E lassen Freigaben bewusst offen. Echte Aufgaben werden nie automatisch freigegeben.
+* **Zeit:** Simulationszeit ist Berliner Zeit (`config.timeZone`, Standard `Europe/Berlin`, inklusive Sommerzeit). Startzeit Montag 08:00, Arbeitstag 08:00 bis 18:00, Log in Berliner Zeit. Zeitstempel im Zustand bleiben UTC Millisekunden.
+* **Full HQ:** 60 Agenten.
+* **Aufzugskapazität:** wird später erzwungen. Die Etappenkette (`WAIT_FOR_ELEVATOR`, `ENTER_ELEVATOR`) ist dafür der Einstiegspunkt.
+* **Minimap:** `engine.getMinimap()` liefert Etagen, Zonen und Agentenzahlen je Status. Darstellung (zum Beispiel oben rechts, mit türkisfarbener Umrandung) ist Sache von Terminal 3.
+* **Herkules Foundation:** kommt später als weitere Abteilung. Erweiterungspunkte: `DEPARTMENTS` und `DepartmentId` in `src/types.ts`, `DEPARTMENT_FLOOR` und `DEPARTMENT_SLUG` in `src/layout.ts`, Agenten in `src/roster.ts`, Vorlagen in `src/workflows.ts`.
+
 ## Zeitmodell
 
 * Die Simulation läuft in diskreten logischen Ticks (Standard 250 ms Simulationszeit, also 4 Ticks pro Sekunde, konfigurierbar 2 bis 10 pro Sekunde).
@@ -51,7 +64,7 @@ Bewegung:
 * Standard `movementMode: 'SIMULATED'`: Die Simulation schätzt Wegzeiten selbst (Ankunft ohne Rückmeldung).
 * `movementMode: 'RENDERER_CONFIRMED'`: Terminal 3 ruft nach jeder fertig gelaufenen Etappe `engine.confirmRouteStage(agentId)`. Bleibt die Bestätigung aus, greift ein Timeout (`confirmTimeoutFactor`), damit nichts hängen bleibt.
 * Anker Ids sind semantisch, z. B. `desk-hj-04`, `bench-05`, `kitchen-coffee-01`, `kitchen-seat-02`, `lounge-sofa-03`, `meeting-room-hj-seat-02`, `elevator-lobby-f1`, `waiting-km-01`. Der Renderer bildet diese Ids auf Weltpositionen ab. Die `hint` Koordinaten der Anker sind nur abstrakte Meter zur Wegzeitschätzung.
-* Etagen: `floor-0` Erdgeschoss (Bank, Küche, Lounge, Meetingräume A und B), `floor-1` HerkulesJobs, `floor-2` KasselMemes, `floor-3` AI und Development.
+* Etagen: `floor-0` Erdgeschoss (Küche, Lounge, Meetingräume A und B, kleine Bank), `floor-1` HerkulesJobs, `floor-2` KasselMemes, `floor-3` AI und Development. Jede Abteilungsetage hat Schreibtische, Bank, Meetingraum und Warteplatz.
 
 Intent Tabelle (Auswahl): `GO_TO_DESK`, `USE_WORKSTATION`, `GO_TO_AGENT_BENCH`, `SIT_ON_AGENT_BENCH`, `GO_TO_KITCHEN`, `USE_KITCHEN`, `GO_TO_LOUNGE`, `SIT_IN_LOUNGE`, `GO_TO_MEETING`, `ATTEND_MEETING`, `GO_TO_ELEVATOR`, `CHANGE_FLOOR`, `WAIT_FOR_APPROVAL`, `RETURN_TO_DESK`, `WANDER`, `IDLE`.
 `activity` verfeinert die Optik am Anker (`SIT`, `CHAT_VISUAL`, `READ`, `REST`, `WAIT`, `STAND`, `USE_KITCHEN`, `WORK`, `ATTEND_MEETING`, `WAIT_FOR_APPROVAL`).
@@ -95,7 +108,7 @@ Aufgaben werden über Capabilities verteilt, nie über Namen. Filter: alle `requ
 
 ## Bekannte Grenzen
 
-* Aufzugskapazität wird nicht erzwungen (nur Intent und Reihenfolge der Etappen).
+* Aufzugskapazität wird noch nicht erzwungen (nur Intent und Reihenfolge der Etappen), Erzwingung ist geplant.
 * Wegzeiten sind Schätzungen aus abstrakten Koordinaten.
 * Zusammenarbeit (`collaboratorAgentIds`) ist nur vorbereitet.
 * Kein Reservieren von Wegpunkten (Engstellen, Gedränge) in der Simulation.
