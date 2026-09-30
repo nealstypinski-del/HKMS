@@ -1,59 +1,22 @@
 import { create } from 'zustand'
 import { BUILDING } from './buildingConfig'
-import { DEFAULT_PLAYER } from './avatar'
 import { worldEvents } from './events'
 import { allowedLaunch, limitMessage, sanitizeCount, MAX_LAUNCH_AT_ONCE } from './limits'
+import { effectiveGraphics, QUALITY_PRESETS, type Graphics, type Quality, type TimeMode, type WallModeSetting } from './graphicsSettings'
+import { loadPersisted, savePersisted } from './persist'
 import { player } from './player'
 import { deptsWithDesks, floorOfDepartment, initialAgents, makeAgent } from './mockAgents'
 import type { Agent, AgentStatus, Avatar } from './types'
 
 export type CameraMode = 'tycoon' | 'firstPerson' | 'thirdPerson' | 'building' | 'follow'
-export type TimeMode = 'auto' | 'day' | 'evening' | 'night'
-export type Quality = 'low' | 'medium' | 'high'
-export type WallModeSetting = 'high' | 'half' | 'none'
-
-export interface Graphics {
-  quality: Quality
-  shadows: boolean
-  ao: boolean
-  bloom: boolean
-  labels: boolean
-  activityFx: boolean
-  reflections: boolean
-  hqLighting: boolean
-  background: boolean
-  performanceMode: boolean
-}
-
-export const QUALITY_PRESETS: Record<Quality, Omit<Graphics, 'quality' | 'labels' | 'performanceMode'>> = {
-  low: { shadows: false, ao: false, bloom: false, activityFx: false, reflections: false, hqLighting: false, background: true },
-  medium: { shadows: true, ao: false, bloom: true, activityFx: true, reflections: false, hqLighting: false, background: true },
-  high: { shadows: true, ao: true, bloom: true, activityFx: true, reflections: true, hqLighting: true, background: true },
-}
-
-/** Wirksame Einstellungen: der Performance Modus schaltet alle teuren Effekte ab. */
-const effCache = new WeakMap<Graphics, Graphics>()
-export function effectiveGraphics(g: Graphics): Graphics {
-  if (!g.performanceMode) return g
-  // Gecacht, damit Zustand Selektoren eine stabile Referenz bekommen (sonst Endlosschleife im Rendering).
-  let e = effCache.get(g)
-  if (!e) { e = { ...g, shadows: false, ao: false, bloom: false, reflections: false, hqLighting: false, activityFx: false }; effCache.set(g, e) }
-  return e
-}
+export type { Graphics, Quality, TimeMode, WallModeSetting }
+export { QUALITY_PRESETS, effectiveGraphics }
 
 export type Selection =
   | { type: 'agent' | 'desk' | 'computer' | 'department' | 'elevator'; id: string }
   | null
 
-const LS = 'herkules-hq-v1'
-interface Persisted { graphics?: Graphics; player?: Avatar; timeMode?: TimeMode }
-const load = (): Persisted => {
-  try { return JSON.parse(localStorage.getItem(LS) || '{}') } catch { return {} }
-}
-const persist = (p: Persisted) => { try { localStorage.setItem(LS, JSON.stringify(p)) } catch { /* Speicher nicht verfügbar */ } }
-
-const saved = load()
-const defaultGraphics: Graphics = { quality: 'high', labels: true, performanceMode: false, ...QUALITY_PRESETS.high }
+const saved = loadPersisted()
 
 export const DEFAULT_FLOOR = 'floor-herkulesjobs'
 
@@ -130,9 +93,9 @@ export const useWorld = create<WorldStore>((set, get) => ({
   cameraMode: 'thirdPerson',
   floorId: 'floor-lobby',
   followId: null,
-  timeMode: saved.timeMode ?? 'auto',
-  graphics: saved.graphics ?? defaultGraphics,
-  player: saved.player ?? DEFAULT_PLAYER,
+  timeMode: saved.timeMode,
+  graphics: saved.graphics,
+  player: saved.player,
   simulateActivity: true,
   notice: null,
   setNotice: (n) => set({ notice: n }),
@@ -186,21 +149,21 @@ export const useWorld = create<WorldStore>((set, get) => ({
   setPanel: (p) => set({ panel: p }),
   setMap: (o) => set({ mapOpen: o }),
   setElevator: (o) => set({ elevatorOpen: o }),
-  setTimeMode: (t) => { set({ timeMode: t }); persist({ ...load(), graphics: get().graphics, player: get().player, timeMode: t }) },
+  setTimeMode: (t) => { set({ timeMode: t }); savePersisted({ graphics: get().graphics, player: get().player, timeMode: t }) },
   setGraphics: (patch) => {
     const g = { ...get().graphics, ...patch }
     set({ graphics: g })
-    persist({ graphics: g, player: get().player, timeMode: get().timeMode })
+    savePersisted({ graphics: g, player: get().player, timeMode: get().timeMode })
   },
   setQuality: (q) => {
     const g = { ...get().graphics, ...QUALITY_PRESETS[q], quality: q }
     set({ graphics: g })
-    persist({ graphics: g, player: get().player, timeMode: get().timeMode })
+    savePersisted({ graphics: g, player: get().player, timeMode: get().timeMode })
   },
   setPlayer: (patch) => {
     const p = { ...get().player, ...patch }
     set({ player: p })
-    persist({ graphics: get().graphics, player: p, timeMode: get().timeMode })
+    savePersisted({ graphics: get().graphics, player: p, timeMode: get().timeMode })
   },
   setSimulate: (b) => set({ simulateActivity: b }),
   togglePerf: () => set((s) => ({ showPerf: !s.showPerf })),
