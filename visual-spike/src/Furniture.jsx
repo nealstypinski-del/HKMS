@@ -1,4 +1,5 @@
 import { labelRoot } from './labelRoot.js'
+import { Model } from './Assets.jsx'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
@@ -32,7 +33,7 @@ function useTerminalTexture(t) {
     const col = { working: '#3ddc84', waiting: '#ffc94d', error: '#ff5c5c' }[t.state] || '#dfe6f2'
     g.font = 'bold 20px monospace'
     g.fillStyle = col
-    g.fillText(`● ${t.state.toUpperCase()}`, 12, 50)
+    g.fillText(`● ${({ working: 'ARBEITET', waiting: 'WARTET', error: 'FEHLER' }[t.state] || 'BEREIT')}`, 12, 50)
     g.font = '16px monospace'
     g.fillStyle = '#9fb3d1'
     g.fillText(`repo:   ${t.repo}`.slice(0, 34), 12, 80)
@@ -47,80 +48,42 @@ function useTerminalTexture(t) {
   }, [t?.repo, t?.branch, t?.task, t?.state])
 }
 
-// Arbeitsplatz: Schreibtisch, 1 bis 3 Monitore, Stuhl. Blick nach -z (zur Rückwand).
-// Mit `terminal` zeigen die Monitore einen Terminalzustand (repo, branch, task).
-export function Desk({
-  position, active = true, monitors = 1, accent = C.screen, wood = C.wood, woodDark = C.woodDark, chair = C.metal, terminal,
-}) {
-  const glow = useRef()
+// Arbeitsplatz aus dem Blender-Kit (desk1, desk, desk_triple) plus Stuhl. Blick nach -z (zur Rückwand).
+// Mit `terminal` zeigen die Monitore einen Terminalzustand, bei Fehler oder Warten wird der Bildschirm eingefärbt.
+export function Desk({ position, monitors = 1, terminal, status = 'working' }) {
   const tex = useTerminalTexture(terminal)
-  useFrame(({ clock }) => {
-    if (glow.current && active) glow.current.emissiveIntensity = 0.8 + Math.sin(clock.elapsedTime * 3 + position[0]) * 0.25
-  })
+  const name = monitors === 3 ? 'desk_triple' : monitors === 2 ? 'desk' : 'desk1'
   const xs = monitors === 3 ? [-0.56, 0, 0.56] : monitors === 2 ? [-0.42, 0.42] : [0]
   const w = monitors === 3 ? 0.52 : 0.72
+  const tint = status === 'error' ? '#ff5c5c' : status === 'waiting' ? '#ffc94d' : null
   return (
     <group position={position}>
-      <Box p={[0, 0.72, 0]} s={[monitors === 3 ? 2.0 : 1.7, 0.08, 0.85]} c={wood} />
-      <Box p={[monitors === 3 ? -0.95 : -0.75, 0.36, 0]} s={[0.08, 0.72, 0.75]} c={woodDark} />
-      <Box p={[monitors === 3 ? 0.95 : 0.75, 0.36, 0]} s={[0.08, 0.72, 0.75]} c={woodDark} />
-      {xs.map((x, i) => (
-        <group key={x} position={[x, 0.76, -0.22]} rotation={[0, monitors === 3 ? -x * 0.25 : 0, 0]}>
-          <Box p={[0, 0.06, 0]} s={[0.12, 0.12, 0.12]} c={C.metal} />
-          <Box p={[0, 0.36, 0]} s={[w + 0.08, 0.44, 0.05]} c={C.metal} />
-          <mesh position={[0, 0.36, 0.03]}>
-            <boxGeometry args={[w, 0.36, 0.01]} />
-            {tex ? (
-              <meshBasicMaterial map={tex} toneMapped={false} />
-            ) : (
-              <meshStandardMaterial ref={i === 0 ? glow : undefined} color={active ? accent : C.screenOff} emissive={active ? accent : '#000'} emissiveIntensity={0.8} />
-            )}
-          </mesh>
-        </group>
-      ))}
-      <Box p={[0, 0.77, 0.15]} s={[0.5, 0.03, 0.18]} c="#f4f4f4" />
-      <Chair position={[0, 0, 0.95]} color={chair} />
-    </group>
-  )
-}
-
-export function Chair({ position = [0, 0, 0], rotation = 0, color = C.metal }) {
-  return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      <Box p={[0, 0.42, 0]} s={[0.5, 0.07, 0.5]} c={color} />
-      <Box p={[0, 0.75, 0.22]} s={[0.5, 0.6, 0.07]} c={color} />
-      <Box p={[0, 0.2, 0]} s={[0.08, 0.4, 0.08]} c="#222" />
-      <Box p={[0, 0.03, 0]} s={[0.5, 0.05, 0.5]} c="#222" />
-    </group>
-  )
-}
-
-export function Plant({ position, scale = 1 }) {
-  return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.25, 0]} castShadow>
-        <cylinderGeometry args={[0.28, 0.2, 0.5, 8]} />
-        <meshStandardMaterial color="#e8e0d0" flatShading />
-      </mesh>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <mesh key={i} position={[Math.cos(i * 1.26) * 0.14, 0.75 + (i % 2) * 0.12, Math.sin(i * 1.26) * 0.14]} castShadow>
-          <icosahedronGeometry args={[0.24, 0]} />
-          <meshStandardMaterial color={C.plant} flatShading />
+      <Model name={name} />
+      <Model name="chair" position={[0, 0, 0.95]} rotation={Math.PI} />
+      {(tex || tint) && xs.map((x) => (
+        <mesh key={x} position={[x, 1.11, -0.18]}>
+          <planeGeometry args={[w, 0.36]} />
+          <meshBasicMaterial map={tex || undefined} color={tex ? '#ffffff' : tint} transparent opacity={tex ? 1 : 0.6} toneMapped={false} />
         </mesh>
       ))}
     </group>
   )
 }
 
-export function Sofa({ position, rotation = 0, color = C.sofa, width = 2.2 }) {
+export function Chair({ position = [0, 0, 0], rotation = 0 }) {
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      <Box p={[0, 0.25, 0]} s={[width, 0.5, 0.9]} c={color} />
-      <Box p={[0, 0.7, -0.35]} s={[width, 0.55, 0.22]} c={color} />
-      <Box p={[-width / 2 + 0.1, 0.5, 0]} s={[0.2, 0.5, 0.9]} c={color} />
-      <Box p={[width / 2 - 0.1, 0.5, 0]} s={[0.2, 0.5, 0.9]} c={color} />
+      <Model name="chair" rotation={Math.PI} />
     </group>
   )
+}
+
+export function Plant({ position, scale = 1 }) {
+  return <Model name="tree" position={position} scale={scale * 0.85} />
+}
+
+export function Sofa({ position, rotation = 0, width = 2.2 }) {
+  return <Model name="sofa" position={position} rotation={rotation} scale={[width / 2, 1, 1]} />
 }
 
 export function Table({ position, size = [1.6, 0.06, 0.9], color = C.wood, h = 0.5 }) {
@@ -251,12 +214,44 @@ export function WallScreen({ position, w = 5.4, h = 2.7, title, lines = [], acce
   )
 }
 
-export function Partition({ position, len = 6, axis = 'z', color = C.orange }) {
-  const s = axis === 'z' ? [0.12, 1.3, len] : [len, 1.3, 0.12]
+// Glasbrüstung zwischen Pods
+export function Partition({ position, len = 3 }) {
+  return <Model name="glass_partition" position={position} scale={[len / 3, 1, 1]} />
+}
+
+// Pod: Holz-Rückwand mit Schild (Titel als Canvas-Textur) oder niedrige Glasbrüstung
+export function Pod({ x, z, w, title, type = 'wall' }) {
+  const tex = useMemo(() => {
+    if (!title) return null
+    const cv = document.createElement('canvas')
+    cv.width = 1024
+    cv.height = 200
+    const g = cv.getContext('2d')
+    g.fillStyle = '#ffffff'
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    let size = 120
+    g.font = `800 ${size}px system-ui, sans-serif`
+    while (g.measureText(title).width > 940 && size > 40) {
+      size -= 6
+      g.font = `800 ${size}px system-ui, sans-serif`
+    }
+    g.fillText(title, 512, 104)
+    const t = new THREE.CanvasTexture(cv)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.anisotropy = 8
+    return t
+  }, [title])
+  if (type === 'glass') return <Model name="glass_partition" position={[x, 0, z]} scale={[w / 3, 1, 1]} />
   return (
-    <group position={position}>
-      <Box p={[0, 0.65, 0]} s={s} c="#f4f1ea" />
-      <Box p={[0, 1.33, 0]} s={axis === 'z' ? [0.16, 0.08, len] : [len, 0.08, 0.16]} c={color} />
+    <group position={[x, 0, z]}>
+      <Model name="pod_wall" scale={[w / 6, 1, 1]} />
+      {tex && (
+        <mesh position={[0, 1.87, 0.065]}>
+          <planeGeometry args={[w * 0.6 * 0.94, 0.7]} />
+          <meshBasicMaterial map={tex} transparent toneMapped={false} />
+        </mesh>
+      )}
     </group>
   )
 }

@@ -87,3 +87,7 @@ Weitere Missbrauchsfälle dazu: **M15** Browser meldet WebGPU, Gerät scheitert 
 6. M3 und M4: Entprellung und Obergrenzen.
 7. M10: Touch Steuerung (virtueller Joystick) in eigener Datei.
 8. Profiling auf echter GPU (braucht deinen Rechner).
+
+## Zusammenführung mit dem Basis Branch
+
+Der Basis Branch brachte einen neuen animierten Charakter (`character.glb`, geskinnt mit Idle, Walk, Run, SitIdle, SitType) und eine neue `Effects.jsx`. Die Menge der Bergpark Crowd nutzt weiter den alten starren Charakter als `character_rigid.glb`, `Effects.jsx` wurde nur um `enableNormalPass={ssao}` ergänzt. Offener Punkt **I1**: Crowd auf den geskinnten Charakter umstellen, damit beide Terminals dieselben Figuren zeigen.

@@ -37,7 +37,7 @@ function jointMatrix(out, px, py, pz, rx, ry, rz, s = _one) {
 
 // Ein Drawcall pro Teil und Material für ALLE Figuren (Spieler und Agenten). Farben je Figur als Instanzfarbe.
 export default function CrowdAvatars({ list, capacity = 160, shadows = true }) {
-  const gltf = useGlb('character')
+  const gltf = useGlb('character_rigid')
   const meshes = useRef({})
   const pose = useRef({})
   const time = useRef(0)
@@ -140,7 +140,7 @@ export default function CrowdAvatars({ list, capacity = 160, shadows = true }) {
   )
 }
 
-preloadGlb('character')
+preloadGlb('character_rigid')
 
 // Stimmungsfarbe aus dem Status der Etagendaten (theme.js)
 export const statusColor = (s) => (STATUS[s] ? STATUS[s].color : '#dfe6f2')
