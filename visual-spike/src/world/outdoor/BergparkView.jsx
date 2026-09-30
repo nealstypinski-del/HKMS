@@ -5,6 +5,7 @@ import DigitalBergpark from './DigitalBergpark.jsx'
 import CameraController from './camera/CameraController.jsx'
 import PerfProbe from './ui/PerfProbe.jsx'
 import BergparkHUD from './ui/BergparkHUD.jsx'
+import WebGLGuard from './ui/WebGLGuard.jsx'
 import { labelRoot } from '../../labelRoot.js'
 import { setTimeOfDay } from './environment/outdoorEnvironment.js'
 import { startMockWorkflow, stopMockWorkflow } from './cascades/mockWorkflow.js'
@@ -17,7 +18,11 @@ import { worldZones } from './streaming/WorldZoneManager.js'
 
 const DEFAULTS = { quality: 'HIGH', effects: true, labels: true, camBob: true, smoothing: true, fov: 70, interior: true }
 
-export default function BergparkView({ onBack }) {
+export default function BergparkView(props) {
+  return <WebGLGuard onBack={props.onBack}><BergparkViewInner {...props} /></WebGLGuard>
+}
+
+function BergparkViewInner({ onBack }) {
   const [mode, setModeRaw] = useState(() => new URLSearchParams(window.location.search).get('mode') || import.meta.env.VITE_DEFAULT_MODE || 'tp')
   // Sims Ansicht startet mit Etagenschnitt (Etage 1, Wände halb) wie im Sims Baumodus, andere Ansichten zeigen wieder das ganze Haus
   const setMode = (m) => { setModeRaw(m); setView(m === 'sims' ? { cutLevel: 1, wallMode: 'half' } : { cutLevel: 'all', wallMode: 'up' }) }
