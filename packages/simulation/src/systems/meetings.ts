@@ -26,6 +26,9 @@ export class MeetingSystem {
 
   create(spec: MeetingSpec): Result<Meeting> {
     const c = this.c;
+    if (!spec || !Array.isArray(spec.participantAgentIds)) return fail('INVALID', 'participantAgentIds muss eine Liste sein');
+    if (spec.durationMs !== undefined && (!Number.isFinite(spec.durationMs) || spec.durationMs <= 0 || spec.durationMs > 86_400_000)) return fail('INVALID', 'durationMs muss zwischen 1 ms und 24 Stunden liegen');
+    if (spec.roomId !== undefined && !this.roomIds().includes(spec.roomId)) return fail('NOT_FOUND', `Raum ${spec.roomId} ist kein Meetingraum`);
     const ids = [...new Set(spec.participantAgentIds)];
     if (ids.length < 2) return fail('INVALID', 'Ein Meeting braucht mindestens zwei Teilnehmer');
     for (const id of ids) {

@@ -16,6 +16,7 @@ export * from './minimap';
 export * from './providers';
 export * from './workflows';
 export * from './state';
+export * from './configValidation';
 export * from './engine';
 export * from './scenarios';
 export * from './persistence';

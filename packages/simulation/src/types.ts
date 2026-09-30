@@ -497,6 +497,8 @@ export interface SimConfig {
   };
   /** Wartezeit, nach der ein wartender LOW/NORMAL Auftrag eine Stufe höher priorisiert wird. 0 = aus. */
   agingMs: number;
+  /** Höchstzahl wartender Aufgaben. Weitere werden mit NO_CAPACITY abgelehnt. */
+  maxQueuedTasks: number;
   logCapacity: number;
   historyCapacity: number;
   /** 0 = aus. Sonst werden alle N Ticks die Invarianten geprüft und bei Verstoß geworfen. */

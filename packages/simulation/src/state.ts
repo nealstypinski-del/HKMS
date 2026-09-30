@@ -1,6 +1,7 @@
 import { createClockState, DEFAULT_START_MS, type ClockState } from './clock';
 import { buildLayout, layoutOptionsForRoster, GROUND_FLOOR, type LayoutOptions } from './layout';
 import type { LogState } from './log';
+import { validateConfig } from './configValidation';
 import { hashSeed } from './rng';
 import { makeRoster, makeRosterOfSize, type AgentSeed } from './roster';
 import type {
@@ -137,6 +138,7 @@ export const DEFAULT_CONFIG: SimConfig = {
     defaultMeetingMs: 45_000,
   },
   agingMs: 120_000,
+  maxQueuedTasks: 2000,
   logCapacity: 500,
   historyCapacity: 200,
   invariantCheckEveryTicks: 0,
@@ -187,6 +189,7 @@ export function createInitialState(opts: CreateStateOptions = {}): SimulationSta
   const layoutOpts = opts.layout ?? layoutOptionsForRoster(seeds);
   const { layout, anchors } = buildLayout(layoutOpts);
   const config = mergeConfig(DEFAULT_CONFIG, opts.config);
+  validateConfig(config);
 
   const agents: Record<AgentId, Agent> = {};
   const agentOrder: AgentId[] = [];

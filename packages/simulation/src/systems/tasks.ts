@@ -2,6 +2,7 @@ import type { Ctx } from '../context';
 import { DEPARTMENT_SLUG } from '../layout';
 import { effectiveRank } from '../routing';
 import {
+  PRIORITY_RANK,
   fail,
   ok,
   type Agent,
@@ -27,7 +28,16 @@ export class TaskSystem {
 
   create(spec: TaskSpec): Result<Task> {
     const c = this.c;
-    if (!spec.title) return fail('INVALID', 'Aufgabe braucht einen Titel');
+    if (!spec || typeof spec.title !== 'string' || !spec.title.trim()) return fail('INVALID', 'Aufgabe braucht einen Titel');
+    if (!(spec.departmentId in c.state.queues)) return fail('INVALID', `Unbekannte Abteilung: ${String(spec.departmentId)}`);
+    if (!Array.isArray(spec.requiredCapabilities) || spec.requiredCapabilities.some((x) => typeof x !== 'string' || !x)) return fail('INVALID', 'requiredCapabilities muss eine Liste von Texten sein');
+    if (spec.priority !== undefined && !(spec.priority in PRIORITY_RANK)) return fail('INVALID', `Unbekannte Priorität: ${String(spec.priority)}`);
+    for (const [name, v] of [['workDurationMs', spec.workDurationMs], ['postApprovalWorkMs', spec.postApprovalWorkMs]] as const) {
+      if (v !== undefined && (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 86_400_000)) return fail('INVALID', `${name} muss zwischen 0 und 24 Stunden liegen`);
+    }
+    let queued = 0;
+    for (const q of Object.values(c.state.queues)) queued += q.length;
+    if (queued >= c.state.config.maxQueuedTasks) return fail('NO_CAPACITY', `Warteschlange voll (${c.state.config.maxQueuedTasks})`);
     if (spec.pinnedAgentId && !c.state.agents[spec.pinnedAgentId]) return fail('NOT_FOUND', `Agent ${spec.pinnedAgentId} unbekannt`);
     const origin = spec.origin ?? 'MOCK';
     const seq = (c.state.counters['taskSeq'] = (c.state.counters['taskSeq'] ?? 0) + 1);

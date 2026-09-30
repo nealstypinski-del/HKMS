@@ -19,11 +19,21 @@ export interface LoadOptions {
 }
 
 export function parseSimulationState(json: string): SimulationState {
-  const raw = JSON.parse(json) as Partial<SimulationState>;
-  if (raw.version !== SIMULATION_STATE_VERSION) {
-    throw new Error(`Unbekannte Zustandsversion ${String(raw.version)} (erwartet ${SIMULATION_STATE_VERSION})`);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    throw new Error('Gespeicherter Zustand ist kein gültiges JSON');
   }
-  return raw as SimulationState;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('Gespeicherter Zustand hat ein falsches Format (Objekt erwartet)');
+  const state = raw as Partial<SimulationState>;
+  if (state.version !== SIMULATION_STATE_VERSION) {
+    throw new Error(`Unbekannte Zustandsversion ${String(state.version)} (erwartet ${SIMULATION_STATE_VERSION})`);
+  }
+  for (const key of ['agents', 'tasks', 'anchors', 'clock', 'config', 'queues', 'layout', 'agentOrder'] as const) {
+    if (state[key] === undefined || state[key] === null) throw new Error(`Gespeicherter Zustand ist unvollständig: Feld ${key} fehlt`);
+  }
+  return state as SimulationState;
 }
 
 export function loadSimulation(json: string, opts: LoadOptions = {}): SimulationEngine {

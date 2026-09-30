@@ -5,6 +5,7 @@ import { DeskAssignmentService } from './desks';
 import { EventBus, type AnyEventHandler, type EventHandler, type SimEventMap, type SimEventType, type Unsubscribe } from './events';
 import { inspectAgent, type AgentInspectorData } from './inspector';
 import { buildMinimap, type MinimapFloor } from './minimap';
+import { validateConfig } from './configValidation';
 import { checkInvariants } from './invariants';
 import { ActivityLog, type LogEntry } from './log';
 import { computeMetrics, type SimulationMetrics } from './metrics';
@@ -213,7 +214,9 @@ export class SimulationEngine {
 
   setConfig(patch: DeepPartial<SimConfig>): void {
     const c = this.ctx;
-    c.state.config = mergeConfig(c.state.config, patch);
+    const next = mergeConfig(c.state.config, patch);
+    validateConfig(next);
+    c.state.config = next;
     c.log = new ActivityLog(c.state.log, c.state.config.logCapacity, c.state.config.timeZone);
   }
 
@@ -245,6 +248,7 @@ export class SimulationEngine {
    */
   advance(realDeltaMs: number): number {
     const s = this.ctx.state;
+    if (!Number.isFinite(realDeltaMs) || realDeltaMs <= 0) return 0;
     const scaled = this.ctx.clock.scale(realDeltaMs);
     if (!s.running) return 0;
     s.accumulatorMs += scaled;
