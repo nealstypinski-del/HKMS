@@ -33,7 +33,7 @@ function useTerminalTexture(t) {
     const col = { working: '#3ddc84', waiting: '#ffc94d', error: '#ff5c5c' }[t.state] || '#dfe6f2'
     g.font = 'bold 20px monospace'
     g.fillStyle = col
-    g.fillText(`● ${t.state.toUpperCase()}`, 12, 50)
+    g.fillText(`● ${({ working: 'ARBEITET', waiting: 'WARTET', error: 'FEHLER' }[t.state] || 'BEREIT')}`, 12, 50)
     g.font = '16px monospace'
     g.fillStyle = '#9fb3d1'
     g.fillText(`repo:   ${t.repo}`.slice(0, 34), 12, 80)

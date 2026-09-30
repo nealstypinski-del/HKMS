@@ -73,9 +73,9 @@ export default function Floor({ floor, stats }) {
           return <WallScreen key={i} position={[s.x, s.y, -5.9]} w={s.w} h={s.h} title={s.title} accent={s.accent} bg={s.bg} lines={lines} />
         }
         // Freistehendes Display auf zwei Pfosten (ohne Rückwand)
-        const y = s.y + 1.0
+        const y = floor.pods ? s.y + 1.0 : s.y
         return (
-          <group key={i} position={[s.x, 0, -6.4]}>
+          <group key={i} position={[s.x, 0, -5.6]}>
             <WallScreen position={[0, y, 0]} w={s.w} h={s.h} title={s.title} accent={s.accent} bg={s.bg} lines={lines} />
             {[-1, 1].map((k) => (
               <mesh key={k} position={[k * (s.w / 2 - 0.15), (y - s.h / 2) / 2, -0.05]}>

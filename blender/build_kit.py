@@ -273,52 +273,72 @@ def export_all():
 
 # ----------------------------------------------------------------- Vorschau-Szene
 def showcase():
+    """Rendert eine Pod-Landschaft im Stil der Vorlage: Nachthimmel, runde Plattform, mehrere Pods mit Holz-Rückwand."""
+    import random
+    random.seed(7)
     show = new_col('showcase')
-    ground = mat('ground', '#4b5060', 0.9)
-    cyl(show, (0, 0, 0), (0, 0, -0.15), 14, 0.3, mat('platform', '#20263a', 0.9), 64, 'platform')
-    cyl(show, (0, 0, 0), (0, 0, 0.005), 13.6, 0.02, ground, 64, 'floor')
-    pod_wall(show, (0, 4.5, 0), 'HERKULESJOBS', 8.0)
-    glass_partition(show, (0, -2.2, 0), 8.0)
-    for i, x in enumerate((-3, -1, 1, 3)):
-        desk(show, (x, 2.5, 0), 2 if i % 2 else 1)
-        chair(show, (x, 1.6, 0))
-        character(show, (x, 1.6, -0.02))
-    tree(show, (-6.5, -3.5, 0), 1.3)
-    tree(show, (6.5, -3.0, 0), 1.0)
-    sofa(show, (0, -5.5, 0))
-    lamp(show, (2.4, -5.4, 0))
-    bench(show, (5.0, -6.5, 0))
-    for x in (-5, -3.5, 3.5, 5):
-        bollard(show, (x, -8.0, 0))
-    # Welt, Licht, Kamera
+    floor = mat('ground', '#6b7080', 0.9)
+    cyl(show, (0, 0, 0), (0, 0, -0.2), 30, 0.4, mat('platform', '#1a2038', 0.9), 96, 'platform')
+    cyl(show, (0, 0, 0), (0, 0, 0.01), 29.4, 0.02, floor, 96, 'floor')
+    cyl(show, (0, 0, 0), (0, 0, 0.03), 29.8, 0.06, mat('rim', '#ffb347', 0.4, 0, 6.0), 96, 'rim')
+    carpet = mat('carpet', '#3f6a73', 0.95)
+    names = ['HERKULESJOBS', 'KASSELMEMES', 'LEAD RESEARCH', 'SALES', 'AI DEV', 'REDAKTION']
+    layout = [(-9, 9), (3, 9), (-9, -1), (3, -1), (15, 9), (15, -1)]
+    for (px, py), title in zip(layout, names):
+        box(show, (px, py, 0), (0, -2.2, 0.02), (10.5, 8.4, 0.03), carpet, 'carpet')
+        pod_wall(show, (px, py + 1.9, 0), title, 10.0, 2.8)
+        glass_partition(show, (px, py - 6.3, 0), 10.0)
+        for row, yy in enumerate((0.0, -2.8)):
+            for i in range(4):
+                x = px - 3.6 + i * 2.4
+                desk(show, (x, py + yy, 0), 2 if (i + row) % 2 else 1)
+                chair(show, (x, py + yy - 0.95, 0))
+                if random.random() < 0.8:
+                    c = character_sit(show, (x, py + yy - 0.95, 0.02))
+    for x, y in [(-14.5, 12), (10.5, 12), (-14.5, 2), (21.5, 2), (0, 3.2), (-3, -4.5), (9, -4.5)]:
+        tree(show, (x, y, 0), random.uniform(1.0, 1.5))
+    sofa(show, (-3, -8.5, 0))
+    lamp(show, (-1.2, -8.3, 0))
+    bench(show, (5, -8.5, 0))
+    for x in range(-12, 13, 4):
+        bollard(show, (x, -12, 0))
+    # Nachthimmel mit Sternen
     sc = bpy.context.scene
     sc.world = bpy.data.worlds.new('night')
     sc.world.use_nodes = True
-    bg = sc.world.node_tree.nodes['Background']
-    bg.inputs['Color'].default_value = hexrgb('#0a1030')
-    bg.inputs['Strength'].default_value = 0.6
-    bpy.ops.object.light_add(type='SUN', location=(6, -8, 12), rotation=(math.radians(50), 0, math.radians(30)))
-    sun = bpy.context.active_object
-    sun.data.energy = 3.0
-    bpy.ops.object.light_add(type='AREA', location=(0, 0, 6))
-    area = bpy.context.active_object
-    area.data.energy = 600
-    area.data.size = 8
-    bpy.ops.object.camera_add(location=(8.5, -11, 7))
+    nt = sc.world.node_tree
+    bg = nt.nodes['Background']
+    tex = nt.nodes.new('ShaderNodeTexNoise')
+    tex.inputs['Scale'].default_value = 900
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.72
+    ramp.color_ramp.elements[0].color = hexrgb('#0a1030')
+    ramp.color_ramp.elements[1].position = 0.78
+    ramp.color_ramp.elements[1].color = (12, 12, 14, 1)
+    nt.links.new(tex.outputs['Fac'], ramp.inputs['Fac'])
+    nt.links.new(ramp.outputs['Color'], bg.inputs['Color'])
+    bg.inputs['Strength'].default_value = 0.9
+    bpy.ops.object.light_add(type='SUN', location=(10, -12, 20), rotation=(math.radians(52), 0, math.radians(35)))
+    bpy.context.active_object.data.energy = 2.6
+    bpy.ops.object.light_add(type='AREA', location=(0, 0, 14))
+    a = bpy.context.active_object
+    a.data.energy = 4000
+    a.data.size = 30
+    bpy.ops.object.camera_add(location=(-4, -30, 17))
     cam = bpy.context.active_object
-    bpy.ops.object.empty_add(location=(0, 0.5, 0.9))
+    bpy.ops.object.empty_add(location=(3, 1, 0.5))
     tgt = bpy.context.active_object
     c = cam.constraints.new('TRACK_TO')
     c.target = tgt
     c.track_axis = 'TRACK_NEGATIVE_Z'
     c.up_axis = 'UP_Y'
-    cam.data.lens = 32
+    cam.data.lens = 30
     sc.camera = cam
     sc.render.engine = 'CYCLES'
     sc.cycles.device = 'CPU'
-    sc.cycles.samples = 32
+    sc.cycles.samples = 24
     sc.cycles.use_denoising = False
-    sc.render.resolution_x, sc.render.resolution_y = 1280, 720
+    sc.render.resolution_x, sc.render.resolution_y = 1600, 900
     sc.render.filepath = PREVIEW
     bpy.ops.render.render(write_still=True)
     print('Vorschau', PREVIEW)
