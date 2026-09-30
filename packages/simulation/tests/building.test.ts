@@ -24,9 +24,9 @@ describe('Hochhaus Layout', () => {
 
   it('Sofas schauen auf einen Fernseher, Fernseher sind nicht belegbar', () => {
     const tvs = Object.values(anchors).filter((a) => a.type === 'TV');
-    expect(tvs.length).toBe(5); // Erdgeschoss, drei Abteilungen, Dachlounge
+    expect(tvs.length).toBe(10); // Lounges auf allen Etagen, VIP, Dachlounge und Dachbar
     expect(tvs.every((t) => t.capacity === 0)).toBe(true);
-    const sofas = Object.values(anchors).filter((a) => a.type === 'SOFA' && a.zoneId !== 'wellness');
+    const sofas = Object.values(anchors).filter((a) => a.type === 'SOFA' && a.allowedActivities.includes('WATCH_TV'));
     expect(sofas.length).toBeGreaterThan(20);
     for (const s of sofas) {
       expect(s.focusAnchorId, s.id).toBeDefined();
@@ -36,6 +36,7 @@ describe('Hochhaus Layout', () => {
     }
     const liegen = Object.values(anchors).filter((a) => a.zoneId === 'wellness');
     expect(liegen.length).toBe(6);
+    expect(Object.values(anchors).filter((a) => a.type === 'SOFA' && !a.allowedActivities.includes('WATCH_TV')).every((a) => a.floorId === 'floor-4')).toBe(true);
     expect(liegen.every((l) => l.allowedActivities.includes('REST') && l.floorId === 'floor-4')).toBe(true);
   });
 
@@ -143,5 +144,43 @@ describe('Firmenspezifische Inhalte (DEMO)', () => {
     const m = ev.find((x) => x.type === 'MEETING_CREATED');
     expect(m && m.type === 'MEETING_CREATED' ? m.payload.title : '').toBe('Gewinnspiel Abstimmung (DEMO)');
     expect(types(ev)).toContain('MEETING_COMPLETED');
+  });
+});
+
+describe('Messehalle und Flügel', () => {
+  const { layout, anchors } = buildLayout();
+  it('hat mindestens 25 Räume und über 50 Zonen', () => {
+    const rooms = layout.zones.filter((z) => z.kind === 'MEETING_ROOM' || z.kind === 'LOUNGE' || z.kind === 'WELLNESS' || z.kind === 'EXPO' || z.kind === 'KITCHEN');
+    expect(rooms.length).toBeGreaterThanOrEqual(25);
+    expect(layout.zones.length).toBeGreaterThan(50);
+  });
+  it('Main Stage hat 48 Plätze, vier Workshops 12, Expo hat zwölf Stände', () => {
+    const seats = (z: string) => Object.values(anchors).filter((a) => a.zoneId === z && a.type === 'MEETING_SEAT').length;
+    expect(seats('main-stage')).toBe(48);
+    for (const w of ['workshop-a', 'workshop-b', 'workshop-c', 'workshop-d']) expect(seats(w)).toBe(12);
+    const booths = Object.values(anchors).filter((a) => a.type === 'BOOTH');
+    expect(booths.length).toBe(12);
+    expect(booths.every((b) => b.capacity === 3 && b.zoneId === 'expo')).toBe(true);
+  });
+  it('jede Abteilungsetage hat mindestens vier zusätzliche Räume', () => {
+    for (const f of ['floor-1', 'floor-2', 'floor-3']) expect(layout.zones.filter((z) => z.floorId === f && (z.kind === 'MEETING_ROOM' || z.kind === 'LOUNGE')).length).toBeGreaterThanOrEqual(6);
+    expect(layout.zones.filter((z) => z.floorId === 'floor-4').map((z) => z.id)).toEqual(expect.arrayContaining(['wellness', 'ruheraum', 'yoga-raum', 'dachlounge', 'dachbar']));
+  });
+  it('ein Meeting mit 40 Agenten läuft auf der Main Stage', () => {
+    const e = makeEngine({ rosterSize: 60 });
+    const ids = e.getAgents().slice(0, 40).map((a) => a.id);
+    const r = e.createMeeting({ title: 'Großes Treffen (DEMO)', participantAgentIds: ids, durationMs: 30 * S });
+    expect(r.ok).toBe(true);
+    e.runFor(6 * MIN);
+    expect(e.getState().meetingHistory.at(-1)!.status).toBe('COMPLETED');
+    expect(e.checkInvariants()).toEqual([]);
+  });
+  it('Spaziergänge führen auch zu Messeständen', () => {
+    const e = makeEngine();
+    const ev = recordEvents(e);
+    for (let i = 0; i < 40; i++) e.sendAgentToBreak('hj-sales', 'WANDER');
+    e.runFor(2 * MIN);
+    const dest = ev.filter((x) => x.type === 'AGENT_MOVEMENT_REQUESTED').map((x) => (x.type === 'AGENT_MOVEMENT_REQUESTED' ? x.payload.destinationAnchorId : ''));
+    expect(dest.some((d) => d?.startsWith('expo-stand'))).toBe(true);
   });
 });

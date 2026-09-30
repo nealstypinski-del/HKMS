@@ -5,6 +5,7 @@ export * from './rng';
 export * from './log';
 export * from './anchors';
 export * from './layout';
+export * from './layoutRooms';
 export * from './roster';
 export * from './routing';
 export * from './desks';

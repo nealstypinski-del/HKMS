@@ -12,6 +12,7 @@ import {
   ROOF_LOUNGE_ZONE,
   WELLNESS_ZONE,
 } from '../layout';
+import { WELLNESS_ZONES } from '../layoutRooms';
 import { SEAT_TYPES } from '../movement';
 import type {
   ActivityKind,
@@ -440,15 +441,12 @@ export class AgentSystem {
         if (seat) steps.push({ anchorId: seat.id, walkIntent: 'GO_TO_KITCHEN', intent: 'USE_KITCHEN', activity: 'SIT', durationMs: c.rng.int(20_000, 60_000) });
       }
     } else if (kind === 'LOUNGE' || kind === 'WELLNESS') {
-      const zones =
-        kind === 'LOUNGE'
-          ? [floorLoungeZone(a.departmentId), GROUND_LOUNGE_ZONE]
-          : c.rng.chance(0.6)
-            ? [WELLNESS_ZONE, ROOF_LOUNGE_ZONE]
-            : [ROOF_LOUNGE_ZONE, WELLNESS_ZONE];
+      let zones: readonly string[];
+      if (kind === 'LOUNGE') zones = [floorLoungeZone(a.departmentId), GROUND_LOUNGE_ZONE];
+      else { const start = c.rng.int(0, WELLNESS_ZONES.length - 1); zones = [...WELLNESS_ZONES.slice(start), ...WELLNESS_ZONES.slice(0, start)]; }
       const sofa = this.firstFree(a, 'SOFA', zones);
       if (!sofa) return null;
-      const inWellness = sofa.zoneId === WELLNESS_ZONE;
+      const inWellness = sofa.type === 'SOFA' && sofa.allowedActivities.length === 3;
       const hasTv = !!sofa.focusAnchorId;
       const activity = inWellness
         ? 'REST'
@@ -468,9 +466,11 @@ export class AgentSystem {
         durationMs: inWellness ? c.rng.int(60_000, 180_000) : c.rng.int(30_000, 120_000),
       });
     } else {
-      const pt = c.anchors.findFree('WAITING_POINT', a.id, { zoneId: 'lobby' });
+      // Spaziergang: gern zu einem Messestand, sonst in die Lobby
+      const booth = c.rng.chance(0.6) ? c.anchors.findFree('BOOTH', a.id, { zoneId: 'expo' }) : null;
+      const pt = booth ?? c.anchors.findFree('WAITING_POINT', a.id, { zoneId: 'lobby' });
       if (!pt) return null;
-      steps.push({ anchorId: pt.id, walkIntent: 'WANDER', intent: 'WANDER', activity: 'STAND', durationMs: c.rng.int(8_000, 20_000) });
+      steps.push({ anchorId: pt.id, walkIntent: 'WANDER', intent: 'WANDER', activity: booth ? 'CHAT_VISUAL' : 'STAND', durationMs: c.rng.int(8_000, 20_000) });
     }
     return { kind, steps, stepIndex: 0 };
   }

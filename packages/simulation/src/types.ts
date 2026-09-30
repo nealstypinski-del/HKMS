@@ -129,6 +129,8 @@ export type AnchorType =
   | 'ELEVATOR'
   | 'WAITING_POINT'
   | 'WHITEBOARD'
+  /** Messestand: mehrere Agenten können davor stehen. */
+  | 'BOOTH'
   /** Fernseher: nicht belegbar (Kapazität 0), nur Blickziel für Sofas. */
   | 'TV';
 
@@ -168,7 +170,8 @@ export type ZoneKind =
   | 'ELEVATOR_LOBBY'
   | 'WAITING_AREA'
   | 'LOBBY'
-  | 'WELLNESS';
+  | 'WELLNESS'
+  | 'EXPO';
 
 export interface ZoneDef {
   id: ZoneId;

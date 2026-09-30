@@ -13,6 +13,7 @@ import type {
   ZoneKind,
 } from './types';
 import type { AgentSeed } from './roster';
+import { EXTRA_ROOMS } from './layoutRooms';
 
 /**
  * Semantisches Demo Layout des Hochhauses (Etagen, Zonen, Anker), alle Bezeichnungen auf Deutsch.
@@ -250,6 +251,28 @@ export function buildLayout(options: LayoutOptions = DEFAULT_LAYOUT_OPTIONS): {
     anchor(`wellness-liege-${pad(i + 1, 2)}`, 'SOFA', w4, WELLNESS_ZONE, 1, ['REST', 'SIT', 'READ'], { x: 8 + (i % 3) * 2.5, y: 8 + Math.floor(i / 3) * 2.5 });
   }
   lounge(ROOF_LOUNGE_ZONE, w4, 'Dachlounge mit Fernseher', { x: 28, y: 12 }, opts.roofLoungeSeats, 'dachlounge');
+
+  // Zusätzliche Räume (Flügel): Messehalle, Workshops, Abteilungsräume, Wellness
+  for (const r of EXTRA_ROOMS) {
+    const rows = Math.ceil(r.count / r.cols);
+    const dx = r.departmentId ? { departmentId: r.departmentId } : {};
+    if (r.kind === 'MEETING') {
+      const center = { x: r.x + ((r.cols - 1) * 1.3) / 2, y: r.y + ((rows - 1) * 1.7) / 2 };
+      zone(r.id, r.floorId, 'MEETING_ROOM', r.label, center, r.departmentId);
+      for (let i = 0; i < r.count; i++) {
+        anchor(`${r.id}-seat-${pad(i + 1, 2)}`, 'MEETING_SEAT', r.floorId, r.id, 1, ['ATTEND_MEETING'], { x: r.x + (i % r.cols) * 1.3, y: r.y + Math.floor(i / r.cols) * 1.7 }, dx);
+      }
+      anchor(`${r.id}-whiteboard`, 'WHITEBOARD', r.floorId, r.id, 2, ['ATTEND_MEETING', 'STAND'], { x: center.x, y: r.y - 2.3 });
+    } else if (r.kind === 'LOUNGE') {
+      lounge(r.id, r.floorId, r.label, { x: r.x, y: r.y }, r.count, r.id, r.departmentId);
+    } else if (r.kind === 'WELLNESS') {
+      zone(r.id, r.floorId, 'WELLNESS', r.label, { x: r.x + ((r.cols - 1) * 2.5) / 2, y: r.y + ((rows - 1) * 2.5) / 2 });
+      for (let i = 0; i < r.count; i++) anchor(`${r.id}-liege-${pad(i + 1, 2)}`, 'SOFA', r.floorId, r.id, 1, ['REST', 'SIT', 'READ'], { x: r.x + (i % r.cols) * 2.5, y: r.y + Math.floor(i / r.cols) * 2.5 });
+    } else {
+      zone(r.id, r.floorId, 'EXPO', r.label, { x: r.x + ((r.cols - 1) * 4.5) / 2, y: r.y + ((rows - 1) * 4) / 2 });
+      for (let i = 0; i < r.count; i++) anchor(`${r.id}-stand-${pad(i + 1, 2)}`, 'BOOTH', r.floorId, r.id, 3, ['STAND', 'CHAT_VISUAL', 'WAIT'], { x: r.x + (i % r.cols) * 4.5, y: r.y + Math.floor(i / r.cols) * 4 });
+    }
+  }
 
   return { layout: { floors, zones }, anchors };
 }

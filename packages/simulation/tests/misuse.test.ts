@@ -70,10 +70,10 @@ describe('Ungültige Aufgaben', () => {
 describe('Ungültige Meetings', () => {
   it('Sonderfälle', () => {
     const e = makeEngine();
-    const all = e.getAgents().map((a) => a.id);
     expect(e.createMeeting({ title: 'x', participantAgentIds: [] }).ok).toBe(false);
     expect(e.createMeeting({ title: 'x', participantAgentIds: ['hj-sales', 'hj-sales'] }).ok).toBe(false);
-    const big = e.createMeeting({ title: 'x', participantAgentIds: all });
+    const e60 = makeEngine({ rosterSize: 60 });
+    const big = e60.createMeeting({ title: 'x', participantAgentIds: e60.getAgents().map((a) => a.id) });
     expect(big.ok).toBe(false);
     if (!big.ok) expect(big.code).toBe('NO_ROOM');
     expect(e.createMeeting({ title: 'x', participantAgentIds: ['hj-sales', 'hj-outreach'], roomId: 'gibt-es-nicht' }).ok).toBe(false);
