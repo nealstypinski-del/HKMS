@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-carbon: #04060a;
+  --color-carbon-2: #080c14;
+  --color-cyan: #00f0ff;
+  --color-emerald: #00ff66;
+  --color-amber: #ff9500;
+  --color-crimson: #ff2d55;
+  --color-magenta: #e024e3;
+  --color-royal: #007aff;
+  --font-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html { background: #04060a; }
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  color: #eef2ff;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(0, 240, 255, 0.08), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 90% 10%, rgba(224, 36, 227, 0.07), transparent 70%),
+    linear-gradient(180deg, #080c14, #04060a);
+  background-attachment: fixed;
+}
+
+@keyframes scan { from { transform: translateY(0); } to { transform: translateY(400px); } }
+@keyframes ring { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.6); opacity: 0; } }
+@keyframes pulse-bar { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+.anim-scan { animation: scan 4.5s ease-in-out infinite alternate; }
+.anim-ring { transform-box: fill-box; transform-origin: center; animation: ring 2.6s ease-out infinite; }
+.mono { font-family: var(--font-mono); }
+input[type='range'] { accent-color: #00f0ff; }
