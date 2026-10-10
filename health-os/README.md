@@ -4,6 +4,9 @@ React 19 + Tailwind 4 + Recharts Command Center (4-Spalten-HUD, bis 32:9).
 
 ```bash
 npm install
+npm start        # Bridge + Dashboard gemeinsam (Windows: start.bat per Doppelklick)
+
+# oder getrennt:
 npm run bridge   # Whoop-MCP-Bridge auf :8787 (separates Terminal)
 npm run dev      # Dashboard auf :5173
 npm test
