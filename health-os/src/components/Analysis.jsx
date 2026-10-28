@@ -2,6 +2,7 @@ import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveCont
 import { COLORS, PROFILE } from '../lib/constants.js'
 import { fmt, estimateHypnogram } from '../lib/calc.js'
 import { Glass, Bar, Btn, Field, Ring, Tile } from './ui.jsx'
+import { MealForm } from './MealForm.jsx'
 
 const tip = { contentStyle: { background: 'rgba(8,12,20,.95)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 12, fontSize: 12 }, labelStyle: { color: '#fff' } }
 const axis = { stroke: 'rgba(235,240,255,.55)', fontSize: 11, tickLine: false, axisLine: false }
@@ -15,7 +16,7 @@ export function MissionBar({ os }) {
         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full" style={{ width: `${m.pct * 100}%`, background: `linear-gradient(90deg, ${COLORS.cyan}, ${COLORS.emerald})`, boxShadow: `0 0 10px ${COLORS.emerald}` }} /></div>
         <span className="text-xs text-white/65">{fmt(m.pct * 100, 0)} %</span>
       </div>
-      {[[`−${fmt(m.lost, 1)} kg`, 'VERLOREN', COLORS.emerald], [`${fmt(m.remaining, 1)} kg`, 'VERBLEIBEND', COLORS.cyan], [`${m.daysLeft} Tage`, 'BIS SILVESTER', COLORS.amber]].map(([v, l, c]) => (
+      {[[`${m.lost < 0.05 ? '' : '−'}${fmt(Math.max(0, m.lost), 1)} kg`, 'VERLOREN', COLORS.emerald], [`${fmt(m.remaining, 1)} kg`, 'VERBLEIBEND', COLORS.cyan], [`${m.daysLeft} Tage`, 'BIS SILVESTER', COLORS.amber]].map(([v, l, c]) => (
         <div key={l} className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-center leading-tight">
           <div className="mono text-sm font-bold" style={{ color: c }}>{v}</div><div className="text-[9px] tracking-[.14em] text-white/55">{l}</div>
         </div>
@@ -79,18 +80,18 @@ export function Forecast({ os }) {
   )
 }
 
-export function WalkCalc({ os }) {
+export function WalkCalc({ os, rows = 5 }) {
   return (
     <Glass title="Spaziergang-Kalkulation" source="MODELL" accent={COLORS.emerald}>
       <table className="mono w-full text-xs">
         <thead><tr className="text-left text-white/55"><th className="pb-1 font-medium">Zeit</th><th className="pb-1 font-medium">Schritte</th><th className="pb-1 text-right font-medium">Verbrauch</th></tr></thead>
         <tbody>
-          {os.walkTable.map((r) => (
+          {os.walkTable.slice(0, rows).map((r) => (
             <tr key={r.min} className="border-t border-white/10"><td className="py-1.5">{r.min} Min</td><td>{fmt(r.steps)}</td><td className="text-right font-bold text-emerald">≈ {fmt(r.kcal)} kcal</td></tr>
           ))}
         </tbody>
       </table>
-      <p className="text-[10px] text-white/40">Annahme: 107 Schritte/Min, Verbrauch = Aktiv-kcal ({fmt(os.activeKcal)}) / 30.000 Schritte. Nicht gemessen, individuell variabel.</p>
+      <p className="text-[10px] text-white/40">Annahme: 107 Schritte/Min · Aktiv-kcal ({fmt(os.activeKcal)}) / 30.000 Schritte · nicht gemessen.</p>
     </Glass>
   )
 }
@@ -108,7 +109,7 @@ export function Hypnogram({ os }) {
   const share = (k) => Math.round((night[k] / (night.total || 1)) * 100)
   return (
     <Glass title="Schlaf-Hypnogramm" source="GESCHÄTZT" aside={`${fmt(total, 1)} Std · ${hm(start)} – ${hm(end)}`} accent={COLORS.royal}>
-      <svg viewBox="0 0 400 90" className="h-24 w-full" role="img" aria-label="Geschätztes Hypnogramm">
+      <svg viewBox="0 0 400 90" className="h-20 w-full" role="img" aria-label="Geschätztes Hypnogramm">
         {segs.map((s, i) => {
           const w = (s.h / total) * 400, y = (LEVEL[s.stage] - 1) * 28 + 4
           const el = <rect key={i} x={x} y={y} width={Math.max(0.8, w - 0.6)} height="22" rx="3" fill={STAGE[s.stage]} />
@@ -116,6 +117,7 @@ export function Hypnogram({ os }) {
           return el
         })}
       </svg>
+      <div className="mono flex justify-between text-[10px] text-white/50">{[0, 0.25, 0.5, 0.75, 1].map((f) => <span key={f}>{hm(new Date(start.getTime() + f * total * 36e5))}</span>)}</div>
       <div className="flex flex-wrap gap-4 text-[11px] text-white/75">
         {[['Tief', 'deep'], ['REM', 'rem'], ['Leicht', 'light']].map(([l, k]) => <span key={l} className="flex items-center gap-1.5"><i className="size-2.5 rounded-sm" style={{ background: STAGE[l] }} />{l} ({share(k)} %)</span>)}
       </div>
@@ -130,12 +132,6 @@ export function Macros({ os }) {
   const kc = daily.kcal, over = kc > PROFILE.kcalCeiling
   const col = over ? COLORS.crimson : kc > 1200 ? COLORS.amber : COLORS.emerald
   const rows = [['Protein', now.protein, goals.protein, COLORS.cyan, '≥'], ['Kohlenhydrate', now.carbs, goals.carbs, COLORS.amber, '≤'], ['Fett', now.fat, goals.fat, COLORS.magenta, '≤']]
-  const submit = (e) => {
-    e.preventDefault()
-    const f = new FormData(e.currentTarget), n = (k) => Math.max(0, parseFloat(String(f.get(k)).replace(',', '.')) || 0)
-    const m = { name: String(f.get('name') || 'Mahlzeit'), kcal: n('kcal'), protein: n('protein'), carbs: n('carbs'), fat: n('fat') }
-    if (m.kcal > 0) { actions.logMeal(m); e.currentTarget.reset() }
-  }
   return (
     <Glass title="Makros" source="MANUELL" aside={`Limit ${fmt(PROFILE.kcalCeiling)} kcal`} accent={COLORS.magenta}>
       <div className="flex items-center gap-4">
@@ -148,19 +144,7 @@ export function Macros({ os }) {
           ))}
         </div>
       </div>
-      <form onSubmit={submit} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/25 p-2.5">
-        <div className="flex gap-2"><input name="name" placeholder="Mahlzeit (z. B. Skyr + Whey)" className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2.5 py-1.5 text-xs outline-none focus:border-cyan" /></div>
-        <div className="flex gap-2">
-          {[['kcal', 'kcal'], ['protein', 'P g'], ['carbs', 'C g'], ['fat', 'F g']].map(([k, ph]) => <input key={k} name={k} type="number" step="any" min="0" placeholder={ph} className="mono w-full min-w-0 rounded-lg border border-white/15 bg-black/30 px-2 py-1.5 text-xs outline-none focus:border-cyan" />)}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Btn type="submit" color={COLORS.emerald} active className="!py-1.5 !text-xs">Mahlzeit loggen</Btn>
-          <Btn onClick={actions.undoMeal} className="!py-1.5 !text-xs">Letzte zurück</Btn>
-          <Btn disabled className="!py-1.5 !text-xs opacity-50" title="Foto-Analyse folgt mit der KI-Anbindung">Nährwert-Scan · bald</Btn>
-          <Btn disabled className="!py-1.5 !text-xs opacity-50" title="KI-Tagesplan folgt mit der KI-Anbindung">Tagesplan (KI) · bald</Btn>
-        </div>
-        {daily.meals.length > 0 && <p className="mono truncate text-[10px] text-white/55">Zuletzt: {daily.meals.at(-1).name} · {fmt(daily.meals.at(-1).kcal)} kcal</p>}
-      </form>
+      <MealForm actions={actions} daily={daily} />
     </Glass>
   )
 }

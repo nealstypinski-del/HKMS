@@ -11,6 +11,7 @@ export function Header({ os, children }) {
         <Dot color={status[1]} label={`LIVE SYSTEM STATUS: ${status[0]}`} />
         <Dot color={w[1]} label={`WHOOP MCP: ${w[0]}${os.whoop.status === 'connected' && os.whoop.test ? ' (TEST)' : ''}`} />
         <span className="mono text-xs text-white/65">TAG {dayN} / 85</span>
+        <span className="mono rounded-lg border border-amber/60 bg-amber/10 px-2 py-1 text-xs font-bold text-amber">ZIEL: −{Math.round(os.mission.total)} KG</span>
       </div>
       {children}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1">

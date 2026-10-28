@@ -22,7 +22,7 @@ export function XpHeader({ os }) {
   )
 }
 
-export function Gauntlet({ os }) {
+export function Gauntlet({ os, compact = false, controls = true }) {
   const { plan, steps, blocks, daily, actions, walkKcal } = os
   const [inp, setInp] = useState('1000')
   const segs = [
@@ -38,14 +38,14 @@ export function Gauntlet({ os }) {
   const swim = plan.swimIdx >= 0
   return (
     <Glass title="30.000-Schritte-Gauntlet" aside={`${pct} %`}>
-      <div className="flex flex-wrap items-center justify-center gap-5">
-        <Ring size={190} stroke={14} segments={segs}>
+      <div className={`flex items-center justify-center ${compact ? 'gap-3' : 'flex-wrap gap-5'}`}>
+        <Ring size={compact ? (controls ? 120 : 104) : 190} stroke={compact ? 11 : 14} segments={segs}>
           <div className="leading-tight">
             <div className="mono text-4xl font-bold text-white">{fmt(steps)}</div>
             <div className="mono text-xs text-white/65">/ {fmt(plan.target)} Schritte</div>
           </div>
         </Ring>
-        <div className="flex min-w-[130px] flex-col gap-2">
+        <div className={`flex flex-col gap-2 ${compact ? 'min-w-[100px]' : 'min-w-[130px]'}`}>
           <Tile label="Aktiv Gehen" value={`${fmt(walkKcal)} kcal`} color={COLORS.amber} />
           <Tile label="Distanz" value={`${fmt(steps * 0.00075, 1)} km`} color={COLORS.cyan} />
           <Tile label="Offen" value={`${fmt(Math.max(0, plan.target - steps))}`} />
@@ -57,12 +57,13 @@ export function Gauntlet({ os }) {
           {plan.tomorrow > 0 && !swim && <span className="block font-normal opacity-90">Rest morgen früh: +{fmt(plan.tomorrow)} Schritte in Block 1</span>}
         </p>
       )}
-      <div className="flex gap-2">
+      {controls && <div className="flex flex-wrap gap-2">
         <input type="number" value={inp} onChange={(e) => setInp(e.target.value)} className="mono w-24 rounded-xl border border-white/15 bg-black/30 px-2.5 py-1.5 text-sm outline-none focus:border-cyan" aria-label="Schritte hinzufügen" />
         <Btn onClick={() => actions.addSteps(Math.round(Number(inp)) || 0)}>+ Schritte</Btn>
         <Btn onClick={() => actions.addSteps(-1000)}>−1.000</Btn>
         <Btn onClick={() => actions.addSteps(1000)}>+1.000</Btn>
-      </div>
+        {compact && <Btn color={COLORS.emerald} onClick={() => { const i = blocks.findIndex((b) => !b.done && !b.missed && !b.swim); if (i >= 0) actions.toggleDone(i) }}>Als erledigt</Btn>}
+      </div>}
     </Glass>
   )
 }

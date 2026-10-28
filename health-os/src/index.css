@@ -35,7 +35,7 @@ body {
 .mono { font-family: var(--font-mono); }
 input[type='range'] { accent-color: #00f0ff; }
 
-@custom-variant wide (@media (min-width: 2400px) and (min-aspect-ratio: 2/1));
+@custom-variant wide (@media (min-width: 1500px) and (min-aspect-ratio: 19/10));
 @keyframes flow { to { stroke-dashoffset: -14; } }
 @keyframes glow { 0%, 100% { filter: brightness(1); transform: scale(1); } 50% { filter: brightness(1.18); transform: scale(1.04); } }
 @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.5); } }

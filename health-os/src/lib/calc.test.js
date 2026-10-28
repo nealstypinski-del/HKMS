@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planBlocks, navyBodyFat, levelInfo, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, buildTunnel } from './calc.js'
+import { planBlocks, navyBodyFat, levelInfo, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, buildTunnel, trend7, rechenmodell } from './calc.js'
 import { normalizeRecovery, normalizeSleep, normalizeWorkouts, workoutXp } from '../mcp/whoopClient.js'
 
 const none = [false, false, false]
@@ -89,5 +89,26 @@ describe('Fusion-Module', () => {
   it('Mission: 42 kg gesamt', () => {
     expect(missionStats(132).total).toBe(42)
     expect(missionStats(111).pct).toBeCloseTo(0.5)
+  })
+})
+
+describe('Trend & Rechenmodell', () => {
+  it('trend7: einzelner Eintrag -> Mittel = Gewicht, kein Delta', () => {
+    const t = trend7({}, 131.2, new Date(2026, 9, 28))
+    expect(t.avg).toBeCloseTo(131.2)
+    expect(t.delta).toBeNull()
+    expect(t.series).toHaveLength(7)
+  })
+  it('trend7: Delta aus erstem/letztem Wert', () => {
+    const t = trend7({ '2026-10-22': 133, '2026-10-28': 131.5 }, 131.5, new Date(2026, 9, 28))
+    expect(t.delta).toBeCloseTo(-1.5)
+  })
+  it('Rechenmodell: kcal = kg × 7000', () => {
+    const r = rechenmodell(132, 90, new Date(2026, 9, 9))
+    expect(r.kcal).toBe(42 * 7000)
+    expect(r.perDay).toBeCloseTo(r.kcal / r.days)
+  })
+  it('Mission mit eigenem Ziel', () => {
+    expect(missionStats(132, new Date(), 92).total).toBe(40)
   })
 })

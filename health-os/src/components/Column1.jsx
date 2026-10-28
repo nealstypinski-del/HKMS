@@ -17,7 +17,7 @@ export function BodyScanner({ os, compact = false }) {
   return (
     <Glass title="Body Scanner 2076" aside={`1,89 m · ${fmt(weight, 1)} kg`}>
       <div className="flex justify-center rounded-2xl border border-cyan/20 bg-black/50 px-1 pt-2" style={{ background: 'radial-gradient(ellipse 60% 55% at 50% 45%, rgba(0,240,255,.12), transparent 75%), rgba(3,5,8,.6)' }}>
-        <svg viewBox="-70 0 340 430" className={`block h-auto w-full overflow-visible ${compact ? 'max-h-[360px]' : 'max-h-[520px]'}`} role="img" aria-label="Holografischer Körperscanner">
+        <svg viewBox="-70 0 340 430" className={`block h-auto w-full overflow-visible ${compact ? 'max-h-[165px]' : 'max-h-[520px]'}`} role="img" aria-label="Holografischer Körperscanner">
           <defs>
             <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1B2A40" /><stop offset=".55" stopColor="#101A2A" /><stop offset="1" stopColor="#0A1120" /></linearGradient>
             <linearGradient id="scanG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#00F0FF" stopOpacity="0" /><stop offset="1" stopColor="#00F0FF" stopOpacity=".28" /></linearGradient>
@@ -53,11 +53,11 @@ export function BodyScanner({ os, compact = false }) {
         </svg>
       </div>
       <div className="flex flex-col gap-2">
-        {nodes.filter((n) => !compact || n.id === hot).map((n) => (
-          <button key={n.id} type="button" onClick={() => setHot(n.id)} className="flex cursor-pointer flex-col gap-2 rounded-xl border p-2.5 text-left transition-colors" style={{ background: hot === n.id ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.04)', borderColor: hot === n.id ? n.color : 'rgba(255,255,255,.08)' }}>
+        {nodes.map((n) => (
+          <button key={n.id} type="button" onClick={() => setHot(n.id)} className={`flex cursor-pointer flex-col gap-2 rounded-xl border text-left transition-colors ${compact ? 'p-2' : 'p-2.5'}`} style={{ background: hot === n.id ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.04)', borderColor: hot === n.id ? n.color : 'rgba(255,255,255,.08)' }}>
             <span className="flex items-center gap-2.5">
               <span className="size-2.5 flex-none rounded-full" style={{ background: n.color, boxShadow: `0 0 10px ${n.color}` }} />
-              <span className="flex min-w-0 flex-1 flex-col"><span className="text-sm font-semibold text-white">{n.title}</span><span className="text-xs text-white/65">{n.sub}</span></span>
+              <span className="flex min-w-0 flex-1 flex-col"><span className="text-sm font-semibold text-white">{n.title}</span><span className={`text-xs text-white/65 ${compact && hot !== n.id ? 'hidden' : ''}`}>{n.sub}</span></span>
               <span className="mono text-[13px] font-semibold" style={{ color: n.color }}>{n.metric}</span>
             </span>
             {hot === n.id && <span className="grid grid-cols-[repeat(auto-fit,minmax(90px,1fr))] gap-1.5">{n.tiles.map(([l, v]) => <Tile key={l} label={l} value={v} />)}</span>}

@@ -29,3 +29,12 @@ Ohne laufende Bridge zeigt das UI „OFFLINE" und den letzten Cache bzw. gekennz
 - `server/whoop-bridge.mjs` – MCP-Client → HTTP
 
 `?t=HH:MM` in der URL überschreibt die Uhrzeit (Test des Command-Banners).
+
+## Ansichten
+- **HQ** (Entwurf Bild 3): Herkules-HQ-Artwork als Hintergrund, HUD-Karten schweben darüber; Raum-Hotspots öffnen Detail-Panels.
+- **Analyse** (Entwurf Bild 4): Mission-Panel, Heute im Soll, Prognose, 7-Tage-Trend, Block-Tabelle.
+- Ab Seitenverhältnis 2:1 wird die Oberfläche auf die Bildschirmhöhe skaliert (kein Scrollen), darunter gestapelt.
+
+### Hub-Artwork tauschen
+`public/hub.webp` ersetzen, `ART_RATIO` und die Raum-Koordinaten (Prozent des Bildes) in `src/lib/hubConfig.js` anpassen.
+Das aktuelle Bild wurde per `python3 scripts/crop-hub-art.py <screenshot> public/hub.webp` aus dem Entwurf geschnitten (Platzhalter-Qualität).

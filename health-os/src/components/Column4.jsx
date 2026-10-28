@@ -3,13 +3,13 @@ import { COLORS, DOSES, PROFILE } from '../lib/constants.js'
 import { fmt, clamp, decayCurve, doseMg, satiety } from '../lib/calc.js'
 import { Glass, Bar, Btn, Field, Ring, Tile } from './ui.jsx'
 
-export function Retatrutide({ os }) {
+export function Retatrutide({ os, compact = false, monitoring = false }) {
   const { dose, actions } = os
   const data = decayCurve(dose)
   const peak = Math.max(...data.map((d) => d.c))
   const sat = satiety(dose)
   return (
-    <Glass title="Retatrutid" source="MODELL" aside="GLP-1 / GIP / Glukagon" accent={COLORS.magenta}>
+    <Glass title={monitoring ? 'Retatrutid (Monitoring)' : 'Retatrutid'} source="MODELL" aside={monitoring ? 'Keine Dosierungsanweisung' : 'GLP-1 / GIP / Glukagon'} accent={COLORS.magenta}>
       <div className="grid grid-cols-3 gap-2">
         {DOSES.map((u) => (
           <Btn key={u} color={COLORS.magenta} active={dose === u} onClick={() => actions.setDose(u)} className="flex flex-col items-center leading-tight">
@@ -18,7 +18,7 @@ export function Retatrutide({ os }) {
           </Btn>
         ))}
       </div>
-      <div className="h-36">
+      <div className={compact ? 'h-24' : 'h-36'}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: -22 }}>
             <defs><linearGradient id="decay" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={COLORS.magenta} stopOpacity=".5" /><stop offset="1" stopColor={COLORS.magenta} stopOpacity="0" /></linearGradient></defs>

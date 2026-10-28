@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PROFILE, STEP_BLOCKS, CROSSFIT, DOSES } from '../lib/constants.js'
-import { dayKey, clamp, levelInfo, commandFor, curfewCountdown, buildTunnel, navyBodyFat, deurenbergBodyFat, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, daylight } from '../lib/calc.js'
+import { dayKey, clamp, levelInfo, commandFor, curfewCountdown, buildTunnel, navyBodyFat, deurenbergBodyFat, forecastWeight, trend7, rechenmodell, todayOnTrack, walkKcalTable, macroGoals, missionStats, daylight } from '../lib/calc.js'
 import { usePersistentState, useDailyState } from './usePersistentState.js'
 import { useAutoRebalance } from './useAutoRebalance.js'
 import { useNow } from './useNow.js'
@@ -43,6 +43,7 @@ export function useHealthOS() {
   const [ledger, setLedger] = usePersistentState('xpLedger', {})
   const [whoopCache, setWhoopCache] = usePersistentState('whoopCache', null)
   const [daily, setDaily, patchDaily] = useDailyState('daily', initDaily)
+  const [target, setTarget] = usePersistentState('targetKg', PROFILE.targetKg)
   const [view, setView] = usePersistentState('view', 'hq') // 'hq' | 'analyse'
   const [room, setRoom] = useState(null)
 
@@ -133,11 +134,13 @@ export function useHealthOS() {
   bf.leanKg = weight - bf.fatKg
 
   const dayIdx = clamp(Math.floor((now - PROFILE.startDate) / 864e5), 0, 84)
-  const forecast = useMemo(() => forecastWeight({ weight, deficit: tunnel.deficit, day: dayIdx, rows: tunnel.rows }), [weight, tunnel, dayIdx])
+  const forecast = useMemo(() => forecastWeight({ weight, deficit: tunnel.deficit, day: dayIdx, rows: tunnel.rows, target }), [weight, tunnel, dayIdx, target])
   const onTrack = todayOnTrack({ deficitGoal: tunnel.deficit, walkKcal, crossfit: daily.crossfit || whoopCrossfit, swim: daily.swimDone, kcalLogged: daily.kcal })
   const walkTable = walkKcalTable(activeKcal)
   const macros = { goals: macroGoals(), now: { protein: daily.protein, carbs: daily.carbs, fat: daily.fat } }
-  const mission = missionStats(weight, now)
+  const mission = missionStats(weight, now, target)
+  const trend = trend7(weightLog, weight, now)
+  const model = rechenmodell(weight, target, now)
   const light = daylight(now)
   const sourceLabel = live ? (whoop.test ? 'TEST-MCP' : 'LIVE · MCP') : demo ? 'DEMO' : 'CACHE'
 
@@ -179,6 +182,7 @@ export function useHealthOS() {
       return m ? { meals: d.meals.slice(0, -1), kcal: Math.max(0, d.kcal - m.kcal), protein: Math.max(0, d.protein - m.protein), carbs: Math.max(0, d.carbs - m.carbs), fat: Math.max(0, d.fat - m.fat) } : {}
     }),
     setView, setRoom,
+    setTarget: (kg) => kg >= 80 && kg < weight && setTarget(Math.round(kg * 10) / 10),
     toggleElectrolyte: (i) => patchDaily((d) => { const e = d.electrolytes.slice(); e[i] = !e[i]; return { electrolytes: e } }),
     setJoint: (v) => patchDaily({ jointPain: clamp(v, 1, 10) }),
     toggleVoice: () => patchDaily((d) => ({ voice: !d.voice })),
@@ -192,7 +196,7 @@ export function useHealthOS() {
     now, whoop, live, demo, bio, nights, sleepH, alarm, dayN,
     weight, dose, measure, activeKcal, daily, plan, steps, blocks, tunnel, actualDeficit,
     walkKcal, tons, planTons, bf, xp, command, curfew, todaysWorkouts,
-    view, room, forecast, onTrack, walkTable, macros, mission, light, sourceLabel, dayIdx, whoopCrossfit,
+    view, room, target, trend, model, weightLog, forecast, onTrack, walkTable, macros, mission, light, sourceLabel, dayIdx, whoopCrossfit,
     actions,
   }
 }

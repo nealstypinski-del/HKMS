@@ -6,7 +6,7 @@ import { Glass, Ring, Tile } from './ui.jsx'
 const tip = { contentStyle: { background: 'rgba(8,12,20,.95)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 12, fontSize: 12 }, labelStyle: { color: '#fff' } }
 const axis = { stroke: 'rgba(235,240,255,.55)', fontSize: 11, tickLine: false, axisLine: false }
 
-export function WhoopWidget({ os }) {
+export function WhoopWidget({ os, compact = false }) {
   const { bio, sleepH, steps, plan, whoop, demo, live } = os
   const rd = bio.score
   const rdColor = rd >= 67 ? COLORS.emerald : rd >= 34 ? COLORS.amber : COLORS.crimson
@@ -15,7 +15,7 @@ export function WhoopWidget({ os }) {
     <Glass title="Whoop Biometrie" source={os.sourceLabel} accent={COLORS.emerald}>
       <div className="flex flex-wrap items-center gap-5">
         <div className="relative">
-          <Ring size={150} stroke={11} segments={[{ frac: 1, fill: rd / 100, color: rdColor }]}>
+          <Ring size={compact ? 118 : 150} stroke={compact ? 9 : 11} segments={[{ frac: 1, fill: rd / 100, color: rdColor }]}>
             <div className="leading-none"><div className="mono text-3xl font-bold" style={{ color: rdColor }}>{Math.round(rd)}%</div><div className="mt-1 text-[10px] tracking-widest text-white/65">ERHOLUNG</div></div>
           </Ring>
         </div>
@@ -25,13 +25,13 @@ export function WhoopWidget({ os }) {
           <Mini label="Bewegung" pct={(steps / plan.target) * 100} color={COLORS.cyan} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid gap-2 ${compact ? 'grid-cols-4' : 'grid-cols-2'}`}>
         <Tile label="HRV" value={`${Math.round(bio.hrv)} ms`} color={COLORS.emerald} />
         <Tile label="Ruhepuls" value={`${Math.round(bio.rhr)} bpm`} color={COLORS.crimson} />
         <Tile label="SpO₂" value={`${Math.round(bio.spo2)} %`} color={COLORS.cyan} />
         <Tile label="Atemfrequenz" value={`${fmt(bio.resp, 1)} A/min`} color={COLORS.magenta} />
       </div>
-      <div className="h-14">
+      <div className={compact ? 'h-9' : 'h-14'}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={hrv} margin={{ top: 6, right: 6, bottom: 2, left: 6 }}>
             <YAxis hide domain={['dataMin - 4', 'dataMax + 4']} />
@@ -52,7 +52,7 @@ const Mini = ({ label, pct, color }) => (
   </div>
 )
 
-export function SleepChart({ os }) {
+export function SleepChart({ os, compact = false }) {
   const DOW = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
   const data = os.nights.map((n, i, a) => ({
     label: i === a.length - 1 ? 'Heute' : DOW[new Date(n.date).getDay()],
@@ -61,7 +61,7 @@ export function SleepChart({ os }) {
   const debt = Math.round(os.nights.reduce((a, n) => a + Math.max(0, 7 - n.total), 0) * 60)
   return (
     <Glass title="Schlaf-Architektur" source={os.sourceLabel} aside={`Schlafschuld ${debt} Min`} accent={COLORS.royal}>
-      <div className="h-44">
+      <div className={compact ? 'h-32' : 'h-44'}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
             <CartesianGrid stroke="rgba(255,255,255,.07)" vertical={false} />
@@ -85,13 +85,13 @@ const Legend = ({ items }) => (
   </div>
 )
 
-export function NetTunnel({ os }) {
+export function NetTunnel({ os, compact = false }) {
   const { tunnel, activeKcal, actions, dayN } = os
   const data = tunnel.rows.map((r) => ({ ...r, floor: r.intake, net: r.tdee - r.intake }))
   const todayLabel = data[clamp(dayN - 1, 0, 84)].label
   return (
     <Glass title="Kalorien-Netto-Tunnel" source="MODELL" aside={`Netto −${fmt(tunnel.deficit)} kcal/Tag`} accent={COLORS.cyan}>
-      <div className="h-64">
+      <div className={compact ? 'h-36' : 'h-64'}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -10 }}>
             <defs>

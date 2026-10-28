@@ -162,11 +162,11 @@ export function curfewCountdown(now) {
 }
 
 // ── Prognose: IST-Projektion vs. SOLL-Pfad (09.10. → 31.12.) ──
-export function forecastWeight({ weight, deficit, day, rows }) {
+export function forecastWeight({ weight, deficit, day, rows, target = PROFILE.targetKg }) {
   const rate = Math.max(0, deficit) / 7000 // kg/Tag
   const out = rows.filter((r) => r.d >= day && (r.d - day) % 7 === 0 || r.d === 84).map((r) => {
     const t = r.d - day
-    const ist = Math.max(PROFILE.targetKg, weight - rate * Math.max(0, t))
+    const ist = Math.max(target, weight - rate * Math.max(0, t))
     const band = t <= 0 ? 0 : 0.4 + 0.035 * t
     return { d: r.d, label: r.label, soll: r.mass, ist: +ist.toFixed(2), lo: +(ist - band).toFixed(2), hi: +(ist + band).toFixed(2) }
   })
@@ -200,10 +200,10 @@ export function macroGoals() {
 }
 
 // ── Mission-Leiste ──
-export function missionStats(weight, now = new Date()) {
-  const total = PROFILE.startKg - PROFILE.targetKg
+export function missionStats(weight, now = new Date(), target = PROFILE.targetKg) {
+  const total = PROFILE.startKg - target
   const lost = PROFILE.startKg - weight
-  return { total, lost, remaining: Math.max(0, weight - PROFILE.targetKg), pct: clamp(lost / total, 0, 1), daysLeft: Math.max(0, Math.ceil((PROFILE.deadline - now) / 864e5)) }
+  return { total, lost, remaining: Math.max(0, weight - target), pct: clamp(lost / total, 0, 1), daysLeft: Math.max(0, Math.ceil((PROFILE.deadline - now) / 864e5)) }
 }
 
 /** Tageslicht-Stimmung für den Hub: 0 = Nacht … 1 = Tag. */
@@ -228,4 +228,27 @@ export function estimateHypnogram({ deep, rem, light }, cycles = 5) {
     segs.push({ stage: 'Leicht', h: ld / 2 }, { stage: 'Tief', h: deep * d[i] }, { stage: 'Leicht', h: ld / 2 }, { stage: 'REM', h: rem * r[i] })
   }
   return segs.filter((s) => s.h > 0.001)
+}
+
+const DOW = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+/** 7-Tage-Trend aus dem Gewichts-Log { 'YYYY-MM-DD': kg }. Fehlende Tage = null. */
+export function trend7(weightLog, weight, now = new Date()) {
+  const series = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    const v = weightLog[dayKey(d)] ?? (i === 0 ? weight : null)
+    series.push({ day: DOW[d.getDay()], kg: v })
+  }
+  const vals = series.map((p) => p.kg).filter((v) => v != null)
+  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : weight
+  const first = vals.length > 1 ? vals[0] : null
+  return { series, avg, delta: first == null ? null : vals.at(-1) - first, points: vals.length }
+}
+
+/** Statisches Rechenmodell für das Mission-Panel (7.000 kcal/kg, Tage bis Deadline). */
+export function rechenmodell(weight, target, now = new Date()) {
+  const kg = Math.max(0, weight - target)
+  const days = Math.max(1, Math.ceil((PROFILE.deadline - now) / 864e5))
+  const kcal = kg * 7000
+  return { kg, days, kcal, perDay: kcal / days, perWeek: (kg / days) * 7 }
 }

@@ -3,7 +3,7 @@ import { COLORS } from '../lib/constants.js'
 export function Glass({ title, aside, source, accent = COLORS.cyan, children, className = '' }) {
   return (
     <section
-      className={`flex min-w-0 flex-col gap-3.5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_20px_50px_rgba(0,0,0,.4),inset_0_1px_0_rgba(255,255,255,.1)] backdrop-blur-2xl transition-shadow hover:shadow-[0_20px_50px_rgba(0,0,0,.4),0_0_30px_var(--glow)] ${className}`}
+      className={`flex min-w-0 flex-col gap-3.5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 wide:gap-2.5 wide:p-3 shadow-[0_20px_50px_rgba(0,0,0,.4),inset_0_1px_0_rgba(255,255,255,.1)] backdrop-blur-2xl transition-shadow hover:shadow-[0_20px_50px_rgba(0,0,0,.4),0_0_30px_var(--glow)] ${className}`}
       style={{ borderTop: `2px solid ${accent}80`, '--glow': `${accent}24` }}
     >
       {title && (
