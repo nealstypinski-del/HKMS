@@ -68,9 +68,9 @@ function SleepChart({ os }) {
             <XAxis dataKey="label" {...axis} />
             <YAxis {...axis} unit="h" />
             <Tooltip {...tip} cursor={{ fill: 'rgba(255,255,255,.05)' }} formatter={(v) => `${fmt(v, 1)} Std`} />
-            <RBar dataKey="Tief" stackId="s" fill={COLORS.royal} />
-            <RBar dataKey="REM" stackId="s" fill={COLORS.magenta} />
-            <RBar dataKey="Leicht" stackId="s" fill="rgba(0,240,255,.55)" radius={[4, 4, 0, 0]} />
+            <RBar isAnimationActive={false} dataKey="Tief" stackId="s" fill={COLORS.royal} />
+            <RBar isAnimationActive={false} dataKey="REM" stackId="s" fill={COLORS.magenta} />
+            <RBar isAnimationActive={false} dataKey="Leicht" stackId="s" fill="rgba(0,240,255,.55)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
