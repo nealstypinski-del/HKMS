@@ -160,3 +160,72 @@ export function curfewCountdown(now) {
   const s = Math.floor(ms / 1000)
   return { label: `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`, ms, color: ms < 36e5 ? COLORS.amber : COLORS.cyan }
 }
+
+// ── Prognose: IST-Projektion vs. SOLL-Pfad (09.10. → 31.12.) ──
+export function forecastWeight({ weight, deficit, day, rows }) {
+  const rate = Math.max(0, deficit) / 7000 // kg/Tag
+  const out = rows.filter((r) => r.d >= day && (r.d - day) % 7 === 0 || r.d === 84).map((r) => {
+    const t = r.d - day
+    const ist = Math.max(PROFILE.targetKg, weight - rate * Math.max(0, t))
+    const band = t <= 0 ? 0 : 0.4 + 0.035 * t
+    return { d: r.d, label: r.label, soll: r.mass, ist: +ist.toFixed(2), lo: +(ist - band).toFixed(2), hi: +(ist + band).toFixed(2) }
+  })
+  const soll = rows[clamp(day, 0, 84)].mass
+  const diff = weight - soll
+  const check = diff <= 0.5 ? { key: 'ok', text: 'Kurs halten', sub: 'Aktuell im Planbereich.' }
+    : diff <= 1.5 ? { key: 'warn', text: 'Leicht nachsteuern', sub: `${fmt(diff, 1)} kg über SOLL – Schritte/Intake prüfen.` }
+    : { key: 'bad', text: 'Gegensteuern', sub: `${fmt(diff, 1)} kg über SOLL – Blöcke nachholen, Intake ≤ 1.400.` }
+  return { rows: out, diff, soll, check, endIst: out.at(-1)?.ist ?? weight }
+}
+
+// ── Heute im Soll? Tagesdefizit-Modellziel = Bewegung + Ernährungsbeitrag ──
+export function todayOnTrack({ deficitGoal, walkKcal, crossfit, swim, kcalLogged, bmr = PROFILE.bmr }) {
+  const move = walkKcal + (crossfit ? 450 : 0) + (swim ? 400 : 0)
+  const food = bmr - (kcalLogged > 0 ? kcalLogged : PROFILE.kcalCeiling)
+  const total = move + food
+  return { move, food, total, goal: deficitGoal, pct: clamp(total / deficitGoal, 0, 1.5) }
+}
+
+// ── Spaziergang-Kalkulation (Annahme: 107 Schritte/Min, Verbrauch aus Aktiv-kcal / 30.000 Schritte) ──
+export const STEPS_PER_MIN = 107
+export function walkKcalTable(activeKcal, minutes = [30, 60, 75, 90, 120]) {
+  const perStep = activeKcal / PROFILE.stepTarget
+  return minutes.map((m) => ({ min: m, steps: Math.round(m * STEPS_PER_MIN), kcal: Math.round(m * STEPS_PER_MIN * perStep) }))
+}
+
+// ── Makro-Ziele (kcal-Ceiling 1.400, Protein ≥ 170 g, Carbs ≤ 25 g, Fett = Rest) ──
+export function macroGoals() {
+  const fat = Math.floor((PROFILE.kcalCeiling - PROFILE.proteinMinG * 4 - PROFILE.carbWarnG * 4) / 9)
+  return { protein: PROFILE.proteinMinG, carbs: PROFILE.carbWarnG, fat }
+}
+
+// ── Mission-Leiste ──
+export function missionStats(weight, now = new Date()) {
+  const total = PROFILE.startKg - PROFILE.targetKg
+  const lost = PROFILE.startKg - weight
+  return { total, lost, remaining: Math.max(0, weight - PROFILE.targetKg), pct: clamp(lost / total, 0, 1), daysLeft: Math.max(0, Math.ceil((PROFILE.deadline - now) / 864e5)) }
+}
+
+/** Tageslicht-Stimmung für den Hub: 0 = Nacht … 1 = Tag. */
+export function daylight(now) {
+  const h = now.getHours() + now.getMinutes() / 60
+  return clamp(Math.sin(((h - 6) / 16) * Math.PI), 0, 1)
+}
+
+/**
+ * Geschätztes Hypnogramm aus Phasensummen (Whoop liefert pro Nacht nur Summen).
+ * Modell: 5 Zyklen, Tiefschlaf früh, REM spät. Ergebnis: Segmente { stage, h } (Σ h = total).
+ */
+export function estimateHypnogram({ deep, rem, light }, cycles = 5) {
+  const wDeep = [0.38, 0.28, 0.2, 0.1, 0.04]
+  const wRem = [0.08, 0.14, 0.2, 0.26, 0.32]
+  const wLight = [0.2, 0.2, 0.2, 0.2, 0.2]
+  const norm = (w) => { const t = w.reduce((a, b) => a + b, 0); return w.map((x) => x / t) }
+  const d = norm(wDeep), r = norm(wRem), l = norm(wLight)
+  const segs = []
+  for (let i = 0; i < cycles; i++) {
+    const ld = light * l[i]
+    segs.push({ stage: 'Leicht', h: ld / 2 }, { stage: 'Tief', h: deep * d[i] }, { stage: 'Leicht', h: ld / 2 }, { stage: 'REM', h: rem * r[i] })
+  }
+  return segs.filter((s) => s.h > 0.001)
+}

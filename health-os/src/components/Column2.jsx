@@ -3,7 +3,7 @@ import { COLORS, CROSSFIT, STEP_BLOCKS, BASELINE_STEPS, SWIM } from '../lib/cons
 import { fmt, clamp, blockTone } from '../lib/calc.js'
 import { Glass, Ring, Bar, Btn, Tile } from './ui.jsx'
 
-function XpHeader({ os }) {
+export function XpHeader({ os }) {
   const { xp } = os
   return (
     <Glass title="Operator-Level" aside={`Level ${xp.level} / 80`} accent={COLORS.emerald}>
@@ -22,7 +22,7 @@ function XpHeader({ os }) {
   )
 }
 
-function Gauntlet({ os }) {
+export function Gauntlet({ os }) {
   const { plan, steps, blocks, daily, actions, walkKcal } = os
   const [inp, setInp] = useState('1000')
   const segs = [
@@ -67,7 +67,7 @@ function Gauntlet({ os }) {
   )
 }
 
-function BlockCard({ b, os }) {
+export function BlockCard({ b, os }) {
   const { actions } = os
   const tone = blockTone({ missed: b.missed, done: b.done, added: b.added > 0, swim: b.swim })
   const status = b.swim ? (b.done ? 'SWIM ERLEDIGT' : 'SWIM-MODUL') : b.missed ? 'VERPASST' : b.done ? 'ERLEDIGT' : b.added > 0 ? 'KOMPENSATION' : 'GEPLANT'
@@ -97,7 +97,7 @@ function BlockCard({ b, os }) {
   )
 }
 
-function CrossFitCard({ os }) {
+export function CrossFitCard({ os }) {
   const { daily, actions, todaysWorkouts, now } = os
   const tmin = now.getHours() * 60 + now.getMinutes()
   const wk = now.getDay() >= 1 && now.getDay() <= 5
@@ -119,17 +119,23 @@ function CrossFitCard({ os }) {
   )
 }
 
+export function BlocksPanel({ os }) {
+  return (
+    <Glass title="Bewegungs-Blöcke" aside={`Σ ${fmt(os.plan.target)} Schritte`}>
+      {os.blocks.slice(0, 1).map((b) => <BlockCard key={b.id} b={b} os={os} />)}
+      <CrossFitCard os={os} />
+      {os.blocks.slice(1).map((b) => <BlockCard key={b.id} b={b} os={os} />)}
+      <p className="text-[11px] text-white/50">+ {fmt(BASELINE_STEPS)} Alltagsschritte (nicht umverteilbar). S_neu = S_basis + ΔS / N_offen.</p>
+    </Glass>
+  )
+}
+
 export default function Column2({ os }) {
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <XpHeader os={os} />
       <Gauntlet os={os} />
-      <Glass title="Bewegungs-Blöcke" aside={`Σ ${fmt(os.plan.target)} Schritte`}>
-        {os.blocks.slice(0, 1).map((b) => <BlockCard key={b.id} b={b} os={os} />)}
-        <CrossFitCard os={os} />
-        {os.blocks.slice(1).map((b) => <BlockCard key={b.id} b={b} os={os} />)}
-        <p className="text-[11px] text-white/50">+ {fmt(BASELINE_STEPS)} Alltagsschritte (nicht umverteilbar). S_neu = S_basis + ΔS / N_offen.</p>
-      </Glass>
+      <BlocksPanel os={os} />
     </div>
   )
 }

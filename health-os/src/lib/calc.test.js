@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planBlocks, navyBodyFat, levelInfo } from './calc.js'
+import { planBlocks, navyBodyFat, levelInfo, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, buildTunnel } from './calc.js'
 import { normalizeRecovery, normalizeSleep, normalizeWorkouts, workoutXp } from '../mcp/whoopClient.js'
 
 const none = [false, false, false]
@@ -58,5 +58,36 @@ describe('Whoop-Normalisierer', () => {
     const [w] = normalizeWorkouts({ records: [{ id: 1, sport_name: 'Functional Fitness', start: '2026-10-10T10:00:00Z', end: '2026-10-10T10:45:00Z' }] })
     expect(w.minutes).toBe(45)
     expect(workoutXp(w)).toEqual({ xp: 400, kind: 'crossfit' })
+  })
+})
+
+describe('Fusion-Module', () => {
+  const { rows, deficit } = buildTunnel({ intake: 1400, active: 2000 })
+  it('Prognose: Check-in je nach Abweichung', () => {
+    expect(forecastWeight({ weight: 131, deficit, day: 0, rows }).check.key).toBe('ok')
+    expect(forecastWeight({ weight: 134, deficit, day: 0, rows }).check.key).toBe('bad')
+  })
+  it('Prognose endet nicht unter 90 kg und enthält Silvester', () => {
+    const f = forecastWeight({ weight: 100, deficit, day: 20, rows })
+    expect(f.rows.at(-1).d).toBe(84)
+    expect(Math.min(...f.rows.map((r) => r.ist))).toBeGreaterThanOrEqual(90)
+  })
+  it('Heute im Soll: Bewegung + Ernährung', () => {
+    const t = todayOnTrack({ deficitGoal: 2800, walkKcal: 1000, crossfit: true, swim: false, kcalLogged: 1400 })
+    expect(t.move).toBe(1450)
+    expect(t.food).toBe(800)
+    expect(t.total).toBe(2250)
+  })
+  it('Spaziergang-Tabelle skaliert linear', () => {
+    const [a, b] = walkKcalTable(2000, [30, 60])
+    expect(b.kcal).toBeGreaterThanOrEqual(a.kcal * 2 - 1)
+  })
+  it('Makros summieren sich auf das Kalorienlimit', () => {
+    const g = macroGoals()
+    expect(g.protein * 4 + g.carbs * 4 + g.fat * 9).toBeLessThanOrEqual(1400)
+  })
+  it('Mission: 42 kg gesamt', () => {
+    expect(missionStats(132).total).toBe(42)
+    expect(missionStats(111).pct).toBeCloseTo(0.5)
   })
 })

@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PROFILE, STEP_BLOCKS, CROSSFIT, DOSES } from '../lib/constants.js'
-import { dayKey, clamp, levelInfo, commandFor, curfewCountdown, buildTunnel, navyBodyFat, deurenbergBodyFat } from '../lib/calc.js'
+import { dayKey, clamp, levelInfo, commandFor, curfewCountdown, buildTunnel, navyBodyFat, deurenbergBodyFat, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, daylight } from '../lib/calc.js'
 import { usePersistentState, useDailyState } from './usePersistentState.js'
 import { useAutoRebalance } from './useAutoRebalance.js'
 import { useNow } from './useNow.js'
@@ -23,6 +23,8 @@ const initDaily = () => ({
   kcal: 0,
   protein: 0,
   carbs: 0,
+  fat: 0,
+  meals: [],
   electrolytes: [false, false, false],
   jointPain: 3,
   voice: true,
@@ -41,6 +43,8 @@ export function useHealthOS() {
   const [ledger, setLedger] = usePersistentState('xpLedger', {})
   const [whoopCache, setWhoopCache] = usePersistentState('whoopCache', null)
   const [daily, setDaily, patchDaily] = useDailyState('daily', initDaily)
+  const [view, setView] = usePersistentState('view', 'hq') // 'hq' | 'analyse'
+  const [room, setRoom] = useState(null)
 
   // Whoop-Daten cachen, damit Offline-Start den letzten Stand zeigt
   useEffect(() => {
@@ -128,6 +132,15 @@ export function useHealthOS() {
   bf.fatKg = (weight * bf.use) / 100
   bf.leanKg = weight - bf.fatKg
 
+  const dayIdx = clamp(Math.floor((now - PROFILE.startDate) / 864e5), 0, 84)
+  const forecast = useMemo(() => forecastWeight({ weight, deficit: tunnel.deficit, day: dayIdx, rows: tunnel.rows }), [weight, tunnel, dayIdx])
+  const onTrack = todayOnTrack({ deficitGoal: tunnel.deficit, walkKcal, crossfit: daily.crossfit || whoopCrossfit, swim: daily.swimDone, kcalLogged: daily.kcal })
+  const walkTable = walkKcalTable(activeKcal)
+  const macros = { goals: macroGoals(), now: { protein: daily.protein, carbs: daily.carbs, fat: daily.fat } }
+  const mission = missionStats(weight, now)
+  const light = daylight(now)
+  const sourceLabel = live ? (whoop.test ? 'TEST-MCP' : 'LIVE · MCP') : demo ? 'DEMO' : 'CACHE'
+
   const command = commandFor({ now, plan, steps, state: daily, sleepH })
   const curfew = curfewCountdown(now)
   const dayN = clamp(Math.floor((now - PROFILE.startDate) / 864e5), 0, 84) + 1
@@ -157,6 +170,15 @@ export function useHealthOS() {
     toggleCrossfit: () => patchDaily((d) => ({ crossfit: !d.crossfit })),
     setWater: (l) => patchDaily({ water: clamp(Math.round(l * 100) / 100, 0, 12) }),
     setNutrition: (p) => patchDaily(p),
+    logMeal: (m) => patchDaily((d) => ({
+      meals: [...d.meals, { ...m, t: Date.now() }].slice(-20),
+      kcal: d.kcal + m.kcal, protein: d.protein + m.protein, carbs: d.carbs + m.carbs, fat: d.fat + m.fat,
+    })),
+    undoMeal: () => patchDaily((d) => {
+      const m = d.meals.at(-1)
+      return m ? { meals: d.meals.slice(0, -1), kcal: Math.max(0, d.kcal - m.kcal), protein: Math.max(0, d.protein - m.protein), carbs: Math.max(0, d.carbs - m.carbs), fat: Math.max(0, d.fat - m.fat) } : {}
+    }),
+    setView, setRoom,
     toggleElectrolyte: (i) => patchDaily((d) => { const e = d.electrolytes.slice(); e[i] = !e[i]; return { electrolytes: e } }),
     setJoint: (v) => patchDaily({ jointPain: clamp(v, 1, 10) }),
     toggleVoice: () => patchDaily((d) => ({ voice: !d.voice })),
@@ -170,6 +192,7 @@ export function useHealthOS() {
     now, whoop, live, demo, bio, nights, sleepH, alarm, dayN,
     weight, dose, measure, activeKcal, daily, plan, steps, blocks, tunnel, actualDeficit,
     walkKcal, tons, planTons, bf, xp, command, curfew, todaysWorkouts,
+    view, room, forecast, onTrack, walkTable, macros, mission, light, sourceLabel, dayIdx, whoopCrossfit,
     actions,
   }
 }

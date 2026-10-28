@@ -1,6 +1,6 @@
 import { COLORS } from '../lib/constants.js'
 
-export function Header({ os }) {
+export function Header({ os, children }) {
   const { now, whoop, alarm, curfew, dayN, demo } = os
   const status = alarm ? ['CORTISOL-ALARM', COLORS.amber] : ['OPTIMAL', COLORS.emerald]
   const w = whoop.status === 'connected' ? ['CONNECTED', COLORS.emerald] : whoop.status === 'connecting' ? ['CONNECTING …', COLORS.amber] : [demo ? 'OFFLINE · DEMO-DATEN' : 'OFFLINE · CACHE', COLORS.crimson]
@@ -9,9 +9,10 @@ export function Header({ os }) {
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
         <h1 className="mono text-sm font-bold tracking-[.16em] text-white">NEAL HEALTH OS 2076</h1>
         <Dot color={status[1]} label={`LIVE SYSTEM STATUS: ${status[0]}`} />
-        <Dot color={w[1]} label={`WHOOP MCP: ${w[0]}`} />
+        <Dot color={w[1]} label={`WHOOP MCP: ${w[0]}${os.whoop.status === 'connected' && os.whoop.test ? ' (TEST)' : ''}`} />
         <span className="mono text-xs text-white/65">TAG {dayN} / 85</span>
       </div>
+      {children}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
         <div className="text-right leading-tight">
           <div className="mono text-lg font-semibold">{now.toLocaleTimeString('de-DE')}</div>

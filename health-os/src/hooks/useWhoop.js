@@ -3,7 +3,7 @@ import {
   whoopApi, normalizeRecovery, normalizeHrvSeries, normalizeSleep, normalizeWorkouts,
 } from '../mcp/whoopClient.js'
 
-const EMPTY = { status: 'connecting', error: null, recovery: null, hrv: [], sleep: [], workouts: [], syncedAt: null, log: [] }
+const EMPTY = { test: false, status: 'connecting', error: null, recovery: null, hrv: [], sleep: [], workouts: [], syncedAt: null, log: [] }
 
 /**
  * Pollt die Whoop-MCP-Bridge:
@@ -35,7 +35,7 @@ export function useWhoop(intervalMs = 5 * 60 * 1000) {
         next.workouts = normalizeWorkouts(wo.value)
         entries.push({ tag: 'whoop_get_workouts', msg: `${next.workouts.length} Workouts`, ok: true })
       } else entries.push({ tag: 'whoop_get_workouts', msg: wo.reason.message, ok: false })
-      setData((d) => ({ ...d, ...next, status: 'connected', error: null, syncedAt: new Date(), log: [...entries.map((e) => ({ ...e, ts: stamp() })), ...d.log].slice(0, 6) }))
+      setData((d) => ({ ...d, ...next, test: !!st.test, status: 'connected', error: null, syncedAt: new Date(), log: [...entries.map((e) => ({ ...e, ts: stamp() })), ...d.log].slice(0, 6) }))
     } catch (e) {
       setData((d) => ({ ...d, status: 'offline', error: String(e.message || e), log: [{ ts: stamp(), tag: 'bridge', msg: String(e.message || e), ok: false }, ...d.log].slice(0, 6) }))
     }

@@ -42,7 +42,7 @@ async function connect() {
     client = new Client({ name: 'neal-health-os-2076', version: '1.0.0' })
     await client.connect(transport)
     const { tools } = await client.listTools()
-    state = { connected: true, error: null, tools: tools.map((t) => t.name) }
+    state = { connected: true, error: null, test: !!cfg.test || /mock/i.test((cfg.args || []).join(' ')), tools: tools.map((t) => t.name) }
     Object.assign(TOOLS, cfg.tools || {})
     console.log(`[bridge] Whoop-MCP verbunden. Tools: ${state.tools.join(', ')}`)
   } catch (e) {

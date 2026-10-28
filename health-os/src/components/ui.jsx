@@ -1,6 +1,6 @@
 import { COLORS } from '../lib/constants.js'
 
-export function Glass({ title, aside, accent = COLORS.cyan, children, className = '' }) {
+export function Glass({ title, aside, source, accent = COLORS.cyan, children, className = '' }) {
   return (
     <section
       className={`flex min-w-0 flex-col gap-3.5 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-[0_20px_50px_rgba(0,0,0,.4),inset_0_1px_0_rgba(255,255,255,.1)] backdrop-blur-2xl transition-shadow hover:shadow-[0_20px_50px_rgba(0,0,0,.4),0_0_30px_var(--glow)] ${className}`}
@@ -9,7 +9,10 @@ export function Glass({ title, aside, accent = COLORS.cyan, children, className 
       {title && (
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="mono text-[13px] font-bold uppercase tracking-[.14em]" style={{ color: accent }}>{title}</h2>
-          {aside && <span className="text-xs font-medium text-white/65">{aside}</span>}
+          <span className="flex items-center gap-2">
+            {source && <SourceBadge source={source} />}
+            {aside && <span className="text-xs font-medium text-white/65">{aside}</span>}
+          </span>
         </div>
       )}
       {children}
@@ -85,3 +88,9 @@ export const Tile = ({ label, value, color = '#fff' }) => (
     <span className="mono text-[13px] font-semibold" style={{ color }}>{value}</span>
   </div>
 )
+
+const SRC = { 'LIVE · MCP': '#00FF66', 'TEST-MCP': '#FFD60A', CACHE: '#FF9500', DEMO: '#FF9500', MODELL: '#00F0FF', MANUELL: '#E024E3', GESCHÄTZT: '#FFD60A' }
+export function SourceBadge({ source }) {
+  const c = SRC[source] ?? '#fff'
+  return <span className="mono rounded-md border px-1.5 py-0.5 text-[9px] font-bold tracking-wider" style={{ color: c, borderColor: `${c}66`, background: `${c}14` }}>{source}</span>
+}

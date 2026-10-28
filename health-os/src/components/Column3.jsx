@@ -6,13 +6,13 @@ import { Glass, Ring, Tile } from './ui.jsx'
 const tip = { contentStyle: { background: 'rgba(8,12,20,.95)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 12, fontSize: 12 }, labelStyle: { color: '#fff' } }
 const axis = { stroke: 'rgba(235,240,255,.55)', fontSize: 11, tickLine: false, axisLine: false }
 
-function WhoopWidget({ os }) {
+export function WhoopWidget({ os }) {
   const { bio, sleepH, steps, plan, whoop, demo, live } = os
   const rd = bio.score
   const rdColor = rd >= 67 ? COLORS.emerald : rd >= 34 ? COLORS.amber : COLORS.crimson
   const hrv = bio.hrvSeries.map((v, i) => ({ i, v }))
   return (
-    <Glass title="Whoop Biometrie" aside={live ? 'LIVE · MCP' : demo ? 'DEMO-DATEN' : 'CACHE'} accent={COLORS.emerald}>
+    <Glass title="Whoop Biometrie" source={os.sourceLabel} accent={COLORS.emerald}>
       <div className="flex flex-wrap items-center gap-5">
         <div className="relative">
           <Ring size={150} stroke={11} segments={[{ frac: 1, fill: rd / 100, color: rdColor }]}>
@@ -52,7 +52,7 @@ const Mini = ({ label, pct, color }) => (
   </div>
 )
 
-function SleepChart({ os }) {
+export function SleepChart({ os }) {
   const DOW = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
   const data = os.nights.map((n, i, a) => ({
     label: i === a.length - 1 ? 'Heute' : DOW[new Date(n.date).getDay()],
@@ -60,7 +60,7 @@ function SleepChart({ os }) {
   }))
   const debt = Math.round(os.nights.reduce((a, n) => a + Math.max(0, 7 - n.total), 0) * 60)
   return (
-    <Glass title="Schlaf-Architektur" aside={`Schlafschuld ${debt} Min`} accent={COLORS.royal}>
+    <Glass title="Schlaf-Architektur" source={os.sourceLabel} aside={`Schlafschuld ${debt} Min`} accent={COLORS.royal}>
       <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
@@ -85,12 +85,12 @@ const Legend = ({ items }) => (
   </div>
 )
 
-function NetTunnel({ os }) {
+export function NetTunnel({ os }) {
   const { tunnel, activeKcal, actions, dayN } = os
   const data = tunnel.rows.map((r) => ({ ...r, floor: r.intake, net: r.tdee - r.intake }))
   const todayLabel = data[clamp(dayN - 1, 0, 84)].label
   return (
-    <Glass title="Kalorien-Netto-Tunnel" aside={`Netto −${fmt(tunnel.deficit)} kcal/Tag`} accent={COLORS.cyan}>
+    <Glass title="Kalorien-Netto-Tunnel" source="MODELL" aside={`Netto −${fmt(tunnel.deficit)} kcal/Tag`} accent={COLORS.cyan}>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -10 }}>

@@ -3,13 +3,13 @@ import { COLORS, DOSES, PROFILE } from '../lib/constants.js'
 import { fmt, clamp, decayCurve, doseMg, satiety } from '../lib/calc.js'
 import { Glass, Bar, Btn, Field, Ring, Tile } from './ui.jsx'
 
-function Retatrutide({ os }) {
+export function Retatrutide({ os }) {
   const { dose, actions } = os
   const data = decayCurve(dose)
   const peak = Math.max(...data.map((d) => d.c))
   const sat = satiety(dose)
   return (
-    <Glass title="Retatrutid" aside="GLP-1 / GIP / Glukagon" accent={COLORS.magenta}>
+    <Glass title="Retatrutid" source="MODELL" aside="GLP-1 / GIP / Glukagon" accent={COLORS.magenta}>
       <div className="grid grid-cols-3 gap-2">
         {DOSES.map((u) => (
           <Btn key={u} color={COLORS.magenta} active={dose === u} onClick={() => actions.setDose(u)} className="flex flex-col items-center leading-tight">
@@ -38,7 +38,7 @@ function Retatrutide({ os }) {
   )
 }
 
-function Nutrition({ os }) {
+export function Nutrition({ os }) {
   const { daily, actions } = os
   const kc = daily.kcal, over = kc > PROFILE.kcalCeiling
   const kColor = over ? COLORS.crimson : kc > 1200 ? COLORS.amber : COLORS.emerald
@@ -70,7 +70,7 @@ function Nutrition({ os }) {
   )
 }
 
-function Overrides({ os }) {
+export function Overrides({ os }) {
   const { daily, actions, tons, planTons } = os
   const lp = planTons ? tons / planTons : 0
   const loadColor = lp >= 1 ? COLORS.crimson : lp >= 0.8 ? COLORS.amber : COLORS.cyan

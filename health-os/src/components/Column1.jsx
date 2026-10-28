@@ -3,7 +3,7 @@ import { COLORS, PHASES, PROFILE } from '../lib/constants.js'
 import { fmt, bmi, clamp, currentPhase, phaseProgress, modelMass } from '../lib/calc.js'
 import { Glass, Bar, Field, Tile } from './ui.jsx'
 
-function BodyScanner({ os }) {
+export function BodyScanner({ os, compact = false }) {
   const { weight, bio, sleepH, actualDeficit, walkKcal, tons, planTons, daily, steps, tunnel } = os
   const [hot, setHot] = useState('herz')
   const legsWarn = daily.jointPain >= 4 || (!daily.joker && planTons > 9000)
@@ -17,7 +17,7 @@ function BodyScanner({ os }) {
   return (
     <Glass title="Body Scanner 2076" aside={`1,89 m · ${fmt(weight, 1)} kg`}>
       <div className="flex justify-center rounded-2xl border border-cyan/20 bg-black/50 px-1 pt-2" style={{ background: 'radial-gradient(ellipse 60% 55% at 50% 45%, rgba(0,240,255,.12), transparent 75%), rgba(3,5,8,.6)' }}>
-        <svg viewBox="-70 0 340 430" className="block h-auto max-h-[520px] w-full overflow-visible" role="img" aria-label="Holografischer Körperscanner">
+        <svg viewBox="-70 0 340 430" className={`block h-auto w-full overflow-visible ${compact ? 'max-h-[360px]' : 'max-h-[520px]'}`} role="img" aria-label="Holografischer Körperscanner">
           <defs>
             <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1B2A40" /><stop offset=".55" stopColor="#101A2A" /><stop offset="1" stopColor="#0A1120" /></linearGradient>
             <linearGradient id="scanG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#00F0FF" stopOpacity="0" /><stop offset="1" stopColor="#00F0FF" stopOpacity=".28" /></linearGradient>
@@ -53,7 +53,7 @@ function BodyScanner({ os }) {
         </svg>
       </div>
       <div className="flex flex-col gap-2">
-        {nodes.map((n) => (
+        {nodes.filter((n) => !compact || n.id === hot).map((n) => (
           <button key={n.id} type="button" onClick={() => setHot(n.id)} className="flex cursor-pointer flex-col gap-2 rounded-xl border p-2.5 text-left transition-colors" style={{ background: hot === n.id ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.04)', borderColor: hot === n.id ? n.color : 'rgba(255,255,255,.08)' }}>
             <span className="flex items-center gap-2.5">
               <span className="size-2.5 flex-none rounded-full" style={{ background: n.color, boxShadow: `0 0 10px ${n.color}` }} />
@@ -68,7 +68,7 @@ function BodyScanner({ os }) {
   )
 }
 
-function WeightDeck({ os }) {
+export function WeightDeck({ os }) {
   const { weight, actions } = os
   const [txt, setTxt] = useState('')
   const val = txt === '' ? String(weight.toFixed(1)) : txt
@@ -96,11 +96,11 @@ function WeightDeck({ os }) {
   )
 }
 
-function KfaCalculator({ os }) {
+export function KfaCalculator({ os }) {
   const { weight, measure, bf, actions } = os
   const MS = [['Start', 132, 36.95], ['Phase 1', 120, 33.6], ['Phase 2', 108, 30.23], ['Phase 3', 95, 26.6], ['Final', 90, 25.2]]
   return (
-    <Glass title="KFA-Rechner" aside={`BMI ${fmt(bmi(weight), 2)}`} accent={COLORS.yellow}>
+    <Glass title="KFA-Rechner" source="MODELL" aside={`BMI ${fmt(bmi(weight), 2)}`} accent={COLORS.yellow}>
       <div className="flex gap-2">
         <Field label="Nacken" unit="cm" value={measure.neck} onChange={(v) => actions.setMeasure({ neck: parseFloat(v) || 0 })} />
         <Field label="Bauch (Nabel)" unit="cm" value={measure.waist} onChange={(v) => actions.setMeasure({ waist: parseFloat(v) || 0 })} />
@@ -121,7 +121,7 @@ function KfaCalculator({ os }) {
 }
 const FragRow = ({ cells }) => cells.map((c, i) => <span key={i} className={i ? 'text-right' : ''}>{c}</span>)
 
-function PhaseCard({ os }) {
+export function PhaseCard({ os }) {
   const { weight, tunnel } = os
   const idx = currentPhase(weight)
   const cur = PHASES[idx]
@@ -130,7 +130,7 @@ function PhaseCard({ os }) {
   const fmtD = (d) => (isFinite(d) && d < 600 ? new Date(Date.now() + d * 864e5).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }) : 'nicht erreichbar')
   const slack = Math.round((PROFILE.deadline - (Date.now() + eta(90) * 864e5)) / 864e5)
   return (
-    <Glass title="3-Phasen-Transformation" aside={`${fmt(weight, 1)} → ${fmt(PROFILE.targetKg, 1)} kg`} accent={cur.color}>
+    <Glass title="3-Phasen-Transformation" source="MODELL" aside={`${fmt(weight, 1)} → ${fmt(PROFILE.targetKg, 1)} kg`} accent={cur.color}>
       <div className="flex gap-1">
         {PHASES.map((p, i) => {
           const pc = phaseProgress(weight, p)
