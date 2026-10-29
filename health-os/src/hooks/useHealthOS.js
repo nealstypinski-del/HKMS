@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PROFILE, STEP_BLOCKS, CROSSFIT, DOSES } from '../lib/constants.js'
 import { dayKey, clamp, levelInfo, commandFor, curfewCountdown, buildTunnel, navyBodyFat, deurenbergBodyFat, forecastWeight, trend7, rechenmodell, todayOnTrack, walkKcalTable, macroGoals, missionStats, daylight } from '../lib/calc.js'
-import { usePersistentState, useDailyState } from './usePersistentState.js'
+import { usePersistentState, useDailyState, useSyncMode } from './usePersistentState.js'
 import { useAutoRebalance } from './useAutoRebalance.js'
 import { useNow } from './useNow.js'
 import { useWhoop } from './useWhoop.js'
@@ -44,7 +44,9 @@ export function useHealthOS() {
   const [whoopCache, setWhoopCache] = usePersistentState('whoopCache', null)
   const [daily, setDaily, patchDaily] = useDailyState('daily', initDaily)
   const [target, setTarget] = usePersistentState('targetKg', PROFILE.targetKg)
-  const [view, setView] = usePersistentState('view', 'hq') // 'hq' | 'analyse'
+  const [view, setView] = usePersistentState('view', 'hq') // 'hq' | 'analyse' (pro Gerät)
+  const [health] = usePersistentState('health', {}) // Auto Health Export: { 'YYYY-MM-DD': { steps, activeKcal, restingHr } }
+  const syncMode = useSyncMode()
   const [room, setRoom] = useState(null)
 
   // Whoop-Daten cachen, damit Offline-Start den letzten Stand zeigt
@@ -70,11 +72,15 @@ export function useHealthOS() {
 
   // ── Auto-Rebalance ──
   const plan = useAutoRebalance(daily)
-  const steps = Math.min(daily.steps, plan.target)
+  // Schritte: Auto-Health-Wert (iPhone) oder manuelle Eingabe – der höhere zählt, nie weniger als vorher
+  const healthSteps = health[dayKey()]?.steps ?? 0
+  const stepsTotal = Math.max(daily.steps, healthSteps)
+  const stepSource = healthSteps > 0 && healthSteps >= daily.steps ? 'AUTO HEALTH' : 'MANUELL'
+  const steps = Math.min(stepsTotal, plan.target)
 
   // Blockfortschritt: Schritte füllen die Blöcke der Reihe nach
   const blocks = useMemo(() => {
-    let rem = daily.steps
+    let rem = stepsTotal
     return STEP_BLOCKS.map((b, i) => {
       const eff = plan.eff[i]
       const swim = i === plan.swimIdx
@@ -84,7 +90,7 @@ export function useHealthOS() {
       const done = swim ? daily.swimDone : daily.done[i] || (eff > 0 && taken >= eff)
       return { ...b, i, eff, added: plan.add[i], swim, missed, done, taken, frac: eff > 0 ? taken / eff : swim && daily.swimDone ? 1 : 0 }
     })
-  }, [daily, plan])
+  }, [daily, plan, stepsTotal])
 
   // ── Whoop-Workouts -> XP ──
   const today = dayKey()
@@ -156,7 +162,7 @@ export function useHealthOS() {
       setWeightLog((l) => ({ ...l, [today]: kg }))
       return true
     },
-    addSteps: (n) => patchDaily((d) => ({ steps: clamp(d.steps + n, 0, 60000) })),
+    addSteps: (n) => patchDaily((d) => ({ steps: clamp(Math.max(d.steps, healthSteps) + n, 0, 60000) })),
     setSteps: (n) => patchDaily({ steps: clamp(n, 0, 60000) }),
     toggleMissed: (i) => patchDaily((d) => {
       const missed = d.missed.slice(); missed[i] = !missed[i]
@@ -196,7 +202,7 @@ export function useHealthOS() {
     now, whoop, live, demo, bio, nights, sleepH, alarm, dayN,
     weight, dose, measure, activeKcal, daily, plan, steps, blocks, tunnel, actualDeficit,
     walkKcal, tons, planTons, bf, xp, command, curfew, todaysWorkouts,
-    view, room, target, trend, model, weightLog, forecast, onTrack, walkTable, macros, mission, light, sourceLabel, dayIdx, whoopCrossfit,
+    view, room, target, syncMode, stepSource, healthSteps, trend, model, weightLog, forecast, onTrack, walkTable, macros, mission, light, sourceLabel, dayIdx, whoopCrossfit,
     actions,
   }
 }

@@ -37,7 +37,7 @@ export function Gauntlet({ os, compact = false, controls = true }) {
   const badge = adds.length ? `[ +${fmt(Math.max(...adds))} EXTRA-SCHRITTE ANPASSUNG ]` : ''
   const swim = plan.swimIdx >= 0
   return (
-    <Glass title="30.000-Schritte-Gauntlet" aside={`${pct} %`}>
+    <Glass title="30.000-Schritte-Gauntlet" source={os.stepSource} aside={`${pct} %`}>
       <div className={`flex items-center justify-center ${compact ? 'gap-3' : 'flex-wrap gap-5'}`}>
         <Ring size={compact ? (controls ? 120 : 104) : 190} stroke={compact ? 11 : 14} segments={segs}>
           <div className="leading-tight">

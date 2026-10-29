@@ -1,42 +1,46 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { dayKey } from '../lib/calc.js'
+import { sync } from '../lib/sync.js'
 
-const NS = 'nhos2076:'
-
-function read(key, init) {
-  try {
-    const raw = localStorage.getItem(NS + key)
-    return raw == null ? init : JSON.parse(raw)
-  } catch {
-    return init
-  }
-}
-function write(key, value) {
-  try { localStorage.setItem(NS + key, JSON.stringify(value)) } catch { /* Quota/Privatmodus: ignorieren */ }
+/** 'connecting' | 'online' | 'local' – Zustand der Server-Synchronisation. */
+export function useSyncMode() {
+  return useSyncExternalStore(sync.subscribeMode, sync.mode)
 }
 
-/** useState mit localStorage-Persistenz (Weight, Water, Dose, …). */
+/** useState mit localStorage-Cache und Server-Sync (siehe lib/sync.js). */
 export function usePersistentState(key, init) {
-  const [value, setValue] = useState(() => read(key, init))
-  const first = useRef(true)
+  const initRef = useRef(init)
+  const [value, setLocal] = useState(() => sync.read(key, init))
   useEffect(() => {
-    if (first.current) { first.current = false; return }
-    write(key, value)
-  }, [key, value])
-  return [value, setValue]
+    sync.start()
+    setLocal(sync.read(key, initRef.current))
+    return sync.subscribe(key, (v) => setLocal(v))
+  }, [key])
+  const set = useCallback((upd) => {
+    const cur = sync.read(key, initRef.current)
+    sync.write(key, typeof upd === 'function' ? upd(cur) : upd)
+  }, [key])
+  return [value, set]
 }
 
 /**
- * Tages-State: wird um Mitternacht (bzw. beim nächsten Laden an einem neuen Tag) auf `init` zurückgesetzt.
- * Gespeichert als { day, v }.
+ * Tages-State: gespeichert als { day, v }; an einem neuen Tag (auch um Mitternacht bei laufender App)
+ * gilt wieder `init`.
  */
 export function useDailyState(key, init) {
-  const make = () => {
-    const stored = read(key, null)
-    return stored && stored.day === dayKey() ? stored.v : typeof init === 'function' ? init() : init
-  }
-  const [value, setValue] = useState(make)
-  useEffect(() => { write(key, { day: dayKey(), v: value }) }, [key, value])
-  const patch = useCallback((p) => setValue((s) => ({ ...s, ...(typeof p === 'function' ? p(s) : p) })), [])
-  return [value, setValue, patch]
+  const make = useRef(typeof init === 'function' ? init : () => init)
+  const [stored, setStored] = usePersistentState(key, null)
+  const today = dayKey()
+  const [fresh, setFresh] = useState(() => ({ day: today, v: make.current() }))
+  const current = stored && stored.day === today ? stored.v : (fresh.day === today ? fresh.v : make.current())
+  useEffect(() => { if (fresh.day !== today) setFresh({ day: today, v: make.current() }) }, [today, fresh.day])
+
+  const setValue = useCallback((upd) => {
+    setStored((s) => {
+      const base = s && s.day === dayKey() ? s.v : make.current()
+      return { day: dayKey(), v: typeof upd === 'function' ? upd(base) : upd }
+    })
+  }, [setStored])
+  const patch = useCallback((p) => setValue((base) => ({ ...base, ...(typeof p === 'function' ? p(base) : p) })), [setValue])
+  return [current, setValue, patch]
 }

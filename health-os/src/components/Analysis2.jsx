@@ -38,6 +38,7 @@ export function TopBar({ os, children }) {
       <Dot c={alarm ? COLORS.amber : COLORS.emerald} t={`LIVE SYSTEM STATUS: ${alarm ? 'CORTISOL-ALARM' : 'OPTIMAL'}`} />
       <Dot c={w[1]} t={`WHOOP MCP: ${w[0]}`} />
       <span className="mono text-[11px] text-white/65">TAG {dayN} / 85</span>
+      {os.syncMode === 'local' && <SourceBadge source="LOKAL" />}
       <span className="flex items-center gap-2">
         <span className="mono text-[10px] tracking-[.12em] text-white/65">ZEIT BIS 22:00</span>
         <span className="h-2 w-24 overflow-hidden rounded-full bg-white/10"><span className="block h-full rounded-full" style={{ width: `${dayPct}%`, background: curfew.color, boxShadow: `0 0 8px ${curfew.color}` }} /></span>

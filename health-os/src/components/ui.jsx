@@ -89,7 +89,7 @@ export const Tile = ({ label, value, color = '#fff' }) => (
   </div>
 )
 
-const SRC = { 'LIVE · MCP': '#00FF66', 'TEST-MCP': '#FFD60A', CACHE: '#FF9500', DEMO: '#FF9500', MODELL: '#00F0FF', MANUELL: '#E024E3', GESCHÄTZT: '#FFD60A' }
+const SRC = { 'LIVE · MCP': '#00FF66', 'TEST-MCP': '#FFD60A', CACHE: '#FF9500', DEMO: '#FF9500', MODELL: '#00F0FF', MANUELL: '#E024E3', 'AUTO HEALTH': '#00FF66', LOKAL: '#FF9500', GESCHÄTZT: '#FFD60A' }
 export function SourceBadge({ source }) {
   const c = SRC[source] ?? '#fff'
   return <span className="mono rounded-md border px-1.5 py-0.5 text-[9px] font-bold tracking-wider" style={{ color: c, borderColor: `${c}66`, background: `${c}14` }}>{source}</span>
