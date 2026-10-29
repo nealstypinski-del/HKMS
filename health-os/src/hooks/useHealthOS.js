@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PROFILE, STEP_BLOCKS, CROSSFIT, DOSES } from '../lib/constants.js'
 import { dayKey, clamp, levelInfo, commandFor, curfewCountdown, buildTunnel, navyBodyFat, deurenbergBodyFat, forecastWeight, trend7, rechenmodell, todayOnTrack, walkKcalTable, macroGoals, missionStats, daylight } from '../lib/calc.js'
 import { usePersistentState, useDailyState, useSyncMode } from './usePersistentState.js'
@@ -6,7 +6,7 @@ import { useAutoRebalance } from './useAutoRebalance.js'
 import { useNow } from './useNow.js'
 import { useWhoop } from './useWhoop.js'
 import { workoutXp } from '../mcp/whoopClient.js'
-import { badgeCounts, makeSnapshot, mergeWhoopHistory, prune, streak as streakOf, xpByDay } from '../lib/history.js'
+import { badgeCounts, makeSnapshot, mergeWhoopHistory, prune, streak as streakOf, xpByDay, xpLabel } from '../lib/history.js'
 
 // Fallback, solange die Bridge nie verbunden war (wird im UI als DEMO gekennzeichnet).
 export const DEMO_WHOOP = { score: 88, hrv: 73, rhr: 58, spo2: 96, resp: 15.5 }
@@ -50,6 +50,7 @@ export function useHealthOS() {
   const [pharmaLog, setPharmaLog] = usePersistentState('pharmaLog', []) // [{ id, date, ui, note }] – reine Erfassung
   const [health] = usePersistentState('health', {}) // Auto Health Export: { 'YYYY-MM-DD': { steps, activeKcal, restingHr } }
   const syncMode = useSyncMode()
+  const hydrated = syncMode !== 'connecting' // vor dem Server-Abgleich keine abgeleiteten Werte schreiben (würde Serverdaten überschreiben)
   const [room, setRoom] = useState(null)
 
   // Whoop-Daten cachen, damit Offline-Start den letzten Stand zeigt
@@ -116,32 +117,56 @@ export function useHealthOS() {
   }, [steps, blocks, daily.swimDone, daily.crossfit, daily.water, weightLog, whoopCrossfit, live, whoop.workouts, today])
 
   useEffect(() => {
+    if (!hydrated) return
     setLedger((l) => {
       const keys = Object.keys(xpEntries)
       if (keys.every((k) => l[k] === xpEntries[k])) return l
       return { ...l, ...xpEntries }
     })
-  }, [xpEntries, setLedger])
+  }, [xpEntries, setLedger, hydrated])
 
   const SEED_XP = 14500
   const xp = levelInfo(SEED_XP + Object.values(ledger).reduce((a, b) => a + b, 0))
+
+  // ── Level-Up (einmalig je Gerät) und XP-Feed (nur Änderungen dieser Sitzung) ──
+  const [lastLevel, setLastLevel] = usePersistentState('lastLevel', null) // nur lokal (nicht synchronisiert)
+  const [levelUp, setLevelUp] = useState(null)
+  useEffect(() => {
+    if (syncMode === 'connecting') return // erst nach dem Server-Abgleich vergleichen (sonst falscher Level-Up auf neuen Geräten)
+    if (lastLevel == null || xp.level < lastLevel) { setLastLevel(xp.level); return }
+    if (xp.level > lastLevel) { setLevelUp({ level: xp.level, title: xp.title }); setLastLevel(xp.level) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [xp.level, syncMode])
+  const prevLedger = useRef(null)
+  const [xpFeed, setXpFeed] = useState([])
+  useEffect(() => {
+    if (prevLedger.current) {
+      const items = Object.entries(ledger)
+        .map(([k, v]) => ({ k, d: v - (prevLedger.current[k] ?? 0) }))
+        .filter(({ k, d }) => d > 0 && (!k.startsWith('steps:') || d >= 50))
+        .map(({ k, d }) => ({ ts: Date.now(), label: xpLabel(k), xp: d }))
+      if (items.length) setXpFeed((f) => [...items, ...f].slice(0, 8))
+    }
+    prevLedger.current = ledger
+  }, [ledger])
 
   // ── Historie: heutigen Schnappschuss schreiben, Whoop-Verlauf rückfüllen ──
   const snapshot = makeSnapshot({ daily, steps: stepsTotal, weight, sleepH, bio, blocksDone: blocks.filter((b) => b.done).length })
   const snapJson = JSON.stringify(snapshot)
   useEffect(() => {
+    if (!hydrated) return
     const snap = JSON.parse(snapJson)
     const cur = days[today] ?? {}
     const merged = { ...cur, ...Object.fromEntries(Object.entries(snap).filter(([, v]) => v !== undefined && v !== null)) }
     if (JSON.stringify(merged) !== JSON.stringify(cur)) setDays(prune({ ...days, [today]: merged }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapJson, today])
+  }, [snapJson, today, hydrated])
   useEffect(() => {
-    if (!live || !whoop.history) return
+    if (!hydrated || !live || !whoop.history) return
     const merged = mergeWhoopHistory(days, whoop.history.rec, whoop.history.sleep)
     if (JSON.stringify(merged) !== JSON.stringify(days)) setDays(merged)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, whoop.history])
+  }, [live, whoop.history, hydrated])
   const streakN = streakOf(days, now)
   const badges = badgeCounts(days)
   const xpDay = xpByDay(ledger)
@@ -227,7 +252,7 @@ export function useHealthOS() {
     now, whoop, live, demo, bio, nights, sleepH, alarm, dayN,
     weight, dose, measure, activeKcal, daily, plan, steps, blocks, tunnel, actualDeficit,
     walkKcal, tons, planTons, bf, xp, command, curfew, todaysWorkouts,
-    pharmaLog, days, streakN, badges, xpDay, workoutHistory: whoop.workoutHistory,
+    levelUp, dismissLevelUp: () => setLevelUp(null), xpFeed, pharmaLog, days, streakN, badges, xpDay, workoutHistory: whoop.workoutHistory,
     view, room, target, syncMode, stepSource, healthSteps, trend, model, weightLog, forecast, onTrack, walkTable, macros, mission, light, sourceLabel, dayIdx, whoopCrossfit,
     actions,
   }

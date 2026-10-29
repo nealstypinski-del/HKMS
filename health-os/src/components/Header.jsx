@@ -48,7 +48,7 @@ export function CommandBanner({ command }) {
   )
 }
 
-export function McpLog({ whoop }) {
+export function McpLog({ whoop, os }) {
   const rows = whoop.log
   return (
     <footer className="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 backdrop-blur-2xl">
@@ -57,6 +57,7 @@ export function McpLog({ whoop }) {
         <button type="button" onClick={whoop.sync} className="cursor-pointer rounded-lg border border-white/20 px-2.5 py-1 text-white hover:border-cyan hover:text-cyan">JETZT SYNCHRONISIEREN</button>
       </div>
       {rows.length === 0 && <p className="mono text-xs text-white/50">noch kein Abruf</p>}
+      {os?.xpFeed?.length > 0 && <p className="mono mb-1 truncate text-xs text-emerald">XP: {os.xpFeed.slice(0, 4).map((x) => `+${x.xp} ${x.label}`).join(' · ')}</p>}
       {rows.map((l, i) => (
         <p key={i} className="mono flex gap-3 text-xs" style={{ opacity: 1 - i * 0.15 }}>
           <span className="text-white/50">{l.ts}</span>

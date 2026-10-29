@@ -51,8 +51,8 @@ async function push(key) {
     const r = await api(`/api/state/${key}`, { method: 'PUT', body: JSON.stringify({ v: e.v, ts: e.ts }) })
     if (r.status === 409) { const { entry } = await r.json(); if (entry && entry.ts > e.ts) store(key, entry.v, entry.ts) }
     else if (!r.ok) throw new Error(String(r.status))
-    setMode('online')
-  } catch { setMode('local'); scheduleRetry() }
+    if (mode === 'local') reconcile() // Server wieder erreichbar: erst abgleichen, dann "online"
+  } catch { if (mode !== 'connecting') setMode('local'); scheduleRetry() }
 }
 
 function scheduleRetry() {

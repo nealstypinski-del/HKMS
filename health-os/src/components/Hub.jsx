@@ -1,6 +1,7 @@
 import { COLORS } from '../lib/constants.js'
 import { fmt, clamp } from '../lib/calc.js'
 import { ATLAS, ART_RATIO, HUB_ART, ROOMS } from '../lib/hubConfig.js'
+import { Bursts, HubFx, useBursts } from './HubFx.jsx'
 
 /** Live-Status je Raum: { pct 0..1, metric, tone } */
 export function roomStatus(os) {
@@ -45,10 +46,13 @@ function RoomTiles({ os }) {
 export function HubArt({ os }) {
   const st = roomStatus(os), m = os.mission
   const night = 1 - os.light
+  const bursts = useBursts(os)
   return (
     <div className="relative mx-auto h-full" style={{ aspectRatio: ART_RATIO }}>
-      <img src={HUB_ART} alt="Herkules HQ" className="absolute inset-0 h-full w-full select-none object-contain" draggable={false}
+      <img src={HUB_ART} alt="Herkules HQ" className="hub-art absolute inset-0 h-full w-full select-none object-contain" draggable={false}
         style={{ filter: 'saturate(1.08) contrast(1.04) drop-shadow(0 0 28px rgba(255,184,0,.12))' }} />
+      <HubFx />
+      <Bursts bursts={bursts} rooms={ROOMS} color={(id) => st[id]?.tone ?? '#00F0FF'} />
       {/* Energiefluss Zentrum → Räume */}
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
         {ROOMS.filter((r) => !r.pill).map((r) => (

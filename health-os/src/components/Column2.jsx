@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { COLORS, CROSSFIT, STEP_BLOCKS, BASELINE_STEPS, SWIM } from '../lib/constants.js'
-import { fmt, clamp, blockTone } from '../lib/calc.js'
+import { fmt, clamp, blockTone, dayKey } from '../lib/calc.js'
+import { BADGES, badgesOf } from '../lib/history.js'
 import { Glass, Ring, Bar, Btn, Tile } from './ui.jsx'
 
 export function XpHeader({ os }) {
@@ -14,6 +15,10 @@ export function XpHeader({ os }) {
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="mono inline-block self-start rounded-lg border border-emerald/50 bg-emerald/10 px-2.5 py-1 text-xs font-bold tracking-[.1em] text-emerald">{xp.title}</span>
           <span className="mono text-lg font-semibold">{fmt(xp.total)} <span className="text-white/50">/ {fmt(xp.cap)} XP</span></span>
+          <span className="mono flex flex-wrap gap-1.5 text-[9px] font-bold tracking-wider">
+            <span className="rounded-md border border-amber/60 bg-amber/10 px-1.5 py-0.5 text-amber">STREAK {os.streakN}</span>
+            {badgesOf(os.days[dayKey(os.now)]).slice(0, 3).map((id) => <span key={id} className="rounded-md border border-white/20 px-1.5 py-0.5 text-white/75">{BADGES.find((b) => b.id === id).label}</span>)}
+          </span>
           <Bar pct={(xp.intoLevel / 300) * 100} color={COLORS.emerald} h={6} />
           <span className="text-[11px] text-white/65">{fmt(300 - xp.intoLevel)} XP bis Level {Math.min(80, xp.level + 1)}</span>
         </div>

@@ -51,3 +51,10 @@ Ohne laufenden Server zeigt das UI „OFFLINE“ und den letzten Cache bzw. geke
 ### Hub-Artwork tauschen
 `public/hub.webp` ersetzen, `ART_RATIO` und die Raum-Koordinaten (Prozent des Bildes) in `src/lib/hubConfig.js` anpassen.
 Das aktuelle Bild wurde per `python3 scripts/crop-hub-art.py <screenshot> public/hub.webp` aus dem Entwurf geschnitten (Platzhalter-Qualität).
+
+## Modi & Tests per URL
+- **Nacht/Curfew:** ab 21:30 warm gedimmt, 22:00–05:30 Nachtruhe-Bildschirm (Berühren = 30 s Dashboard). Test: `?mode=dim` / `?mode=night`.
+- **Burn-in-Schutz:** nach 5 Min ohne Eingabe wandert das Bild minütlich ±8 px und dimmt leicht. Test: `?idle=1`.
+- **Uhrzeit überschreiben:** `?t=HH:MM` (z. B. `?t=22:10`).
+- **Level-Up:** einmalig je Gerät beim Anstieg des Levels; wird erst nach dem Server-Abgleich geprüft.
+- Vor dem ersten Server-Abgleich schreibt die App keine abgeleiteten Werte (Snapshot, XP-Ledger), damit ein frisches Gerät Serverdaten nicht überschreibt.

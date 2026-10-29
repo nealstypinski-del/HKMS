@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { badgeCounts, badgesOf, daySuccess, lastNDays, makeSnapshot, mergeWhoopHistory, streak, weekAdvice, xpByDay } from './history.js'
+import { badgeCounts, badgesOf, daySuccess, lastNDays, makeSnapshot, mergeWhoopHistory, streak, weekAdvice, xpByDay, xpLabel } from './history.js'
 
 const NOW = new Date(2026, 9, 29, 12, 0)
 const ok = { steps: 26000, kcal: 1300 }
@@ -55,5 +55,13 @@ describe('Historie', () => {
     const tips = weekAdvice(w)
     expect(tips.length).toBe(3)
     expect(tips[0]).toMatch(/Schritte/)
+  })
+})
+
+describe('XP-Labels', () => {
+  it('benennt Quellen', () => {
+    expect(xpLabel('block:2026-10-29:1')).toBe('Block erledigt')
+    expect(xpLabel('wo:123')).toBe('Whoop-Workout')
+    expect(xpLabel('???')).toBe('XP')
   })
 })

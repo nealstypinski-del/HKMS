@@ -1,5 +1,8 @@
 import { useHealthOS } from './hooks/useHealthOS.js'
 import { useStage } from './hooks/useStage.js'
+import { modeFor, useDrift, useIdle } from './hooks/useMode.js'
+import { NightScreen } from './components/NightScreen.jsx'
+import { LevelUp } from './components/LevelUp.jsx'
 import { CommandBanner, Header, McpLog } from './components/Header.jsx'
 import { ViewSwitch } from './components/ViewSwitch.jsx'
 import { Hub, HubArt } from './components/Hub.jsx'
@@ -71,9 +74,12 @@ export default function App() {
   const os = useHealthOS()
   const stage = useStage(os.view)
   const style = stage.on ? { zoom: stage.s, width: stage.w, height: stage.h } : undefined
+  const mode = modeFor(os.now, new URLSearchParams(location.search).get('mode'))
+  const idle = useIdle()
+  const drift = useDrift(idle, os.now)
   return (
-    <div className={stage.on ? 'overflow-hidden' : ''} style={stage.on ? { height: '100vh' } : undefined}>
-      <div className="stage-root mx-auto flex min-h-screen w-full flex-col gap-3 p-3 wide:min-h-0 2xl:p-4" style={style}>
+    <div className={`${stage.on ? 'overflow-hidden' : ''} ${idle ? 'ambient' : ''}`} style={{ ...(stage.on ? { height: '100vh' } : {}), ...(idle ? { transform: `translate(${drift.x}px, ${drift.y}px)`, filter: 'brightness(.85)' } : {}) }}>
+      <div className={`stage-root ${mode === 'dim' ? 'mode-dim' : mode === 'night' ? 'mode-night' : ''} mx-auto flex min-h-screen w-full flex-col gap-3 p-3 wide:min-h-0 2xl:p-4`} style={style}>
         {os.view === 'hq' ? (
           <>
             <CommandBanner command={os.command} />
@@ -91,8 +97,10 @@ export default function App() {
           : os.view === 'pharma' ? <PharmaView os={os} />
           : os.view === 'training' ? <TrainingView os={os} />
           : <AnalyseView os={os} stage={stage} />}
-        {!stage.on && <div className="no-print"><McpLog whoop={os.whoop} /></div>}
+        {!stage.on && <div className="no-print"><McpLog whoop={os.whoop} os={os} /></div>}
         <RoomPanel os={os} />
+        {mode === 'night' && <NightScreen os={os} />}
+        <LevelUp info={os.levelUp} onDone={os.dismissLevelUp} />
       </div>
     </div>
   )

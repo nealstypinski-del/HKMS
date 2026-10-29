@@ -113,3 +113,7 @@ export function weekAdvice(week) {
   if (aProt != null && aProt < GOALS.protein) tips.push(`Ø ${Math.round(aProt)} g Protein (Ziel ≥ ${GOALS.protein} g): eine Protein-Mahlzeit fest einplanen.`)
   return tips.length ? tips.slice(0, 3) : ['Woche im Plan – Kurs halten.']
 }
+
+const XP_LABELS = [['steps:', 'Schritte'], ['block:', 'Block erledigt'], ['cf:', 'CrossFit'], ['swim:', 'Swim erledigt'], ['water:', 'Wasserziel'], ['weight:', 'Gewicht eingetragen'], ['wo:', 'Whoop-Workout']]
+/** Lesbarer Name einer XP-Quelle (Ledger-Schlüssel). */
+export const xpLabel = (key) => XP_LABELS.find(([p]) => key.startsWith(p))?.[1] ?? 'XP'
