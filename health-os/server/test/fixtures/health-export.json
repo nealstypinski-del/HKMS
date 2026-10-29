@@ -1,0 +1,13 @@
+{
+  "data": {
+    "metrics": [
+      { "name": "step_count", "units": "count", "data": [
+        { "date": "2026-10-29 06:00:00 +0100", "qty": 5200.4, "source": "iPhone" },
+        { "date": "2026-10-29 07:00:00 +0100", "qty": 3000, "source": "iPhone" },
+        { "date": "2026-10-28 00:00:00 +0100", "qty": 21044, "source": "iPhone" } ] },
+      { "name": "active_energy", "units": "kJ", "data": [ { "date": "2026-10-29 06:00:00 +0100", "qty": 4184 } ] },
+      { "name": "resting_heart_rate", "units": "count/min", "data": [ { "date": "2026-10-29 00:00:00 +0100", "qty": 57 } ] },
+      { "name": "weight_body_mass", "units": "kg", "data": [ { "date": "2026-10-29 00:00:00 +0100", "qty": 131.2 } ] }
+    ]
+  }
+}
