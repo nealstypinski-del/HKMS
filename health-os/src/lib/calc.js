@@ -252,3 +252,27 @@ export function rechenmodell(weight, target, now = new Date()) {
   const kcal = kg * 7000
   return { kg, days, kcal, perDay: kcal / days, perWeek: (kg / days) * 7 }
 }
+
+// ── Pharma-Protokoll: Spiegel aus tatsächlichen Gabe-Zeitpunkten ──
+/** log: [{ date:'YYYY-MM-DD', ui }]; Punkte täglich von `from` bis `to` (Date). Modell: Halbwertszeit 6 Tage (reine Illustration). */
+export function levelFromLog(log, from, to, halfLife = 6) {
+  const t0 = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const inj = log.map((e) => ({ t: new Date(`${e.date}T12:00:00`).getTime(), mg: doseMg(e.ui) }))
+  const out = []
+  for (let t = t0(from); t <= t0(to); t += 864e5) {
+    const c = inj.reduce((a, i) => (t + 12 * 36e5 >= i.t ? a + i.mg * 0.5 ** ((t + 12 * 36e5 - i.t) / 864e5 / halfLife) : a), 0)
+    const d = new Date(t)
+    out.push({ t, date: dayKey(d), label: `${d.getDate()}.${d.getMonth() + 1}.`, c: +c.toFixed(3) })
+  }
+  return out
+}
+
+/** Nächster Termin = letzte Gabe + Intervall (Tage). */
+export function nextDue(log, now = new Date(), interval = 7) {
+  if (!log.length) return null
+  const last = [...log].sort((a, b) => (a.date < b.date ? 1 : -1))[0]
+  const due = new Date(`${last.date}T00:00:00`)
+  due.setDate(due.getDate() + interval)
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return { last, due, dueKey: dayKey(due), inDays: Math.round((due - today) / 864e5) }
+}

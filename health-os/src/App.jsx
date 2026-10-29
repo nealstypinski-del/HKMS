@@ -10,6 +10,10 @@ import { WhoopWidget, NetTunnel, SleepChart } from './components/Column3.jsx'
 import { Retatrutide, Nutrition, Overrides } from './components/Column4.jsx'
 import { Hypnogram, MissionBar, TodayOnTrack, WalkCalc } from './components/Analysis.jsx'
 import { KfaCompact, NutritionHud, WeightCompact } from './components/Hud.jsx'
+import { HistoryView } from './views/History.jsx'
+import { WeekView } from './views/Week.jsx'
+import { PharmaView } from './views/Pharma.jsx'
+import { TrainingView } from './views/Training.jsx'
 import { BlocksTable, BodyComposition, BodyScanner2D, ForecastPanel, KfaTabs, MissionPanel, PhasePlan, TodayCards, TopBar, WeekTrend } from './components/Analysis2.jsx'
 
 const Col = ({ children, className = '' }) => (
@@ -69,7 +73,7 @@ export default function App() {
   const style = stage.on ? { zoom: stage.s, width: stage.w, height: stage.h } : undefined
   return (
     <div className={stage.on ? 'overflow-hidden' : ''} style={stage.on ? { height: '100vh' } : undefined}>
-      <div className="mx-auto flex min-h-screen w-full flex-col gap-3 p-3 wide:min-h-0 2xl:p-4" style={style}>
+      <div className="stage-root mx-auto flex min-h-screen w-full flex-col gap-3 p-3 wide:min-h-0 2xl:p-4" style={style}>
         {os.view === 'hq' ? (
           <>
             <CommandBanner command={os.command} />
@@ -81,8 +85,13 @@ export default function App() {
         ) : (
           <TopBar os={os}><ViewSwitch view={os.view} onChange={os.actions.setView} /></TopBar>
         )}
-        {os.view === 'hq' ? <HqView os={os} stage={stage} /> : <AnalyseView os={os} stage={stage} />}
-        {!stage.on && <McpLog whoop={os.whoop} />}
+        {os.view === 'hq' ? <HqView os={os} stage={stage} />
+          : os.view === 'history' ? <HistoryView os={os} />
+          : os.view === 'week' ? <WeekView os={os} />
+          : os.view === 'pharma' ? <PharmaView os={os} />
+          : os.view === 'training' ? <TrainingView os={os} />
+          : <AnalyseView os={os} stage={stage} />}
+        {!stage.on && <div className="no-print"><McpLog whoop={os.whoop} /></div>}
         <RoomPanel os={os} />
       </div>
     </div>

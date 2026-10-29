@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planBlocks, navyBodyFat, levelInfo, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, buildTunnel, trend7, rechenmodell } from './calc.js'
+import { planBlocks, navyBodyFat, levelInfo, forecastWeight, todayOnTrack, walkKcalTable, macroGoals, missionStats, buildTunnel, trend7, rechenmodell, levelFromLog, nextDue } from './calc.js'
 import { normalizeRecovery, normalizeSleep, normalizeWorkouts, workoutXp } from '../mcp/whoopClient.js'
 
 const none = [false, false, false]
@@ -110,5 +110,26 @@ describe('Trend & Rechenmodell', () => {
   })
   it('Mission mit eigenem Ziel', () => {
     expect(missionStats(132, new Date(), 92).total).toBe(40)
+  })
+})
+
+describe('Pharma-Protokoll', () => {
+  it('Spiegel springt bei der Gabe und halbiert sich nach 6 Tagen', () => {
+    const pts = levelFromLog([{ date: '2026-10-20', ui: 50 }], new Date(2026, 9, 19), new Date(2026, 9, 27))
+    expect(pts[0].c).toBe(0)
+    const a = pts.find((p) => p.date === '2026-10-20').c
+    const b = pts.find((p) => p.date === '2026-10-26').c
+    expect(b / a).toBeCloseTo(0.5, 1)
+  })
+  it('Gaben addieren sich (Superposition)', () => {
+    const one = levelFromLog([{ date: '2026-10-20', ui: 50 }], new Date(2026, 9, 27), new Date(2026, 9, 27))[0].c
+    const two = levelFromLog([{ date: '2026-10-20', ui: 50 }, { date: '2026-10-27', ui: 50 }], new Date(2026, 9, 27), new Date(2026, 9, 27))[0].c
+    expect(two).toBeGreaterThan(one + 2)
+  })
+  it('nextDue: letzte Gabe + 7 Tage, überfällig negativ', () => {
+    const r = nextDue([{ date: '2026-10-15', ui: 45 }, { date: '2026-10-22', ui: 50 }], new Date(2026, 9, 31))
+    expect(r.dueKey).toBe('2026-10-29')
+    expect(r.inDays).toBe(-2)
+    expect(nextDue([], new Date())).toBeNull()
   })
 })

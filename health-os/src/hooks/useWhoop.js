@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  whoopApi, normalizeRecovery, normalizeHrvSeries, normalizeSleep, normalizeWorkouts,
+  whoopApi, normalizeRecovery, normalizeHrvSeries, normalizeSleep, normalizeWorkouts, normalizeRecoveryHistory, normalizeSleepHistory,
 } from '../mcp/whoopClient.js'
 
-const EMPTY = { test: false, status: 'connecting', error: null, recovery: null, hrv: [], sleep: [], workouts: [], syncedAt: null, log: [] }
+const EMPTY = { history: null, workoutHistory: [], test: false, status: 'connecting', error: null, recovery: null, hrv: [], sleep: [], workouts: [], syncedAt: null, log: [] }
 
 /**
  * Pollt die Whoop-MCP-Bridge:
@@ -40,6 +40,25 @@ export function useWhoop(intervalMs = 5 * 60 * 1000) {
       setData((d) => ({ ...d, status: 'offline', error: String(e.message || e), log: [{ ts: stamp(), tag: 'bridge', msg: String(e.message || e), ok: false }, ...d.log].slice(0, 6) }))
     }
   }, [])
+
+  // Historie (90 Tage Erholung/Schlaf, 30 Tage Workouts) – einmal je Verbindung, dann alle 6 Std
+  const syncHistory = useCallback(async () => {
+    try {
+      const [rec, slp, wo] = await Promise.allSettled([whoopApi.recoveryHistory(90), whoopApi.sleepHistory(90), whoopApi.workoutsHistory(30)])
+      setData((d) => ({
+        ...d,
+        history: { rec: rec.status === 'fulfilled' ? normalizeRecoveryHistory(rec.value) : [], sleep: slp.status === 'fulfilled' ? normalizeSleepHistory(slp.value) : [] },
+        workoutHistory: wo.status === 'fulfilled' ? normalizeWorkouts(wo.value) : d.workoutHistory,
+      }))
+    } catch { /* Historie ist optional */ }
+  }, [])
+  const connected = data.status === 'connected'
+  useEffect(() => {
+    if (!connected) return
+    syncHistory()
+    const id = setInterval(syncHistory, 6 * 36e5)
+    return () => clearInterval(id)
+  }, [connected, syncHistory])
 
   useEffect(() => {
     sync()

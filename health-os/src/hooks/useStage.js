@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 // Entwurfshöhe je Ansicht in CSS-px; die Breite füllt den Rest. Skalierung per zoom = Fensterhöhe / Entwurfshöhe.
-export const DESIGN_H = { hq: 1100, analyse: 1250 }
+export const DESIGN_H = { hq: 1100, analyse: 1250, history: 1000, week: 1000, pharma: 1000, training: 1000 }
 const wide = () => innerWidth >= 1500 && innerWidth / innerHeight >= 1.9
 
 /** Ab 2:1 wird die Oberfläche auf die Bildschirmhöhe skaliert – kein Seiten-Scroll. */

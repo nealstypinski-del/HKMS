@@ -30,7 +30,7 @@ export function TopBar({ os, children }) {
   const dayPct = Math.max(0, Math.min(100, ((now - start) / (lock - start)) * 100))
   const Dot = ({ c, t }) => <span className="mono flex items-center gap-1.5 text-[11px] font-medium" style={{ color: c }}><i className="size-2.5 rounded-full" style={{ background: c, boxShadow: `0 0 8px ${c}` }} />{t}</span>
   return (
-    <section className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border bg-black/80 px-5 py-3 backdrop-blur-2xl" style={{ borderColor: `${command.color}55`, boxShadow: `0 0 30px ${command.color}26` }}>
+    <section className="no-print flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border bg-black/80 px-5 py-3 backdrop-blur-2xl" style={{ borderColor: `${command.color}55`, boxShadow: `0 0 30px ${command.color}26` }}>
       <p className="mono text-lg font-bold tracking-[.05em]" style={{ color: command.color, textShadow: `0 0 12px ${command.color}77` }}>{command.time} – {command.text}</p>
       <span className="mono hidden text-[11px] tracking-[.1em] text-white/55 xl:inline">DISZIPLIN HEUTE. FREIHEIT MORGEN.</span>
       <span className="flex-1" />

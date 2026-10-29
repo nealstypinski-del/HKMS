@@ -29,7 +29,17 @@ export function normalizeRecovery(raw) {
 export const normalizeHrvSeries = (raw) =>
   records(raw).map((r) => num(get(r, 'score.hrv_rmssd_milli', 'hrv_rmssd_milli', 'hrv'))).filter((v) => v != null).reverse()
 
-export function normalizeSleep(raw) {
+const localDay = (iso) => { const d = new Date(iso); return isNaN(d) ? undefined : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+
+/** Recovery-Verlauf mit Datum (für die Historie). */
+export const normalizeRecoveryHistory = (raw) => records(raw).map((r) => ({
+  date: localDay(get(r, 'created_at', 'updated_at', 'date')),
+  score: num(get(r, 'score.recovery_score', 'recovery_score', 'recovery')),
+  hrv: num(get(r, 'score.hrv_rmssd_milli', 'hrv_rmssd_milli', 'hrv', 'hrv_ms')),
+  rhr: num(get(r, 'score.resting_heart_rate', 'resting_heart_rate', 'rhr')),
+})).filter((r) => r.date)
+
+export function normalizeSleep(raw, keep = 7) {
   const nights = records(raw)
     .filter((r) => !r.nap)
     .map((r) => {
@@ -46,8 +56,11 @@ export function normalizeSleep(raw) {
     })
     .filter((n) => n.total > 0)
     .reverse() // API liefert neueste zuerst
-  return nights.slice(-7)
+  return nights.slice(-keep)
 }
+
+/** Schlaf-Verlauf mit Aufwach-Datum. */
+export const normalizeSleepHistory = (raw) => normalizeSleep(raw, 400).map((n) => ({ ...n, date: localDay(n.date) })).filter((n) => n.date)
 
 export function normalizeWorkouts(raw) {
   return records(raw).map((w) => {
@@ -86,4 +99,7 @@ export const whoopApi = {
   recovery: (limit = 7) => api(`recovery?limit=${limit}`),
   sleep: (limit = 8) => api(`sleep?limit=${limit}`),
   workouts: (limit = 10) => api(`workouts?limit=${limit}`),
+  recoveryHistory: (days = 90) => api(`recovery?days=${days}`),
+  sleepHistory: (days = 90) => api(`sleep?days=${days}`),
+  workoutsHistory: (days = 30) => api(`workouts?days=${days}`),
 }

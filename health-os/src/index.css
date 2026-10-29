@@ -45,3 +45,16 @@ input[type='range'] { accent-color: #00f0ff; }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) { .anim-flow, .anim-glow, .anim-pulse, .anim-scan, .anim-ring { animation: none; } }
+
+/* ── Druck / PDF-Wochenbericht ── */
+.print-only { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  html, body { background: #fff !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; margin-bottom: 8px; }
+  .stage-root { zoom: 1 !important; width: auto !important; height: auto !important; overflow: visible !important; }
+  main { overflow: visible !important; }
+  * { color: #111 !important; background-color: transparent !important; border-color: #bbb !important; box-shadow: none !important; text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  section, tr { break-inside: avoid; }
+}
