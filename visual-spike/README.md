@@ -29,3 +29,7 @@ npm run dev
 1. Küche, Aufzug und Agentenbank ebenfalls in Blender bauen, Sofafarben pro Etage
 2. Etagen 1 bis 3 (HerkulesJobs, KasselMemes, AI/Development) mit eigener Designsprache
 3. Zustandsmodell entkoppeln, damit Loop 1 die Statusdaten liefern kann
+
+## Begehbare Welt (Bergpark und HQ Innenwelt)
+
+Siehe `WORLD.md`: Außenwelt mit Kaskade und Herkules, begehbares HQ mit Treppe, Rolltreppen, Büros und Konferenzräumen (Third Person), Schnittstellen, Prüfskripte und Messergebnisse.
