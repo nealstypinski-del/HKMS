@@ -1,3 +1,4 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-export default defineConfig({ plugins: [react()] })
+// base './': Der Build läuft aus jedem Verzeichnis (auch gehostet), Modelle liegen unter models/
+export default defineConfig({ base: './', plugins: [react()] })

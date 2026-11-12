@@ -11,7 +11,7 @@ export default function Effects({ ssao = true }) {
         <Lightformer form="rect" intensity={1.4} color="#ffd9a8" position={[-14, 5, 6]} scale={[10, 8, 1]} rotation-y={Math.PI / 2} />
         <Lightformer form="rect" intensity={1.0} color="#6f8cff" position={[14, 5, -6]} scale={[10, 8, 1]} rotation-y={-Math.PI / 2} />
       </Environment>
-      <EffectComposer multisampling={0} disableNormalPass={!ssao}>
+      <EffectComposer multisampling={0} enableNormalPass={ssao}>
         {ssao ? <SSAO samples={14} rings={4} radius={0.08} intensity={9} luminanceInfluence={0.55} bias={0.04} worldDistanceThreshold={40} worldDistanceFalloff={10} worldProximityThreshold={0.5} worldProximityFalloff={0.3} /> : <></>}
         <Bloom intensity={0.55} luminanceThreshold={0.85} luminanceSmoothing={0.3} mipmapBlur />
         <SMAA />

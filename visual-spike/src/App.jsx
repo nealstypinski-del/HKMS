@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import Floor from './Floor.jsx'
@@ -11,6 +11,9 @@ import { labelRoot } from './labelRoot.js'
 import { DOOR_HALF, ELEVATOR_EXIT, ESC, FLOOR_H, HALF_X, HALF_Z, OUTDOOR } from './world.js'
 import { EscalatorPair } from './Escalator.jsx'
 import Effects from './Effects.jsx'
+
+// Begehbare Welt (Bergpark und HQ Innenwelt), eigenes Modul unter src/world/
+const BergparkView = lazy(() => import('./world/outdoor/BergparkView.jsx'))
 
 // Kollisionsboxen [xmin, xmax, zmin, zmax] für Haus, Etage und Außenwelt
 function buildColliders(floor, idx) {
@@ -51,6 +54,7 @@ const Btn = ({ on, color, children, ...p }) => (
 )
 
 export default function App() {
+  const [view, setView] = useState(() => ((new URLSearchParams(window.location.search).get('view') || import.meta.env.VITE_DEFAULT_VIEW || 'floors') === 'bergpark' ? 'bergpark' : 'floors'))
   const [idx, setIdx] = useState(0)
   const [inside, setInside] = useState(false)
   const [spawn, setSpawn] = useState({ x: 0, z: 17, face: Math.PI, key: 0 })
@@ -64,6 +68,7 @@ export default function App() {
   const floor = FLOORS[idx]
   const pal = floor.palette
   const stats = useMemo(() => floorStats(floor), [floor])
+  if (view === 'bergpark') return <Suspense fallback={null}><BergparkView onBack={() => setView('floors')} /></Suspense>
   const colliders = useMemo(() => buildColliders(floor, idx), [floor, idx])
   const shown = inside ? Math.max(idx, rideTo ?? idx) + 1 : FLOORS.length
   const topY = FLOORS.length * FLOOR_H
@@ -150,6 +155,7 @@ export default function App() {
       </div>
 
       <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <Btn on={false} color="#2fd6c0" onClick={() => setView('bergpark')}>Bergpark und Sims Simulation</Btn>
         <div style={{ color: '#fff', fontSize: 12, opacity: 0.8, textAlign: 'right' }}>Aufzug · Etage wählen</div>
         <Btn on={false} color="#9fb0d4" onClick={overview}>Übersicht</Btn>
         {[...FLOORS].reverse().map((f) => {
