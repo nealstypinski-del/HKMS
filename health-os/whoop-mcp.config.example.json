@@ -1,0 +1,13 @@
+{
+  "command": "npx",
+  "args": ["-y", "whoop-ai-mcp"],
+  "env": {
+    "WHOOP_CLIENT_ID": "HIER_EINTRAGEN",
+    "WHOOP_CLIENT_SECRET": "HIER_EINTRAGEN"
+  },
+  "tools": {
+    "recovery": "whoop_get_recovery",
+    "sleep": "whoop_get_sleep",
+    "workouts": "whoop_get_workouts"
+  }
+}
